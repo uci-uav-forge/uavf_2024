@@ -2,8 +2,7 @@
 
 ## Install instructions
 
-### ROS 2 Foxy for Ubuntu 20.04 Focal
-#### Source: https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html
+### [ROS 2 Foxy for Ubuntu 20.04 Focal](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html)
 
 1. Uninstall ROS Noetic.
 	```
@@ -64,8 +63,7 @@
 	```
 
 
-### PX4 SITL for Ubuntu 20.04 Focal
-#### Source: https://docs.px4.io/main/en/ros/ros2_comm.html#humble
+### [PX4 SITL for Ubuntu 20.04 Focal](https://docs.px4.io/main/en/ros/ros2_comm.html#foxy)
 
 1. Install PX4 development environment in your directory of choice.
 	```
@@ -76,8 +74,7 @@
 	```
 
 
-### Micro XRCE-DDS Agent and Client (the middleware PX4 uses for ROS 2)
-#### Source: https://docs.px4.io/main/en/ros/ros2_comm.html#humble
+### [Micro XRCE-DDS Agent and Client (ROS 2 Middleware)](https://docs.px4.io/main/en/ros/ros2_comm.html#foxy)
 
 1. Clone the DDS agent library to your directory of choice.
 	```
@@ -108,8 +105,7 @@
 	After it successfully builds, you should see the simulation environment in one window and the DDS agent outputting "INFO" messages in its terminal window.
 
 
-### Set up PX4 ROS 2 workspace
-#### Source: https://docs.px4.io/main/en/ros/ros2_comm.html#humble
+### [Set up PX4 ROS 2 workspace](https://docs.px4.io/main/en/ros/ros2_comm.html#foxy)
 
 1. Create a ROS 2 workspace and name it whatever you want. This is where all you develop in.
 	```
