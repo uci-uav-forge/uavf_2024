@@ -1,5 +1,21 @@
 # Sample repository showcasing model predictive control with PX4's offboard mode and ROS 2.
 
+
+## Usage
+
+1. Start the DDS agent.
+	```
+	MicroXRCEAgent udp4 -p 8888
+	```
+
+2. In a new terminal window, cd into PX4-Autopilot and start the SITL.
+	```
+	sudo make px4_sitl gazebo-classic
+	```
+
+3. In a new terminal window, run your roslaunch or script.
+
+
 ## Install instructions
 
 ### [ROS 2 Foxy for Ubuntu 20.04 Focal](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html)
@@ -17,8 +33,6 @@
 	sudo rm -r noetic
 	```
 	Edit your ~/.bashrc and remove all ROS related commands.
-
-
 
 2. Make sure locale has UTF-8.
 	```
