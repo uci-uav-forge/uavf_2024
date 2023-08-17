@@ -130,9 +130,10 @@ class SQP_NLMPC():
         
         # the reference input will be the hover input
         y_ref = np.concatenate((x_set, self.u_hover))
-        for k in range(self.N):
+        for k in range(self.N): 
             self.solver.set(k, 'yref', y_ref)
-
+        
+        # solve for the next ctrl input
         self.solver.solve()
         nxt_ctrl = self.solver.get(0, 'u')
 
@@ -220,7 +221,8 @@ class SQP_NLMPC():
 def derive_quad_dynamics(mass, arm_len, Ix, Iy, Iz, thrust_coeff, torque_coeff):
     ''' Returns casadi struct containing explicit dynamics,
     state, state_dot, control input, and name. 
-    Nonlinear continuous-time quadcopter dynamics. '''
+    Nonlinear continuous-time quadcopter dynamics. 
+    The cartesian states are in ENU.'''
 
 
     # State Variables: position, rotation, and their time-derivatives
