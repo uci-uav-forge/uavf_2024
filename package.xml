@@ -4,10 +4,15 @@
   <name>px4_offboard_mpc</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="herpderkfanie@gmail.com">herpderk</maintainer>
-  <license>TODO: License declaration</license>
+  <maintainer email="derekfan.18.2002@gmail.com">Herpderk</maintainer>
+  <license>MIT License</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>px4_msgs</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
