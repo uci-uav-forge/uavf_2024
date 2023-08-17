@@ -13,6 +13,8 @@
 	```
 	cd /opt/ros
 	sudo rm -r noetic
+	cd /mnt/c/opt/ros
+	sudo rm -r noetic
 	```
 	Edit your ~/.bashrc and remove all ROS related commands.
 
