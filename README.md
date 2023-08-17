@@ -99,7 +99,7 @@
 	MicroXRCEAgent udp4 -p 8888
 	```
 
-3. The PX4 SITL contains the client. Run the SITL in a new client.
+3. The PX4 SITL contains the DDS client. Run the SITL in a new window.
 	```
 	sudo make px4_sitl gazebo-classic
 	```
