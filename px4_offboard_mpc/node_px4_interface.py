@@ -1,0 +1,352 @@
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRatesSetpoint,\
+    OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleLocalPosition, VehicleOdometry
+from uavf_msgs.msg import NedEnuOdometry, CommanderMessage
+
+import numpy as np
+from scipy.spatial.transform import Rotation
+
+
+class PX4_Interface(Node):
+    ''' Numpy ROS 2 node for interfacing with PX4 Offboard Control. 
+        Use numpy vectors for the "get" and "set" methods. 
+        PX4 operates in NED frames, so flag "is_ENU" as True 
+        for getter and setter methods if other programs work in frames.
+    '''
+
+    def __init__(self):
+        super().__init__('PX4_Interface')
+
+        # Configure QoS profile for publishing and subscribing
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+
+        ''' This section talks to our ROS network '''
+        # publish position, velocity, angle, and angle rate feedback in desired format
+        self.ned_enu_odom_pub = self.create_publisher(
+            NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', qos_profile)
+        # subscriber that receives command
+        self.commander_sub = self.create_subscription(
+           CommanderMessage, '/px4_interface/in/commander_msg', self.commander_cb, qos_profile)
+        
+
+        ''' This section talks to PX4 '''
+        # subscribe to px4 status
+        self.status_sub = self.create_subscription(
+            VehicleStatus, '/fmu/out/vehicle_status', self.status_cb, qos_profile)
+        self.odom_sub = self.create_subscription(
+            VehicleOdometry, '/fmu/out/vehicle_odometry', self.convert_odom_cb, qos_profile)
+
+        # publish heartbeat and commands to px4
+        self.offboard_ctrl_mode_pub = self.create_publisher(
+            OffboardControlMode, '/fmu/in/offboard_control_mode', qos_profile)
+        self.command_pub = self.create_publisher(
+            VehicleCommand, '/fmu/in/vehicle_command', qos_profile)
+        
+        # publish position, velocity, angle, and angle rate setpoints to px4
+        self.traj_setpt_pub = self.create_publisher(
+            TrajectorySetpoint, '/fmu/in/trajectory_setpoint', qos_profile)
+        self.att_setpt_pub = self.create_publisher(
+            VehicleAttitudeSetpoint, 'fmu/in/vehicle_attitude_setpoint', qos_profile)
+        self.rate_setpt_pub = self.create_publisher(
+            VehicleRatesSetpoint, 'fmu/in/vehicle_rates_setpoint', qos_profile)
+        
+        self.status = VehicleStatus()
+
+        '''
+        self.setpt_count = 0
+        self.takeoff_height = -5.0
+
+        # Create a timer to publish control commands
+        self.timer = self.create_timer(0.1, self.timer_cb)
+        '''
+
+
+    def commander_cb(self, commander_msg):
+        if commander_msg.disarm:
+            self.disarm()
+        elif commander_msg.arm:
+            self.arm()
+        elif commander_msg.land:
+            self.land()
+        else:
+            is_ENU = commander_msg.is_enu
+            self.set_trajectory_setpoint(
+                commander_msg.position_setpoint, commander_msg.velocity_setpoint, is_ENU)
+            self.set_euler_angle_setpoint(
+                commander_msg.euler_angle_setpoint, is_ENU
+            )
+            self.set_euler_angle_rate_setpoint(
+                commander_msg.euler_angle_rate_setpoint, is_ENU, commander_msg.is_inertial
+            )
+            self.set_offboard_control_mode()
+
+
+    def status_cb(self, status):
+        self.status = status
+    
+
+    def convert_odom_cb(self, odom):
+        # getting ned states
+        pos_ned = np.float32(odom.position)
+        vel_ned = np.float32(odom.velocity)
+        quat_ned = np.float32(odom.q)
+        rot = Rotation.from_quat(quat_ned)
+        ang_ned = np.float32(rot.as_euler('xyz'))
+        body_ang_rate_ned = np.float32(odom.angular_velocity)
+        inertial_ang_rate_ned = self.convert_body_to_inertial_frame(body_ang_rate_ned, ang_ned)
+
+        # getting enu states
+        pos_enu = self.convert_NED_ENU_in_inertial(pos_ned)
+        vel_enu = self.convert_NED_ENU_in_inertial(vel_ned)
+        # quat_enu
+        ang_enu = self.convert_NED_ENU_in_inertial(ang_ned)
+        body_ang_rate_enu = self.convert_NED_ENU_in_body(body_ang_rate_ned)
+        inertial_ang_rate_enu = self.convert_body_to_inertial_frame(body_ang_rate_enu, ang_enu)
+
+        # generating ned and enu message
+        msg = NedEnuOdometry()
+        msg.position_ned = pos_ned
+        msg.velocity_ned = vel_ned
+        msg.euler_angle_ned = ang_ned
+        msg.body_angle_rate_ned = body_ang_rate_ned
+        msg.inertial_angle_rate_ned = inertial_ang_rate_ned
+        msg.quaternion_ned = quat_ned
+
+        msg.position_enu = pos_enu
+        msg.velocity_enu = vel_enu
+        msg.euler_angle_enu = ang_enu
+        msg.body_angle_rate_enu = body_ang_rate_enu
+        msg.inertial_angle_rate_enu = inertial_ang_rate_enu
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        # publishing and logging
+        self.ned_enu_odom_pub.publish(msg)
+        self.get_logger().info(f"Publishing NED and ENU feedback.")
+    
+
+    def convert_NED_ENU_in_inertial(self, x) -> np.ndarray:
+        ''' Converts a state between NED or ENU inertial frames.
+            This operation is commutative. 
+        '''
+        assert len(x) == 3
+        new_x = np.float32(
+            [x[1], x[0], -x[2]])
+        return new_x
+    
+
+    def convert_NED_ENU_in_body(self, x) -> np.ndarray:
+        ''' Converts a state between NED or ENU body frames.
+            (More formally known as FRD or RLU body frames)
+            This operation is commutative. 
+        '''
+        assert len(x) == 3
+        new_x =  np.float32(
+            [x[0], -x[1], -x[2]])
+        return new_x
+
+
+    def convert_body_to_inertial_frame(self, ang_rate_body, ang) -> np.ndarray:
+        ''' Converts body euler angle rates to their inertial frame counterparts.
+        '''
+        assert len(ang_rate_body) == 3
+        assert len(ang) == 3
+
+        phi, theta, psi = ang
+        W_inv = np.float32([
+            [1, np.sin(phi)*np.tan(theta), np.cos(phi)*np.tan(theta)],
+            [0,               np.cos(phi),              -np.sin(phi)],
+            [0, np.sin(phi)/np.cos(theta), np.cos(phi)/np.cos(theta)],
+        ])
+        ang_rate_inertial = W_inv @ ang_rate_body
+        return ang_rate_inertial
+    
+
+    def convert_inertial_to_body_frame(self, ang_rate_inertial, ang) -> np.ndarray:
+        ''' Converts inertial euler angle rates to their body frame counterparts.
+        '''
+        assert len(ang_rate_inertial) == 3
+        assert len(ang) == 3
+
+        phi, theta, psi = ang
+        W = np.float32([
+            [1,           0,             -np.sin(theta)],
+            [0,  np.cos(phi), np.cos(theta)*np.sin(phi)],
+            [0, -np.sin(phi), np.cos(theta)*np.cos(phi)]
+        ])
+        ang_rate_body = W @ ang_rate_inertial
+        return ang_rate_body
+
+
+    def set_trajectory_setpoint(self, pos:np.ndarray, vel:np.ndarray, is_ENU):
+        ''' (x, y, z)
+            Publish the 3D position and velocity setpoints. 
+            Set "is_ENU" to True if inputting ENU coordinates. 
+        '''
+        assert len(pos) == 3
+        assert len(vel) == 3
+        pos_f32 = np.float32(pos)
+        vel_f32 = np.float32(vel)
+
+        if is_ENU:
+            pos_f32 = self.convert_NED_ENU_in_inertial(pos_f32)
+            vel_f32 = self.convert_NED_ENU_in_inertial(vel_f32)
+
+        msg = TrajectorySetpoint()
+        msg.position = pos_f32
+        msg.velocity = vel_f32
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.traj_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing position setpoints {pos_f32}")
+        return
+    
+
+    def set_quaternion_NED_setpoint(self, q_NED:np.ndarray):
+        ''' Publish 4D quaternion attitude setpoint. 
+        '''
+        assert len(q_NED) == 4
+        q_NED_f32 = np.float32(q_NED)
+
+        msg = VehicleAttitudeSetpoint()
+        msg.q_d = q_NED_f32
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.att_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing quaternion attitude setpoint {q_NED_f32}")
+        return
+
+
+    def set_euler_angle_setpoint(self, ang:np.ndarray, is_ENU):
+        ''' (Roll, Pitch, Yaw)
+            Publish 3D euler angle attitude setpoint. 
+            Set "is_ENU" to True if inputting ENU coordinates. 
+        '''
+        assert len(ang) == 3
+        ang_f32 = np.float32(ang)
+        if is_ENU:
+            ang_f32 = self.convert_NED_ENU_in_inertial(ang_f32)
+        
+        msg = VehicleAttitudeSetpoint()
+        msg.roll_body = ang_f32[0]
+        msg.pitch_body = ang_f32[1]
+        msg.yaw_body = ang_f32[2]
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.att_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing euler angle attitude setpoint {ang_f32}")
+        return
+
+
+    def set_euler_angle_rate_setpoint(self, ang_rate, is_ENU, is_inertial):
+        ''' (Roll, Pitch, Yaw)
+            Publish 3D euler angular rate setpoint in body frame.
+            Set "is_inertial" to True if inputting inertial frame angle rates. 
+            Set "is_ENU" to True if inputting ENU coordinate angle rates. 
+        '''
+        assert len(ang_rate) == 3
+        ang_rate_f32 = np.float32(ang_rate)
+        if is_ENU:
+            ang_rate_f32 = self.convert_NED_ENU_in_body(ang_rate_f32)
+        if is_inertial:
+            ang_rate_f32 = self.convert_inertial_to_body_frame(ang_rate_f32, is_ENU=is_ENU)
+        
+        msg = VehicleRatesSetpoint()
+        msg.roll = ang_rate_f32[0]
+        msg.pitch = ang_rate_f32[1]
+        msg.yaw = ang_rate_f32[2]
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.rate_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing euler angle rates setpoint {ang_rate_f32}")
+        return
+    
+    
+    def set_offboard_control_mode(self) -> None:
+        ''' Enables and disables the desired states to be controlled.
+            Serves as the heartbeat to maintain offboard control, must keep publishing this. 
+            May parameterize its options in the constructor in the future.
+        '''
+        msg = OffboardControlMode()
+        msg.position = True
+        msg.velocity = True
+        msg.acceleration = False
+        msg.attitude = True
+        msg.body_rate = True
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+        self.offboard_ctrl_mode_pub.publish(msg)
+        return
+
+
+    def set_command(self, command, **params) -> None:
+        ''' Publish a vehicle command. 
+            Setting vehicle state uses this.
+        '''
+        msg = VehicleCommand()
+        msg.command = command
+        msg.param1 = params.get("param1", 0.0)
+        msg.param2 = params.get("param2", 0.0)
+        msg.param3 = params.get("param3", 0.0)
+        msg.param4 = params.get("param4", 0.0)
+        msg.param5 = params.get("param5", 0.0)
+        msg.param6 = params.get("param6", 0.0)
+        msg.param7 = params.get("param7", 0.0)
+        msg.target_system = 1
+        msg.target_component = 1
+        msg.source_system = 1
+        msg.source_component = 1
+        msg.from_external = True
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+        self.command_pub.publish(msg)
+        return
+
+
+    def arm(self) -> None:
+        self.set_command(
+            VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
+        self.get_logger().info('Arm command sent')
+
+
+    def disarm(self) -> None:
+        self.set_command(
+            VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0)
+        self.get_logger().info('Disarm command sent')
+
+
+    def engage_offboard_mode(self) -> None:
+        self.set_command(
+            VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
+        self.get_logger().info("Switching to offboard mode")
+
+
+    def land(self) -> None:
+        self.set_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
+        self.get_logger().info("Switching to land mode")
+
+
+    """
+    def timer_cb(self) -> None:
+        '''Callback function for the timer.'''
+        self.set_offboard_control_mode()
+
+        if self.offboard_setpoint_counter == 10:
+            self.engage_offboard_mode()
+            self.arm()
+
+        if self.vehicle_local_position.z > self.takeoff_height and self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
+            self.set_position_setpoint(0.0, 0.0, self.takeoff_height)
+
+        elif self.vehicle_local_position.z <= self.takeoff_height:
+            self.land()
+            exit(0)
+
+        if self.offboard_setpoint_counter < 11:
+            self.offboard_setpoint_counter += 1
+    """
+
