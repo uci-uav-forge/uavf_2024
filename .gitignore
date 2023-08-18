@@ -1,2 +1,4 @@
-scripts/c_generated_code/
-scripts/acados*
+c_generated_code
+acados_ocp_nlp.json
+__pycache__
+px4_offboard_mpc.egg-info
