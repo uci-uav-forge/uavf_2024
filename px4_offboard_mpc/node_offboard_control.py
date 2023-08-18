@@ -11,7 +11,8 @@ from scipy.spatial.transform import Rotation
 class OffboardControlNode(Node):
     ''' Numpy ROS 2 node for interfacing with PX4 Offboard Control. 
         Use numpy vectors for the "get" and "set" methods. 
-        PX4 operates in NED coordinates, so '''
+        PX4 operates in NED coordinates, so 
+    '''
 
     def __init__(self) -> None:
         super().__init__('offboard_control_node')
@@ -31,7 +32,7 @@ class OffboardControlNode(Node):
         self.odom_sub = self.create_subscription(
             VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
 
-        # Status publishers
+        # Status and command publishers
         self.offboard_ctrl_mode_pub = self.create_publisher(
             OffboardControlMode, '/fmu/in/offboard_control_mode', qos_profile)
         self.command_pub = self.create_publisher(
@@ -46,12 +47,13 @@ class OffboardControlNode(Node):
             VehicleRatesSetpoint, 'fmu/in/vehicle_rates_setpoint', qos_profile)
 
         # Initialize variables
-        self.setpt_count = 0
         self.status = VehicleStatus()
         self.odom = VehicleOdometry()
-        self.takeoff_height = -5.0
 
         '''
+        self.setpt_count = 0
+        self.takeoff_height = -5.0
+
         # Create a timer to publish control commands
         self.timer = self.create_timer(0.1, self.timer_cb)
         '''
@@ -67,8 +69,8 @@ class OffboardControlNode(Node):
 
     def convert_NED_ENU_inertial_frame(self, x) -> np.ndarray:
         ''' Converts a state between NED or ENU inertial frames.
-            This operation is commutative. '''
-        
+            This operation is commutative. 
+        '''
         assert len(x) == 3
         x =  np.float32(
             [x[1], x[0], -1*x[2]])
@@ -78,8 +80,8 @@ class OffboardControlNode(Node):
     def convert_NED_ENU_body_frame(self, x) -> np.ndarray:
         ''' Converts a state between NED or ENU body frames.
             (More formally known as FRD or RLU body frames)
-            This operation is commutative. '''
-        
+            This operation is commutative. 
+        '''
         assert len(x) == 3
         x =  np.float32(
             [x[0], -1*x[1], -1*x[2]])
@@ -87,9 +89,11 @@ class OffboardControlNode(Node):
 
 
     def get_position(self, is_ENU=False) -> np.ndarray:
-        ''' Position feedback as a 3D cartesian vector.
-            Set "is_ENU" to True to get coordinates in ENU frame.'''
-        
+        ''' (x, y, z)
+            Position feedback as a 3D cartesian vector.
+            Outputs in NED inertial frame by default.
+            Set "is_ENU" to True to get coordinates in ENU frame.
+        '''
         pos = np.float32(self.odom.position)
         if is_ENU: 
             pos = self.convert_NED_ENU_inertial_frame(pos)
@@ -97,19 +101,34 @@ class OffboardControlNode(Node):
     
 
     def get_velocity(self, is_ENU=False) -> np.ndarray:
+        ''' (x, y, z)
+            Velocity feedback as a 3D cartesian vector.
+            Outputs in NED inertial frame by default.
+            Set "is_ENU" to True to get velocities in ENU frame.
+        '''
         vel = np.float32(self.odom.velocity)
         if is_ENU: 
             vel = self.convert_NED_ENU_inertial_frame(vel)
         return vel
 
 
-    def get_quaternion_NED(self) -> np.ndarray:
-        q_NED = np.float32(self.odom.q)
-        return q_NED
+    def get_quaternion(self) -> np.ndarray:
+        ''' Attitude feedback as a 4D quaternion.
+            Outputs in NED inertial frame by default.
+            Will implement conversion to ENU later.
+        '''
+        q = np.float32(self.odom.q)
+        return q
     
 
     def get_euler_angle(self, is_ENU=False) -> np.ndarray:
-        q = self.get_quaternion_NED()
+        ''' (Roll, Pitch, Yaw) 
+            Attitude feedback as a 3D vector of euler angles.
+            Outputs in NED inertial frame by default.
+            Set "is_ENU" to True to get angles in ENU frame.
+        '''
+
+        q = self.get_quaternion()
         rot = Rotation.from_quat(q)
         ang = np.float32(rot.as_euler('xyz'))
         if is_ENU: 
@@ -118,6 +137,11 @@ class OffboardControlNode(Node):
 
 
     def get_euler_angle_rate(self, is_ENU=False) -> np.ndarray:
+        ''' (Roll, Pitch, Yaw)
+            Angular velocity feedback as a 3D vector of euler angle rates.
+            Outputs in NED body frame (formally known as FRD body frame).
+            Set "is_ENU" to True to get angle rates in ENU frame.
+        '''
         ang_rate = np.float32(self.odom.angular_velocity)
         if is_ENU:
             ang_rate = self.convert_NED_ENU_body_frame(ang_rate)
@@ -125,9 +149,10 @@ class OffboardControlNode(Node):
 
 
     def set_trajectory_setpoint(self, pos:np.ndarray, vel:np.ndarray, is_ENU=False):
-        ''' Publish the position and velocity setpoint. 
-            Set "is_ENU" to True if inputting ENU coordinates. '''
-        
+        ''' (x, y, z)
+            Publish the 3D position and velocity setpoints. 
+            Set "is_ENU" to True if inputting ENU coordinates. 
+        '''
         assert len(pos) == 3
         assert len(vel) == 3
         pos_f32 = np.float32(pos)
@@ -148,8 +173,8 @@ class OffboardControlNode(Node):
     
 
     def set_quaternion_NED_setpoint(self, q_NED:np.ndarray):
-        ''' Publish quaternion attitude setpoint. '''
-
+        ''' Publish 4D quaternion attitude setpoint. 
+        '''
         assert len(q_NED) == 4
         q_NED_f32 = np.float32(q_NED)
 
@@ -163,9 +188,10 @@ class OffboardControlNode(Node):
 
 
     def set_euler_angle_setpoint(self, ang:np.ndarray, is_ENU=False):
-        ''' Publish euler angle attitude setpoint. 
-            Set "is_ENU" to True if inputting ENU coordinates. '''
-        
+        ''' (Roll, Pitch, Yaw)
+            Publish 3D euler angle attitude setpoint. 
+            Set "is_ENU" to True if inputting ENU coordinates. 
+        '''
         assert len(ang) == 3
         ang_f32 = np.float32(ang)
         if is_ENU:
@@ -183,9 +209,10 @@ class OffboardControlNode(Node):
 
 
     def set_euler_angle_rate_setpoint(self, ang_rate, is_ENU=False):
-        ''' Publish euler angular rate setpoint. 
-            Set "is_ENU" to True if inputting ENU coordinates. '''
-        
+        ''' (Roll, Pitch, Yaw)
+            Publish 3D euler angular rate setpoint. 
+            Set "is_ENU" to True if inputting ENU coordinates. 
+        '''
         assert len(ang_rate) == 3
         ang_rate_f32 = np.float32(ang_rate)
         if is_ENU:
@@ -203,6 +230,9 @@ class OffboardControlNode(Node):
     
     
     def set_offboard_control_mode(self):
+        ''' Enables and disables the desired states to be controlled.
+            May parameterize this in the constructor in the future.
+        '''
         msg = OffboardControlMode()
         msg.position = True
         msg.velocity = True
@@ -215,7 +245,9 @@ class OffboardControlNode(Node):
 
 
     def set_command(self, command, **params) -> None:
-        '''Publish a vehicle command.'''
+        ''' Publish a vehicle command. 
+            Setting vehicle state uses this.
+        '''
         msg = VehicleCommand()
         msg.command = command
         msg.param1 = params.get("param1", 0.0)
@@ -278,14 +310,16 @@ class OffboardControlNode(Node):
             self.offboard_setpoint_counter += 1
     """
 
-'''
+
 def main(args=None) -> None:
+    '''
     print('Starting offboard control node...')
     rclpy.init(args=args)
     offboard_control = OffboardControlNode()
     rclpy.spin(offboard_control)
     offboard_control.destroy_node()
     rclpy.shutdown()
+    '''
 
 
 if __name__ == '__main__':
@@ -293,4 +327,3 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         print(e)
-'''
