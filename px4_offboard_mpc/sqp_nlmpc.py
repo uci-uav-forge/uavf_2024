@@ -37,9 +37,8 @@ class SQP_NLMPC():
         
         # deleting acados compiled files when script is terminated.
         atexit.register(self.delete_compiled_files)
+        return
 
-        
-    
 
     def get_acados_model(self, model_cs):
         ''' Acados model format:
