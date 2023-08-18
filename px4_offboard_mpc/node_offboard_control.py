@@ -68,36 +68,70 @@ class OffboardControlNode(Node):
         self.odom = odom
     
 
-    def convert_NED_ENU_inertial_frame(self, x) -> np.ndarray:
+    def convert_NED_ENU_in_inertial(self, x) -> np.ndarray:
         ''' Converts a state between NED or ENU inertial frames.
             This operation is commutative. 
         '''
         assert len(x) == 3
-        x =  np.float32(
-            [x[1], x[0], -1*x[2]])
-        return x
+        new_x = np.float32(
+            [x[1], x[0], -x[2]])
+        return new_x
     
 
-    def convert_NED_ENU_body_frame(self, x) -> np.ndarray:
+    def convert_NED_ENU_in_body(self, x) -> np.ndarray:
         ''' Converts a state between NED or ENU body frames.
             (More formally known as FRD or RLU body frames)
             This operation is commutative. 
         '''
         assert len(x) == 3
-        x =  np.float32(
-            [x[0], -1*x[1], -1*x[2]])
-        return x
+        new_x =  np.float32(
+            [x[0], -x[1], -x[2]])
+        return new_x
+
+
+    def convert_body_to_inertial_frame(self, ang_rate_body, is_ENU=False) -> np.ndarray:
+        ''' Converts body euler angle rates to their inertial frame counterparts.
+        '''
+        assert len(ang_rate_body) == 3
+        ang_rate_body_f32 = np.float32(ang_rate_body)
+
+        ang = self.get_euler_angle(is_ENU=is_ENU)
+        phi, theta, psi = ang
+        W_inv = np.float32([
+            [1, np.sin(phi)*np.tan(theta), np.cos(phi)*np.tan(theta)],
+            [0,               np.cos(phi),              -np.sin(phi)],
+            [0, np.sin(phi)/np.cos(theta), np.cos(phi)/np.cos(theta)],
+        ])
+        ang_rate_inertial = W_inv @ ang_rate_body_f32
+        return ang_rate_inertial
+    
+
+    def convert_inertial_to_body_frame(self, ang_rate_inertial, is_ENU=False) -> np.ndarray:
+        ''' Converts inertial euler angle rates to their body frame counterparts.
+        '''
+        assert len(ang_rate_inertial) == 3
+        ang_rate_inertial_f32 = np.float32(ang_rate_inertial)
+
+        ang = self.get_euler_angle(is_ENU=is_ENU)
+        phi, theta, psi = ang
+        W = np.float32([
+            [1,           0,             -np.sin(theta)],
+            [0,  np.cos(phi), np.cos(theta)*np.sin(phi)],
+            [0, -np.sin(phi), np.cos(theta)*np.cos(phi)]
+        ])
+        ang_rate_body = W @ ang_rate_inertial_f32
+        return ang_rate_body
 
 
     def get_position(self, is_ENU=False) -> np.ndarray:
         ''' (x, y, z)
             Position feedback as a 3D cartesian vector.
             Outputs in NED inertial frame by default.
-            Set "is_ENU" to True to get coordinates in ENU frame.
+            Set "is_ENU" to True to get coordinates in ENU coordinates.
         '''
         pos = np.float32(self.odom.position)
         if is_ENU: 
-            pos = self.convert_NED_ENU_inertial_frame(pos)
+            pos = self.convert_NED_ENU_in_inertial(pos)
         return pos
     
 
@@ -105,11 +139,11 @@ class OffboardControlNode(Node):
         ''' (x, y, z)
             Velocity feedback as a 3D cartesian vector.
             Outputs in NED inertial frame by default.
-            Set "is_ENU" to True to get velocities in ENU frame.
+            Set "is_ENU" to True to get velocities in ENU coordinates.
         '''
         vel = np.float32(self.odom.velocity)
         if is_ENU: 
-            vel = self.convert_NED_ENU_inertial_frame(vel)
+            vel = self.convert_NED_ENU_in_inertial(vel)
         return vel
 
 
@@ -126,25 +160,28 @@ class OffboardControlNode(Node):
         ''' (Roll, Pitch, Yaw) 
             Attitude feedback as a 3D vector of euler angles.
             Outputs in NED inertial frame by default.
-            Set "is_ENU" to True to get angles in ENU frame.
+            Set "is_ENU" to True to get angles in ENU coordinates.
         '''
         q = self.get_quaternion()
         rot = Rotation.from_quat(q)
         ang = np.float32(rot.as_euler('xyz'))
         if is_ENU: 
-            ang = self.convert_NED_ENU_inertial_frame(ang)
+            ang = self.convert_NED_ENU_in_inertial(ang)
         return ang
 
 
-    def get_euler_angle_rate(self, is_ENU=False) -> np.ndarray:
+    def get_euler_angle_rate(self, is_ENU=False, is_inertial_frame=False) -> np.ndarray:
         ''' (Roll, Pitch, Yaw)
             Angular velocity feedback as a 3D vector of euler angle rates.
-            Outputs in NED body frame (formally known as FRD body frame).
-            Set "is_ENU" to True to get angle rates in ENU frame.
+            Outputs in NED body frame (formally known as FRD body frame) by default.
+            Set "is_inertial_frame" to True to get angle rates in the inertial frame.
+            Set "is_ENU" to True to get angle rates in ENU coordinates.
         '''
         ang_rate = np.float32(self.odom.angular_velocity)
         if is_ENU:
-            ang_rate = self.convert_NED_ENU_body_frame(ang_rate)
+            ang_rate = self.convert_NED_ENU_in_body(ang_rate)
+        if is_inertial_frame:
+            ang_rate = self.convert_body_to_inertial_frame(ang_rate, is_ENU=is_ENU)
         return ang_rate
 
 
@@ -159,8 +196,8 @@ class OffboardControlNode(Node):
         vel_f32 = np.float32(vel)
 
         if is_ENU:
-            pos_f32 = self.convert_NED_ENU_inertial_frame(pos_f32)
-            vel_f32 = self.convert_NED_ENU_inertial_frame(pos_f32)
+            pos_f32 = self.convert_NED_ENU_in_inertial(pos_f32)
+            vel_f32 = self.convert_NED_ENU_in_inertial(vel_f32)
 
         msg = TrajectorySetpoint()
         msg.position = pos_f32
@@ -195,7 +232,7 @@ class OffboardControlNode(Node):
         assert len(ang) == 3
         ang_f32 = np.float32(ang)
         if is_ENU:
-            ang_f32 = self.convert_NED_ENU_inertial_frame(ang_f32)
+            ang_f32 = self.convert_NED_ENU_in_inertial(ang_f32)
         
         msg = VehicleAttitudeSetpoint()
         msg.roll_body = ang_f32[0]
@@ -208,15 +245,18 @@ class OffboardControlNode(Node):
         return
 
 
-    def set_euler_angle_rate_setpoint(self, ang_rate, is_ENU=False):
+    def set_euler_angle_rate_setpoint(self, ang_rate, is_ENU=False, is_inertial=False):
         ''' (Roll, Pitch, Yaw)
-            Publish 3D euler angular rate setpoint. 
-            Set "is_ENU" to True if inputting ENU coordinates. 
+            Publish 3D euler angular rate setpoint in body frame.
+            Set "is_inertial" to True if inputting inertial frame angle rates. 
+            Set "is_ENU" to True if inputting ENU coordinate angle rates. 
         '''
         assert len(ang_rate) == 3
         ang_rate_f32 = np.float32(ang_rate)
         if is_ENU:
-            ang_rate_f32 = self.convert_NED_ENU_body_frame(ang_rate_f32)
+            ang_rate_f32 = self.convert_NED_ENU_in_body(ang_rate_f32)
+        if is_inertial:
+            ang_rate_f32 = self.convert_inertial_to_body_frame(ang_rate_f32, is_ENU=is_ENU)
         
         msg = VehicleRatesSetpoint()
         msg.roll = ang_rate_f32[0]
@@ -311,7 +351,15 @@ class OffboardControlNode(Node):
     """
 
 
-def main(args=None) -> None:
+def main():
+    '''
+    The loop goes:
+        get setpoint: next objective
+        get state: pos_enu, vel_enu, angle_enu, ang_rate_enu
+        mpc -> next_control_and_state(state, setpoint)
+        set next state
+    '''
+
     '''
     print('Starting offboard control node...')
     rclpy.init(args=args)
