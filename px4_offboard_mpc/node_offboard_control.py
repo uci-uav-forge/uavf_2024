@@ -230,7 +230,7 @@ class OffboardControlNode(Node):
         return
     
     
-    def set_offboard_control_mode(self):
+    def set_offboard_control_mode(self) -> None:
         ''' Enables and disables the desired states to be controlled.
             May parameterize this in the constructor in the future.
         '''
@@ -268,25 +268,25 @@ class OffboardControlNode(Node):
         return
 
 
-    def arm(self):
+    def arm(self) -> None:
         self.set_command(
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
         self.get_logger().info('Arm command sent')
 
 
-    def disarm(self):
+    def disarm(self) -> None:
         self.set_command(
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0)
         self.get_logger().info('Disarm command sent')
 
 
-    def engage_offboard_mode(self):
+    def engage_offboard_mode(self) -> None:
         self.set_command(
             VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
         self.get_logger().info("Switching to offboard mode")
 
 
-    def land(self):
+    def land(self) -> None:
         self.set_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
         self.get_logger().info("Switching to land mode")
 

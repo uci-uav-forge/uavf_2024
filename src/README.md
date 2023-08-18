@@ -1,1 +1,1 @@
-# This directory is for C++ nodes.
+# This directory is for running C++ nodes.

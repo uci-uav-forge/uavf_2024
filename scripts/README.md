@@ -1,1 +1,1 @@
-# This directory is for Python nodes.
+# This directory is for running Python nodes.
