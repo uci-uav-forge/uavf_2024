@@ -1,5 +1,4 @@
 
-import os
 import numpy as np
 from px4_offboard_mpc.sqp_nlmpc import SQP_NLMPC, derive_quad_dynamics
 
