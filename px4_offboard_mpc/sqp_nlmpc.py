@@ -120,8 +120,8 @@ class SQP_NLMPC():
 
     def next_control(self, x0, x_set, visuals=False, timer=False) -> np.ndarray:
         ''' Set initial state and setpoint,
-        then solve the optimization once. '''
-        
+            then solve the optimization once. 
+        '''
         if timer: st = time.time()
 
         # bound x0 to initial state
@@ -152,8 +152,8 @@ class SQP_NLMPC():
 
     def vis_plots(self, ctrl_inputs:np.ndarray, trajectory:np.ndarray):
         ''' Displaying the series of control inputs 
-        and trajectory over prediction horizon. '''
-
+            and trajectory over prediction horizon. 
+        '''
         t = self.DT * np.arange(self.N)
 
         u1 = ctrl_inputs[:,0]
@@ -220,9 +220,10 @@ class SQP_NLMPC():
  
 def derive_quad_dynamics(mass, arm_len, Ix, Iy, Iz, thrust_coeff, torque_coeff):
     ''' Returns casadi struct containing explicit dynamics,
-    state, state_dot, control input, and name. 
-    Nonlinear continuous-time quadcopter dynamics. 
-    The cartesian states are in ENU.'''
+        state, state_dot, control input, and name. 
+        Nonlinear continuous-time quadcopter dynamics. 
+        The cartesian states are in ENU.
+    '''
 
 
     # State Variables: position, rotation, and their time-derivatives
