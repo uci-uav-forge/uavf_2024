@@ -11,7 +11,8 @@ from scipy.spatial.transform import Rotation
 class OffboardControlNode(Node):
     ''' Numpy ROS 2 node for interfacing with PX4 Offboard Control. 
         Use numpy vectors for the "get" and "set" methods. 
-        PX4 operates in NED coordinates, so 
+        PX4 operates in NED coordinates, so flag "is_ENU" as True 
+        for getter and setter methods.
     '''
 
     def __init__(self) -> None:
