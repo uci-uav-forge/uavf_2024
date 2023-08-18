@@ -1,13 +1,11 @@
-'''
-Installing acados:
-    https://docs.acados.org/installation/index.html#windows-10-wsl
-Installing python interface:
-    https://docs.acados.org/python_interface/index.html
-May need to install qpOASES version 3.1 as well.
+''' Installing acados:
+        https://docs.acados.org/installation/index.html#windows-10-wsl
+    Installing python interface:
+        https://docs.acados.org/python_interface/index.html
+    May need to install qpOASES version 3.1 as well.
 '''
 
 
-import sys
 from acados_template import AcadosOcpSolver, AcadosOcp, AcadosModel
 import casadi as cs
 import numpy as np
@@ -16,19 +14,31 @@ import scipy.linalg as la
 import matplotlib.pyplot as plt
 import time
 
+import atexit
+import shutil
+import os
+
 
 class SQP_NLMPC():
+    ''' SQP approximation of nonlinear MPC using Acados's OCP solver.
+    '''
+
     def __init__(self, model, Q, R, 
         time_step=0.1, num_nodes=20, u_max=40000):
         ''' Initialize the MPC with dynamics as casadi namespace,
-        Q & R cost matrices, time-step,
-        number of shooting nodes (length of prediction horizon),
-        square of maximum motor frequency. '''
-
+            Q & R cost matrices, time-step,
+            number of shooting nodes (length of prediction horizon),
+            square of maximum motor frequency. 
+        '''
         self.DT = time_step     
         self.N = num_nodes    
         model, self.u_hover = self.get_acados_model(model)
         self.solver = self.formulate_ocp(model, Q, R, u_max)
+        
+        # deleting acados compiled files when script is terminated.
+        atexit.register(self.delete_compiled_files)
+
+        
     
 
     def get_acados_model(self, model_cs):
@@ -86,7 +96,7 @@ class SQP_NLMPC():
         ocp.constraints.x0 = np.zeros(nx)
 
         # control input constraints (square of motor freq)
-        ocp.constraints.lbu = np.zeros(nu)
+        ocp.constraints.lbu = -u_max * np.ones(nu)
         ocp.constraints.ubu = u_max * np.ones(nu)   
         ocp.constraints.idxbu = np.arange(nu)
 
@@ -219,6 +229,16 @@ class SQP_NLMPC():
         
         plt.show()
         return
+    
+
+    def delete_compiled_files(self):
+        ''' Deletes the acados generated files.
+        '''
+        try: shutil.rmtree('c_generated_code')
+        except: print('failed to delete c_generated_code') 
+        
+        try: os.remove('acados_ocp_nlp.json')
+        except: print('failed to delete acados_ocp_nlp.json')
     
  
 def derive_quad_dynamics(mass, arm_len, Ix, Iy, Iz, thrust_coeff, torque_coeff):
@@ -366,37 +386,3 @@ def derive_quad_dynamics(mass, arm_len, Ix, Iy, Iz, thrust_coeff, torque_coeff):
     model_cs.name = 'nonlin_quadcopter'
     return model_cs
 
-
-def main():
-    # Inertial parameters from crazyflie in MIT paper
-    m = 0.027 # kg
-    l = 0.040 # m
-    Ixx = 2.3951 * 10**(-5)
-    Iyy = 2.3951 * 10**(-5)
-    Izz = 3.2347 * 10**(-5)
-    
-    # Aerodynamic Parameters from crazyflie in MIT paper
-    kf = 0.005022
-    km = 1.858 * 10**(-5)
-    nl_quad_model = derive_quad_dynamics(m,l,Ixx,Iyy,Izz,kf,km)
-    
-    x0 = np.array([0,0,8, 0,0,0, 0,0,0, 0,0,0])
-    x_set = np.array([1,0,4, 0,0,0, 0,0,0, 0,0,0])
-    Q = np.diag(
-        [4,4,4, 2,2,2, 1,1,1, 1,1,1]
-    )
-    R = 0.1 * np.diag(
-        [1,1,1,1]
-    )
-
-    sqp_nlmpc = SQP_NLMPC(
-        nl_quad_model, Q, R, 
-        time_step=0.07, num_nodes=20, u_max=10000
-    )
-    print(sqp_nlmpc.next_control_and_state(
-        x0=x0, x_set=x_set, visuals=True, timer=True
-    ))
-
-
-if __name__=='__main__':
-    main()
