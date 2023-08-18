@@ -124,6 +124,9 @@ class SQP_NLMPC():
         '''
         if timer: st = time.time()
 
+        assert len(x0) == 12
+        assert len(x_set) == 12
+
         # bound x0 to initial state
         self.solver.set(0, 'lbx', x0)
         self.solver.set(0, 'ubx', x0)
@@ -146,7 +149,6 @@ class SQP_NLMPC():
                 opt_us[k] = self.solver.get(k, 'u')
                 opt_xs[k] = self.solver.get(k, 'x')
             self.vis_plots(opt_us, opt_xs)
-
         return nxt_ctrl
     
 
@@ -224,8 +226,6 @@ def derive_quad_dynamics(mass, arm_len, Ix, Iy, Iz, thrust_coeff, torque_coeff):
         Nonlinear continuous-time quadcopter dynamics. 
         The cartesian states are in ENU.
     '''
-
-
     # State Variables: position, rotation, and their time-derivatives
     x = cs.SX.sym('x')
     y = cs.SX.sym('y')

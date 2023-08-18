@@ -128,7 +128,6 @@ class OffboardControlNode(Node):
             Outputs in NED inertial frame by default.
             Set "is_ENU" to True to get angles in ENU frame.
         '''
-
         q = self.get_quaternion()
         rot = Rotation.from_quat(q)
         ang = np.float32(rot.as_euler('xyz'))
