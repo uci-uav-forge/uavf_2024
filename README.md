@@ -146,3 +146,20 @@
 	```
 	ros2 launch px4_ros_com sensor_combined_listener.launch.py
 	```
+
+
+### Acados Installation (for MPC usage)
+
+1. [Follow these instructions to install Acados.](https://docs.acados.org/installation/)
+
+2. [Install the Python interface afterwards.](https://docs.acados.org/python_interface/index.html)
+
+
+### Install required and local Python libraries (again, for MPC usage)
+
+1. cd into this repo's root directory.
+
+2. Run:
+	```
+	pip install -e .
+	```
