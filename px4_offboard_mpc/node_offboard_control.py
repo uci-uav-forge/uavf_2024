@@ -4,9 +4,14 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPo
 from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRatesSetpoint,\
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleLocalPosition, VehicleOdometry
 
+import numpy as np
+from scipy.spatial.transform import Rotation
+
 
 class OffboardControlNode(Node):
-    """Node for controlling a vehicle in offboard mode."""
+    ''' Numpy ROS 2 node for interfacing with PX4 Offboard Control. 
+        Use numpy vectors for the "get" and "set" methods. 
+        PX4 operates in NED coordinates, so '''
 
     def __init__(self) -> None:
         super().__init__('offboard_control_node')
@@ -18,6 +23,13 @@ class OffboardControlNode(Node):
             history=HistoryPolicy.KEEP_LAST,
             depth=1
         )
+
+        # status subscriber
+        self.status_sub = self.create_subscription(
+            VehicleStatus, '/fmu/out/vehicle_status', self.status_cb, qos_profile)
+        # state subscriber
+        self.odom_sub = self.create_subscription(
+            VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
 
         # Status publishers
         self.offboard_ctrl_mode_pub = self.create_publisher(
@@ -33,19 +45,9 @@ class OffboardControlNode(Node):
         self.rate_setpt_pub = self.create_publisher(
             VehicleRatesSetpoint, 'fmu/in/vehicle_rates_setpoint', qos_profile)
 
-        # Subscribers
-        self.status_sub = self.create_subscription(
-            VehicleStatus, '/fmu/out/vehicle_status', self.status_cb, qos_profile)
-        self.local_pos_sub = self.create_subscription(
-            VehicleLocalPosition, '/fmu/out/vehicle_local_position', self.local_pos_cb, qos_profile)
-        # state subscriber
-        self.odom_sub = self.create_subscription(
-            VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
-
         # Initialize variables
         self.setpt_count = 0
         self.status = VehicleStatus()
-        self.local_pos = VehicleLocalPosition()
         self.odom = VehicleOdometry()
         self.takeoff_height = -5.0
 
@@ -57,40 +59,150 @@ class OffboardControlNode(Node):
 
     def status_cb(self, status):
         self.status = status
-
-
-    def local_pos_cb(self, local_pos):
-        self.local_pos = local_pos
     
 
     def odom_cb(self, odom):
         self.odom = odom
+    
+
+    def convert_NED_ENU_inertial_frame(self, x) -> np.ndarray:
+        ''' Converts a state between NED or ENU inertial frames.
+            This operation is commutative. '''
+        
+        assert len(x) == 3
+        x =  np.float32(
+            [x[1], x[0], -1*x[2]])
+        return x
+    
+
+    def convert_NED_ENU_body_frame(self, x) -> np.ndarray:
+        ''' Converts a state between NED or ENU body frames.
+            (More formally known as FRD or RLU body frames)
+            This operation is commutative. '''
+        
+        assert len(x) == 3
+        x =  np.float32(
+            [x[0], -1*x[1], -1*x[2]])
+        return x
 
 
-    def arm(self):
-        self.send_command(
-            VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
-        self.get_logger().info('Arm command sent')
+    def get_position(self, is_ENU=False) -> np.ndarray:
+        ''' Position feedback as a 3D cartesian vector.
+            Set "is_ENU" to True to get coordinates in ENU frame.'''
+        
+        pos = np.float32(self.odom.position)
+        if is_ENU: 
+            pos = self.convert_NED_ENU_inertial_frame(pos)
+        return pos
+    
+
+    def get_velocity(self, is_ENU=False) -> np.ndarray:
+        vel = np.float32(self.odom.velocity)
+        if is_ENU: 
+            vel = self.convert_NED_ENU_inertial_frame(vel)
+        return vel
 
 
-    def disarm(self):
-        self.send_command(
-            VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0)
-        self.get_logger().info('Disarm command sent')
+    def get_quaternion_NED(self) -> np.ndarray:
+        q_NED = np.float32(self.odom.q)
+        return q_NED
+    
+
+    def get_euler_angle(self, is_ENU=False) -> np.ndarray:
+        q = self.get_quaternion_NED()
+        rot = Rotation.from_quat(q)
+        ang = np.float32(rot.as_euler('xyz'))
+        if is_ENU: 
+            ang = self.convert_NED_ENU_inertial_frame(ang)
+        return ang
 
 
-    def engage_offboard_mode(self):
-        self.send_command(
-            VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
-        self.get_logger().info("Switching to offboard mode")
+    def get_euler_angle_rate(self, is_ENU=False) -> np.ndarray:
+        ang_rate = np.float32(self.odom.angular_velocity)
+        if is_ENU:
+            ang_rate = self.convert_NED_ENU_body_frame(ang_rate)
+        return ang_rate
 
 
-    def land(self):
-        self.send_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
-        self.get_logger().info("Switching to land mode")
+    def set_trajectory_setpoint(self, pos:np.ndarray, vel:np.ndarray, is_ENU=False):
+        ''' Publish the position and velocity setpoint. 
+            Set "is_ENU" to True if inputting ENU coordinates. '''
+        
+        assert len(pos) == 3
+        assert len(vel) == 3
+        pos_f32 = np.float32(pos)
+        vel_f32 = np.float32(vel)
+
+        if is_ENU:
+            pos_f32 = self.convert_NED_ENU_inertial_frame(pos_f32)
+            vel_f32 = self.convert_NED_ENU_inertial_frame(pos_f32)
+
+        msg = TrajectorySetpoint()
+        msg.position = pos_f32
+        msg.velocity = vel_f32
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.traj_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing position setpoints {pos_f32}")
+        return
+    
+
+    def set_quaternion_NED_setpoint(self, q_NED:np.ndarray):
+        ''' Publish quaternion attitude setpoint. '''
+
+        assert len(q_NED) == 4
+        q_NED_f32 = np.float32(q_NED)
+
+        msg = VehicleAttitudeSetpoint()
+        msg.q_d = q_NED_f32
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.att_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing quaternion attitude setpoint {q_NED_f32}")
+        return
 
 
-    def send_offboard_control_mode(self):
+    def set_euler_angle_setpoint(self, ang:np.ndarray, is_ENU=False):
+        ''' Publish euler angle attitude setpoint. 
+            Set "is_ENU" to True if inputting ENU coordinates. '''
+        
+        assert len(ang) == 3
+        ang_f32 = np.float32(ang)
+        if is_ENU:
+            ang_f32 = self.convert_NED_ENU_inertial_frame(ang_f32)
+        
+        msg = VehicleAttitudeSetpoint()
+        msg.roll_body = ang_f32[0]
+        msg.pitch_body = ang_f32[1]
+        msg.yaw_body = ang_f32[2]
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.att_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing euler angle attitude setpoint {ang_f32}")
+        return
+
+
+    def set_euler_angle_rate_setpoint(self, ang_rate, is_ENU=False):
+        ''' Publish euler angular rate setpoint. 
+            Set "is_ENU" to True if inputting ENU coordinates. '''
+        
+        assert len(ang_rate) == 3
+        ang_rate_f32 = np.float32(ang_rate)
+        if is_ENU:
+            ang_rate_f32 = self.convert_NED_ENU_body_frame(ang_rate_f32)
+        
+        msg = VehicleRatesSetpoint()
+        msg.roll = ang_rate_f32[0]
+        msg.pitch = ang_rate_f32[1]
+        msg.yaw = ang_rate_f32[2]
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.rate_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing euler angle rates setpoint {ang_rate_f32}")
+        return
+    
+    
+    def set_offboard_control_mode(self):
         msg = OffboardControlMode()
         msg.position = True
         msg.velocity = True
@@ -102,30 +214,8 @@ class OffboardControlNode(Node):
         return
 
 
-    def send_trajectory_setpoint(self, x:float, y:float, z:float, 
-                            vx:float, vy:float, vz:float,
-                            yaw:float):
-        """Publish the trajectory setpoint."""
-        msg = TrajectorySetpoint()
-        msg.position = [x, y, z]
-        # msg.velocity = [vx, vy, vz]
-        msg.yaw = yaw  # (90 degree)
-        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        self.traj_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing position setpoints {[x, y, z]}")
-        return
-    
-
-    def send_attitude_setpoint(self):
-        return
-
-
-    def send_rate_setpoint(self):
-        return
-
-
-    def send_command(self, command, **params) -> None:
-        """Publish a vehicle command."""
+    def set_command(self, command, **params) -> None:
+        '''Publish a vehicle command.'''
         msg = VehicleCommand()
         msg.command = command
         msg.param1 = params.get("param1", 0.0)
@@ -145,17 +235,40 @@ class OffboardControlNode(Node):
         return
 
 
-    '''
+    def arm(self):
+        self.set_command(
+            VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
+        self.get_logger().info('Arm command sent')
+
+
+    def disarm(self):
+        self.set_command(
+            VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0)
+        self.get_logger().info('Disarm command sent')
+
+
+    def engage_offboard_mode(self):
+        self.set_command(
+            VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
+        self.get_logger().info("Switching to offboard mode")
+
+
+    def land(self):
+        self.set_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
+        self.get_logger().info("Switching to land mode")
+
+
+    """
     def timer_cb(self) -> None:
-        """Callback function for the timer."""
-        self.send_offboard_control_mode()
+        '''Callback function for the timer.'''
+        self.set_offboard_control_mode()
 
         if self.offboard_setpoint_counter == 10:
             self.engage_offboard_mode()
             self.arm()
 
         if self.vehicle_local_position.z > self.takeoff_height and self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-            self.send_position_setpoint(0.0, 0.0, self.takeoff_height)
+            self.set_position_setpoint(0.0, 0.0, self.takeoff_height)
 
         elif self.vehicle_local_position.z <= self.takeoff_height:
             self.land()
@@ -163,7 +276,7 @@ class OffboardControlNode(Node):
 
         if self.offboard_setpoint_counter < 11:
             self.offboard_setpoint_counter += 1
-    '''
+    """
 
 '''
 def main(args=None) -> None:
