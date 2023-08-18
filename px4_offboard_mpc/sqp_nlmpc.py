@@ -118,7 +118,7 @@ class SQP_NLMPC():
         return solver
     
 
-    def next_control(self, x0, x_set, visuals=False, timer=False) -> np.ndarray:
+    def next_control_and_state(self, x0, x_set, visuals=False, timer=False) -> np.ndarray:
         ''' Set initial state and setpoint,
             then solve the optimization once. 
         '''
@@ -139,6 +139,7 @@ class SQP_NLMPC():
         # solve for the next ctrl input
         self.solver.solve()
         nxt_ctrl = self.solver.get(0, 'u')
+        nxt_state = self.solver.get(1, 'x')
 
         if timer: print(time.time() - st)
         
@@ -149,7 +150,7 @@ class SQP_NLMPC():
                 opt_us[k] = self.solver.get(k, 'u')
                 opt_xs[k] = self.solver.get(k, 'x')
             self.vis_plots(opt_us, opt_xs)
-        return nxt_ctrl
+        return nxt_ctrl, nxt_state
     
 
     def vis_plots(self, ctrl_inputs:np.ndarray, trajectory:np.ndarray):
@@ -392,7 +393,7 @@ def main():
         nl_quad_model, Q, R, 
         time_step=0.07, num_nodes=20, u_max=10000
     )
-    print(sqp_nlmpc.next_control(
+    print(sqp_nlmpc.next_control_and_state(
         x0=x0, x_set=x_set, visuals=True, timer=True
     ))
 
