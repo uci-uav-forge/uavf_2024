@@ -128,11 +128,12 @@
 	mkdir -p ros2_ws/src
 	```
 
-2. Clone PX4's packages into your ROS 2 workspace and compile it.
+2. Clone PX4's packages and [our custom messages](https://github.com/Herpderk/uavf_msgs/tree/master/msg) into your ROS 2 workspace and compile it.
 	```
 	cd ros2_ws/src
 	git clone https://github.com/PX4/px4_msgs.git
 	git clone https://github.com/PX4/px4_ros_com.git
+	git clone git@github.com:Herpderk/uavf_msgs.git
 	cd ..
 	source /opt/ros/foxy/setup.bash
 	colcon build
