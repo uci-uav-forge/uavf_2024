@@ -11,9 +11,8 @@ from scipy.spatial.transform import Rotation
 
 class PX4_Interface(Node):
     ''' Numpy ROS 2 node for interfacing with PX4 Offboard Control. 
-        Use numpy vectors for the "get" and "set" methods. 
-        PX4 operates in NED frames, so flag "is_ENU" as True 
-        for getter and setter methods if other programs work in frames.
+        Your programs should only directly interface with the Commander node,
+        which talks to this node.
     '''
 
     def __init__(self):
@@ -27,6 +26,7 @@ class PX4_Interface(Node):
             depth=1
         )
 
+
         ''' This section talks to our ROS network '''
         # publish position, velocity, angle, and angle rate feedback in desired format
         self.ned_enu_odom_pub = self.create_publisher(
@@ -34,7 +34,7 @@ class PX4_Interface(Node):
         # subscriber that receives command
         self.commander_sub = self.create_subscription(
            CommanderMessage, '/px4_interface/in/commander_msg', self.commander_cb, qos_profile)
-        
+
 
         ''' This section talks to PX4 '''
         # subscribe to px4 status
