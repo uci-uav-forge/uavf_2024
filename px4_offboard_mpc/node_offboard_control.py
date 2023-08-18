@@ -15,8 +15,8 @@ class OffboardControlNode(Node):
         for getter and setter methods if other programs work in frames.
     '''
 
-    def __init__(self) -> None:
-        super().__init__('offboard_control_node')
+    def __init__(self, node_name) -> None:
+        super().__init__(node_name)
 
         # Configure QoS profile for publishing and subscribing
         qos_profile = QoSProfile(
@@ -353,6 +353,11 @@ class OffboardControlNode(Node):
 
 def main():
     '''
+    Startup:
+        send offboard control mode msg 10 times,
+        engage offboard mode,
+        arm
+
     The loop goes:
         get setpoint: next objective
         get state: pos_enu, vel_enu, angle_enu, ang_rate_enu
@@ -363,7 +368,7 @@ def main():
     '''
     print('Starting offboard control node...')
     rclpy.init(args=args)
-    offboard_control = OffboardControlNode()
+    offboard_control = OffboardControlNode('offboard_control_example')
     rclpy.spin(offboard_control)
     offboard_control.destroy_node()
     rclpy.shutdown()
