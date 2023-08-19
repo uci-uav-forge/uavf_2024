@@ -356,21 +356,7 @@ class PX4InterfaceNode(Node):
 
 
 def main(args=None):
-    '''
-    Startup:
-        send offboard control mode msg 10 times,
-        engage offboard mode,
-        arm
-
-    The loop goes:
-        get setpoint: next objective
-        get state: pos_enu, vel_enu, angle_enu, ang_rate_enu
-        mpc -> next_control_and_state(state, setpoint)
-        set next state
-    '''
-
-    
-    print('Starting offboard control node...')
+    print('Starting px4 interface node...')
     rclpy.init(args=args)
     node = PX4InterfaceNode()
     rclpy.spin(node)
