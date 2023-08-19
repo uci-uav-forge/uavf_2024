@@ -20,7 +20,7 @@ class PX4InterfaceNode(Node):
     def __init__(self):
         super().__init__('px4_interface_node')
 
-        # Configure QoS profile for publishing and subscribing
+        # Configure QoS profile according to PX4
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -35,7 +35,7 @@ class PX4InterfaceNode(Node):
             NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', qos_profile)
         # subscriber that receives command
         self.commander_sub = self.create_subscription(
-           CommanderOutput, '/px4_interface/in/commander_msg', self.commander_cb, qos_profile)
+           CommanderOutput, '/px4_interface/in/commander_output', self.commander_cb, qos_profile)
 
 
         ''' This section talks to PX4 '''
@@ -70,22 +70,22 @@ class PX4InterfaceNode(Node):
         '''
 
 
-    def commander_cb(self, commander_msg):
-        if commander_msg.disarm:
+    def commander_cb(self, commander_output):
+        if commander_output.disarm:
             self.disarm()
-        elif commander_msg.arm:
+        elif commander_output.arm:
             self.arm()
-        elif commander_msg.land:
+        elif commander_output.land:
             self.land()
         else:
-            is_ENU = commander_msg.is_enu
+            is_ENU = commander_output.is_enu
             self.set_trajectory_setpoint(
-                commander_msg.position_setpoint, commander_msg.velocity_setpoint, is_ENU)
+                commander_output.position_setpoint, commander_output.velocity_setpoint, is_ENU)
             self.set_euler_angle_setpoint(
-                commander_msg.euler_angle_setpoint, is_ENU
+                commander_output.euler_angle_setpoint, is_ENU
             )
             self.set_euler_angle_rate_setpoint(
-                commander_msg.euler_angle_rate_setpoint, is_ENU, commander_msg.is_inertial
+                commander_output.euler_angle_rate_setpoint, is_ENU, commander_output.is_inertial
             )
             self.set_offboard_control_mode()
 
