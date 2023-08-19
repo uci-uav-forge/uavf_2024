@@ -64,6 +64,36 @@ class ControllerNode(Node):
         return
 
 
+def main(args=None):
+    '''
+    Startup:
+        send offboard control mode msg 10 times,
+        engage offboard mode,
+        arm
+
+    The loop goes:
+        get setpoint: next objective
+        get state: pos_enu, vel_enu, angle_enu, ang_rate_enu
+        mpc -> next_control_and_state(state, setpoint)
+        set next state
+    '''
+
+    is_ENU = True
+    time_step = 0.1
+
+    print('Starting controller node...')
+    rclpy.init(args=args)
+    node = ControllerNode(is_ENU, time_step)
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+    
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as e:
+        print(e)
 
 
         
