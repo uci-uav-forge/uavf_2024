@@ -5,7 +5,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRatesSetpoint,\
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleLocalPosition, VehicleOdometry
-from uavf_msgs.msg import NedEnuOdometry, CommanderMessage
+from uavf_msgs.msg import NedEnuOdometry, CommanderOutput
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -35,7 +35,7 @@ class PX4InterfaceNode(Node):
             NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', qos_profile)
         # subscriber that receives command
         self.commander_sub = self.create_subscription(
-           CommanderMessage, '/px4_interface/in/commander_msg', self.commander_cb, qos_profile)
+           CommanderOutput, '/px4_interface/in/commander_msg', self.commander_cb, qos_profile)
 
 
         ''' This section talks to PX4 '''
