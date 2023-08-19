@@ -20,17 +20,31 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(px4_msgs REQUIRED)
+find_package(uavf_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 include_directories(include)
 
-install(
-  DIRECTORY include
-  DESTINATION include
-)
+# Create Cpp executable
+# add_executable(cpp_executable src/cpp_node.cpp)
+# ament_target_dependencies(cpp_executable rclcpp)
+
+# install( TARGETS
+#  cpp_executable
+#  DESTINATION lib/${PROJECT_NAME}
+#)
+
 ament_python_install_package(${PROJECT_NAME})
 
+# Install Python executables
+install(PROGRAMS
+  scripts/px4_interface_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
+# scripts/node_commander.py
+# scripts/node_mpc.py
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
