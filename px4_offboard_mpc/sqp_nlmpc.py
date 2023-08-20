@@ -151,13 +151,13 @@ class SQP_NLMPC():
         return
     
 
-    def next_control(self, x0, x_set, timer=False):
+    def get_next_control(self, x0, x_set, timer=False):
         self.run_optimization(x0, x_set, timer)
         nxt_ctrl = self.solver.get(0, 'u')
         return nxt_ctrl
 
 
-    def next_state(self, x0, x_set, timer=False, visuals=False):
+    def get_next_state(self, x0, x_set, timer=False, visuals=False):
         self.run_optimization(x0, x_set, timer)
         nxt_state = self.solver.get(1, 'x')
 
