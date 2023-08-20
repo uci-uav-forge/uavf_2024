@@ -28,15 +28,18 @@ class ControllerNode(Node):
         self.ned_enu_odom_sub = self.create_subscription(
             NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
         self.commander_sub = self.create_subscription(
-            NedEnuOdometry, '/commander/out/ned_enu_odometry', self.commander_cb, qos_profile)
+            NedEnuOdometry, '/commander/out/controller_command', self.commander_cb, qos_profile)
         self.controller_setpt_pub = self.create_publisher(
-            NedEnuSetpoint, '/commander/in/controller_setpoint', qos_profile)
+            NedEnuSetpoint, '/commander/in/controller', qos_profile)
         
         self.controller = self.init_controller(time_step)
         self.is_ENU = is_ENU
         self.is_inertial = is_inertial
         self.time_step = time_step                          # runtime for 1 mpc loop in seconds
         self.time_tracker = self.get_clock().now().nanoseconds 
+
+        # the state vector consists of: x,y,z, roll,pitch,yaw, 
+        # xdot,ydot,dot, rolldot, pitchdot, yawdot
         self.curr_state = np.zeros(12, dtype=np.float32)
         self.setpoint = np.zeros(12, dtype=np.float32)
 
@@ -114,7 +117,8 @@ class ControllerNode(Node):
                 else:
                     self.setpoint[9:12] = ned_enu_setpt.body_angle_rate_ned
 
-            next_state = self.controller.get_next_state(x0=self.curr_state, x_set=self.setpoint)
+            next_state = self.controller.get_next_state(
+                x0=self.curr_state, x_set=self.setpoint, timer=True)
             self.publish_controller_setpoint(next_state)
             self.time_tracker = self.get_clock().now().nanoseconds 
     
