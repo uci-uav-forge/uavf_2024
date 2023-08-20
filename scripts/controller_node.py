@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
@@ -84,6 +86,7 @@ class ControllerNode(Node):
                 self.curr_state[9:12] = ned_enu_odom.inertial_angle_rate_ned
             else:
                 self.curr_state[9:12] = ned_enu_odom.body_angle_rate_ned
+        print(self.curr_state)
     
 
     def commander_cb(self, ned_enu_setpt):
@@ -138,22 +141,9 @@ class ControllerNode(Node):
         
 
 def main(args=None):
-    '''
-    Startup:
-        send offboard control mode msg 10 times,
-        engage offboard mode,
-        arm
-
-    The loop goes:
-        get setpoint: next objective
-        get state: pos_enu, vel_enu, angle_enu, ang_rate_enu
-        mpc -> next_control_and_state(state, setpoint)
-        set next state
-    '''
-
     is_ENU = True
     is_inertial = True
-    time_step = 0.1
+    time_step = 0.1     # seconds
 
     print('Starting controller node...')
     rclpy.init(args=args)

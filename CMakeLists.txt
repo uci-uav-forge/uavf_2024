@@ -45,8 +45,6 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# scripts/node_commander.py
-# scripts/node_mpc.py
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
