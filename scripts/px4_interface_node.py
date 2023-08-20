@@ -7,6 +7,8 @@ from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRat
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleLocalPosition, VehicleOdometry
 from uavf_msgs.msg import NedEnuOdometry, CommanderOutput
 
+from ned_enu_converions import convert_NED_ENU_in_inertial, convert_NED_ENU_in_body, \
+    convert_body_to_inertial_frame, convert_inertial_to_body_frame
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -79,15 +81,15 @@ class PX4InterfaceNode(Node):
             self.land()
         else:
             is_ENU = commander_output.is_enu
-            self.set_trajectory_setpoint(
+            self.publish_trajectory_setpoint(
                 commander_output.position_setpoint, commander_output.velocity_setpoint, is_ENU)
-            self.set_euler_angle_setpoint(
+            self.publish_euler_angle_setpoint(
                 commander_output.euler_angle_setpoint, is_ENU
             )
-            self.set_euler_angle_rate_setpoint(
+            self.publish_euler_angle_rate_setpoint(
                 commander_output.euler_angle_rate_setpoint, is_ENU, commander_output.is_inertial
             )
-            self.set_offboard_control_mode()
+            self.publish_offboard_control_mode()
 
 
     def status_cb(self, status):
@@ -102,15 +104,15 @@ class PX4InterfaceNode(Node):
         rot = Rotation.from_quat(quat_ned)
         ang_ned = np.float32(rot.as_euler('xyz'))
         body_ang_rate_ned = np.float32(odom.angular_velocity)
-        inertial_ang_rate_ned = self.convert_body_to_inertial_frame(body_ang_rate_ned, ang_ned)
+        inertial_ang_rate_ned = convert_body_to_inertial_frame(body_ang_rate_ned, ang_ned)
 
         # getting enu states
-        pos_enu = self.convert_NED_ENU_in_inertial(pos_ned)
-        vel_enu = self.convert_NED_ENU_in_inertial(vel_ned)
+        pos_enu = convert_NED_ENU_in_inertial(pos_ned)
+        vel_enu = convert_NED_ENU_in_inertial(vel_ned)
         # quat_enu
-        ang_enu = self.convert_NED_ENU_in_inertial(ang_ned)
-        body_ang_rate_enu = self.convert_NED_ENU_in_body(body_ang_rate_ned)
-        inertial_ang_rate_enu = self.convert_body_to_inertial_frame(body_ang_rate_enu, ang_enu)
+        ang_enu = convert_NED_ENU_in_inertial(ang_ned)
+        body_ang_rate_enu = convert_NED_ENU_in_body(body_ang_rate_ned)
+        inertial_ang_rate_enu = convert_body_to_inertial_frame(body_ang_rate_enu, ang_enu)
 
         # generating ned and enu message
         msg = NedEnuOdometry()
@@ -133,62 +135,9 @@ class PX4InterfaceNode(Node):
         print(msg)
         print()
         self.get_logger().info(f"Publishing NED and ENU feedback.")
-    
-
-    def convert_NED_ENU_in_inertial(self, x) -> np.ndarray:
-        ''' Converts a state between NED or ENU inertial frames.
-            This operation is commutative. 
-        '''
-        assert len(x) == 3
-        new_x = np.float32(
-            [x[1], x[0], -x[2]])
-        return new_x
-    
-
-    def convert_NED_ENU_in_body(self, x) -> np.ndarray:
-        ''' Converts a state between NED or ENU body frames.
-            (More formally known as FRD or RLU body frames)
-            This operation is commutative. 
-        '''
-        assert len(x) == 3
-        new_x =  np.float32(
-            [x[0], -x[1], -x[2]])
-        return new_x
 
 
-    def convert_body_to_inertial_frame(self, ang_rate_body, ang) -> np.ndarray:
-        ''' Converts body euler angle rates to their inertial frame counterparts.
-        '''
-        assert len(ang_rate_body) == 3
-        assert len(ang) == 3
-
-        phi, theta, psi = ang
-        W_inv = np.float32([
-            [1, np.sin(phi)*np.tan(theta), np.cos(phi)*np.tan(theta)],
-            [0,               np.cos(phi),              -np.sin(phi)],
-            [0, np.sin(phi)/np.cos(theta), np.cos(phi)/np.cos(theta)],
-        ])
-        ang_rate_inertial = W_inv @ ang_rate_body
-        return ang_rate_inertial
-    
-
-    def convert_inertial_to_body_frame(self, ang_rate_inertial, ang) -> np.ndarray:
-        ''' Converts inertial euler angle rates to their body frame counterparts.
-        '''
-        assert len(ang_rate_inertial) == 3
-        assert len(ang) == 3
-
-        phi, theta, psi = ang
-        W = np.float32([
-            [1,           0,             -np.sin(theta)],
-            [0,  np.cos(phi), np.cos(theta)*np.sin(phi)],
-            [0, -np.sin(phi), np.cos(theta)*np.cos(phi)]
-        ])
-        ang_rate_body = W @ ang_rate_inertial
-        return ang_rate_body
-
-
-    def set_trajectory_setpoint(self, pos:np.ndarray, vel:np.ndarray, is_ENU):
+    def publish_trajectory_setpoint(self, pos:np.ndarray, vel:np.ndarray, is_ENU):
         ''' (x, y, z)
             Publish the 3D position and velocity setpoints. 
             Set "is_ENU" to True if inputting ENU coordinates. 
@@ -212,7 +161,7 @@ class PX4InterfaceNode(Node):
         return
     
 
-    def set_quaternion_NED_setpoint(self, q_NED:np.ndarray):
+    def publish_quaternion_NED_setpoint(self, q_NED:np.ndarray):
         ''' Publish 4D quaternion attitude setpoint. 
         '''
         assert len(q_NED) == 4
@@ -227,7 +176,7 @@ class PX4InterfaceNode(Node):
         return
 
 
-    def set_euler_angle_setpoint(self, ang:np.ndarray, is_ENU):
+    def publish_euler_angle_setpoint(self, ang:np.ndarray, is_ENU):
         ''' (Roll, Pitch, Yaw)
             Publish 3D euler angle attitude setpoint. 
             Set "is_ENU" to True if inputting ENU coordinates. 
@@ -248,7 +197,7 @@ class PX4InterfaceNode(Node):
         return
 
 
-    def set_euler_angle_rate_setpoint(self, ang_rate, is_ENU, is_inertial):
+    def publish_euler_angle_rate_setpoint(self, ang_rate, is_ENU, is_inertial):
         ''' (Roll, Pitch, Yaw)
             Publish 3D euler angular rate setpoint in body frame.
             Set "is_inertial" to True if inputting inertial frame angle rates. 
@@ -272,7 +221,7 @@ class PX4InterfaceNode(Node):
         return
     
     
-    def set_offboard_control_mode(self) -> None:
+    def publish_offboard_control_mode(self) -> None:
         ''' Enables and disables the desired states to be controlled.
             Serves as the heartbeat to maintain offboard control, must keep publishing this. 
             May parameterize its options in the constructor in the future.
@@ -288,7 +237,7 @@ class PX4InterfaceNode(Node):
         return
 
 
-    def set_command(self, command, **params) -> None:
+    def publish_command(self, command, **params) -> None:
         ''' Publish a vehicle command. 
             Setting vehicle state uses this.
         '''
@@ -312,39 +261,39 @@ class PX4InterfaceNode(Node):
 
 
     def arm(self) -> None:
-        self.set_command(
+        self.publish_command(
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0)
         self.get_logger().info('Arm command sent')
 
 
     def disarm(self) -> None:
-        self.set_command(
+        self.publish_command(
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0)
         self.get_logger().info('Disarm command sent')
 
 
     def engage_offboard_mode(self) -> None:
-        self.set_command(
+        self.publish_command(
             VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0)
         self.get_logger().info("Switching to offboard mode")
 
 
     def land(self) -> None:
-        self.set_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
+        self.publish_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
         self.get_logger().info("Switching to land mode")
 
 
     """
     def timer_cb(self) -> None:
         '''Callback function for the timer.'''
-        self.set_offboard_control_mode()
+        self.publish_offboard_control_mode()
 
         if self.offboard_setpoint_counter == 10:
             self.engage_offboard_mode()
             self.arm()
 
         if self.vehicle_local_position.z > self.takeoff_height and self.vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD:
-            self.set_position_setpoint(0.0, 0.0, self.takeoff_height)
+            self.publish_position_setpoint(0.0, 0.0, self.takeoff_height)
 
         elif self.vehicle_local_position.z <= self.takeoff_height:
             self.land()
