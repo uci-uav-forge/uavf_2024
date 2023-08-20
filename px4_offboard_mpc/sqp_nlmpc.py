@@ -5,7 +5,6 @@
     May need to install qpOASES version 3.1 as well.
 '''
 
-
 from acados_template import AcadosOcpSolver, AcadosOcp, AcadosModel
 import casadi as cs
 import numpy as np
@@ -42,7 +41,8 @@ class SQP_NLMPC():
 
     def get_acados_model(self, model_cs):
         ''' Acados model format:
-        f_imp_expr/f_expl_expr, x, xdot, u, name '''
+            f_imp_expr/f_expl_expr, x, xdot, u, name 
+        '''
 
         u_hover = model_cs.hover * np.ones(model_cs.u.shape[0])
         model_ac = AcadosModel()
@@ -56,7 +56,8 @@ class SQP_NLMPC():
 
     def formulate_ocp(self, model, Q, R, u_max):
         ''' Guide to acados OCP formulation: 
-        https://github.com/acados/acados/blob/master/docs/problem_formulation/problem_formulation_ocp_mex.pdf '''
+            https://github.com/acados/acados/blob/master/docs/problem_formulation/problem_formulation_ocp_mex.pdf 
+        '''
         
         nx = model.x.shape[0]
         nu = model.u.shape[0]
@@ -152,12 +153,16 @@ class SQP_NLMPC():
     
 
     def get_next_control(self, x0, x_set, timer=False):
+        ''' Get the first control action from the optimization.
+        '''
         self.run_optimization(x0, x_set, timer)
         nxt_ctrl = self.solver.get(0, 'u')
         return nxt_ctrl
 
 
     def get_next_state(self, x0, x_set, timer=False, visuals=False):
+        ''' Get the next state from the optimization.
+        '''
         self.run_optimization(x0, x_set, timer)
         nxt_state = self.solver.get(1, 'x')
 
@@ -240,7 +245,7 @@ class SQP_NLMPC():
     
 
     def delete_compiled_files(self):
-        ''' Deletes the acados generated files.
+        ''' Clean up the acados generated files.
         '''
         try: shutil.rmtree('c_generated_code')
         except: print('failed to delete c_generated_code') 
