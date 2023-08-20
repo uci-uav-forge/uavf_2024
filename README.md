@@ -136,11 +136,17 @@
 	git clone git@github.com:Herpderk/uavf_msgs.git
 	cd ..
 	source /opt/ros/foxy/setup.bash
-	colcon build
-
-3. Run this command everytime you've compiled the workspace:
 	```
-	source install/local_setup.bash
+	Everytime you make a change to your workspace, rebuild with this command:
+	```
+	colcon build --merge-install
+	```
+	If you compile with only "colcon build", you will get import errors with your ROS message types.
+	
+
+3. Run this command after everytime you've built the workspace:
+	```
+	source install/setup.bash
 	```
 
 4. Test it out with an example
