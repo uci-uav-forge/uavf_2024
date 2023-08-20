@@ -7,7 +7,7 @@ from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRat
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleLocalPosition, VehicleOdometry
 from uavf_msgs.msg import NedEnuOdometry, CommanderOutput
 
-from ned_enu_converions import convert_NED_ENU_in_inertial, convert_NED_ENU_in_body, \
+from px4_offboard_mpc.ned_enu_conversions import convert_NED_ENU_in_inertial, convert_NED_ENU_in_body, \
     convert_body_to_inertial_frame, convert_inertial_to_body_frame
 import numpy as np
 from scipy.spatial.transform import Rotation

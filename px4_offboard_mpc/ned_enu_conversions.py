@@ -1,6 +1,6 @@
 import numpy as np
 
-def convert_NED_ENU_in_inertial(self, x) -> np.ndarray:
+def convert_NED_ENU_in_inertial(x) -> np.ndarray:
         ''' Converts a state between NED or ENU inertial frames.
             This operation is commutative. 
         '''
@@ -10,7 +10,7 @@ def convert_NED_ENU_in_inertial(self, x) -> np.ndarray:
         return new_x
     
 
-def convert_NED_ENU_in_body(self, x) -> np.ndarray:
+def convert_NED_ENU_in_body(x) -> np.ndarray:
     ''' Converts a state between NED or ENU body frames.
         (More formally known as FRD or RLU body frames)
         This operation is commutative. 
@@ -21,7 +21,7 @@ def convert_NED_ENU_in_body(self, x) -> np.ndarray:
     return new_x
 
 
-def convert_body_to_inertial_frame(self, ang_rate_body, ang) -> np.ndarray:
+def convert_body_to_inertial_frame(ang_rate_body, ang) -> np.ndarray:
     ''' Converts body euler angle rates to their inertial frame counterparts.
     '''
     assert len(ang_rate_body) == 3
@@ -37,7 +37,7 @@ def convert_body_to_inertial_frame(self, ang_rate_body, ang) -> np.ndarray:
     return ang_rate_inertial
 
 
-def convert_inertial_to_body_frame(self, ang_rate_inertial, ang) -> np.ndarray:
+def convert_inertial_to_body_frame(ang_rate_inertial, ang) -> np.ndarray:
     ''' Converts inertial euler angle rates to their body frame counterparts.
     '''
     assert len(ang_rate_inertial) == 3
