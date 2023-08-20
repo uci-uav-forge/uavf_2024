@@ -86,7 +86,6 @@ class ControllerNode(Node):
                 self.curr_state[9:12] = ned_enu_odom.inertial_angle_rate_ned
             else:
                 self.curr_state[9:12] = ned_enu_odom.body_angle_rate_ned
-        print(self.curr_state)
     
 
     def commander_cb(self, ned_enu_setpt):

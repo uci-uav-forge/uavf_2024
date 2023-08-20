@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
@@ -6,7 +8,8 @@ from uavf_msgs.msg import NedEnuOdometry, NedEnuSetpoint, CommanderOutput
 
 
 class CommanderNode(Node):
-    ''' Received input from every ongoing process
+    ''' Received input from every ongoing process.
+        Output to PX4 Interface Node.
     '''
 
     def __init__(self, is_ENU:bool, time_step:float):
@@ -28,7 +31,6 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
-    
 
 
 if __name__ == '__main__':

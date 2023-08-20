@@ -132,8 +132,6 @@ class PX4InterfaceNode(Node):
 
         # publishing and logging
         self.ned_enu_odom_pub.publish(msg)
-        print(msg)
-        print()
         self.get_logger().info(f"Publishing NED and ENU feedback.")
 
 
