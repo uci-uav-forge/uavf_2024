@@ -41,7 +41,6 @@ class ControllerNode(Node):
         # the state vector consists of: x,y,z, roll,pitch,yaw, 
         # xdot,ydot,dot, rolldot, pitchdot, yawdot
         self.curr_state = np.zeros(12, dtype=np.float32)
-        self.setpoint = np.zeros(12, dtype=np.float32)
 
 
     def init_controller(self, time_step):
@@ -73,22 +72,7 @@ class ControllerNode(Node):
         ''' Takes in the appropriate reference frame for the 
             position, angle, velocity, and angular rate states.
         '''
-        if self.is_ENU:
-            self.curr_state[0:3] = ned_enu_odom.position_enu
-            self.curr_state[3:6] = ned_enu_odom.euler_angle_enu
-            self.curr_state[6:9] = ned_enu_odom.velocity_enu
-            if self.is_inertial:
-                self.curr_state[9:12] = ned_enu_odom.inertial_angle_rate_enu
-            else:
-                self.curr_state[9:12] = ned_enu_odom.body_angle_rate_enu
-        else:
-            self.curr_state[0:3] = ned_enu_odom.position_ned
-            self.curr_state[3:6] = ned_enu_odom.euler_angle_ned
-            self.curr_state[6:9] = ned_enu_odom.velocity_ned
-            if self.is_inertial:
-                self.curr_state[9:12] = ned_enu_odom.inertial_angle_rate_ned
-            else:
-                self.curr_state[9:12] = ned_enu_odom.body_angle_rate_ned
+        self.curr_state = self.get_state_from_odometry(ned_enu_odom)
     
 
     def commander_cb(self, ned_enu_setpt):
@@ -100,28 +84,36 @@ class ControllerNode(Node):
         dt = (now - self.time_tracker) / 10**9
 
         if dt >= self.time_step:
-            if self.is_ENU:
-                self.setpoint[0:3] = ned_enu_setpt.position_enu
-                self.setpoint[3:6] = ned_enu_setpt.euler_angle_enu
-                self.setpoint[6:9] = ned_enu_setpt.velocity_enu
-                if self.is_inertial:
-                    self.setpoint[9:12] = ned_enu_setpt.inertial_angle_rate_enu
-                else:
-                    self.setpoint[9:12] = ned_enu_setpt.body_angle_rate_enu
-            else:
-                self.setpoint[0:3] = ned_enu_setpt.position_ned
-                self.setpoint[3:6] = ned_enu_setpt.euler_angle_ned
-                self.setpoint[6:9] = ned_enu_setpt.velocity_ned
-                if self.is_inertial:
-                    self.setpoint[9:12] = ned_enu_setpt.inertial_angle_rate_ned
-                else:
-                    self.setpoint[9:12] = ned_enu_setpt.body_angle_rate_ned
-
+            setpoint = self.get_state_from_odometry(ned_enu_setpt)
             next_state = self.controller.get_next_state(
-                x0=self.curr_state, x_set=self.setpoint, timer=True)
+                x0=self.curr_state, x_set=setpoint, timer=True)
             self.publish_controller_setpoint(next_state)
             self.time_tracker = self.get_clock().now().nanoseconds 
     
+
+    def get_state_from_odometry(self, ned_enu_msg):
+        ''' Assigns the appropriate values to the 
+            state vector according to the reference frame.
+        '''
+        state = np.zeros(12, dtype=np.float32)
+        if self.is_ENU:
+            state[0:3] = ned_enu_msg.position_enu
+            state[3:6] = ned_enu_msg.euler_angle_enu
+            state[6:9] = ned_enu_msg.velocity_enu
+            if self.is_inertial:
+                state[9:12] = ned_enu_msg.inertial_angle_rate_enu
+            else:
+                state[9:12] = ned_enu_msg.body_angle_rate_enu
+        else:
+            state[0:3] = ned_enu_msg.position_ned
+            state[3:6] = ned_enu_msg.euler_angle_ned
+            state[6:9] = ned_enu_msg.velocity_ned
+            if self.is_inertial:
+                state[9:12] = ned_enu_msg.inertial_angle_rate_ned
+            else:
+                state[9:12] = ned_enu_msg.body_angle_rate_ned
+        return state
+
 
     def publish_controller_setpoint(self, setpoint:np.ndarray):
         ''' Assigns the next desired state vector to a setpoint message.
@@ -140,7 +132,6 @@ class ControllerNode(Node):
 
         self.controller_setpt_pub.publish(msg)
         self.get_logger().info(f"Publishing controller setpoint to commander: {msg}")
-        return
         
 
 def main(args=None):
