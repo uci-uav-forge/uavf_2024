@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from uavf_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuSetpoint
+from uavf_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuWaypoint
 
 import numpy as np
 import json
@@ -31,7 +31,7 @@ class WaypointTrackerNode(Node):
         self.ned_enu_odom_sub = self.create_subscription(
             NedEnuOdometry, '/telemetry_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
         self.waypoint_pub = self.create_publisher(
-            NedEnuSetpoint, '/commander/in/waypoint_tracker', qos_profile)
+            NedEnuWaypoint, '/commander/in/waypoint_tracker', qos_profile)
         
         self.is_ENU = True
         self.epsilon = epsilon
@@ -44,17 +44,18 @@ class WaypointTrackerNode(Node):
             the current waypoint, and publishes a waypoint.
         '''
         curr_pos_enu = np.float32(odom.position_enu)
-        waypoint = self.evaluate_waypoint(curr_pos_enu)
-        self.publish_waypoint(waypoint)
+        waypoint, all_wps_reached = self.evaluate_waypoint(curr_pos_enu)
+        self.publish_waypoint(waypoint, all_wps_reached)
         
 
-    def publish_waypoint(self, waypoint:np.ndarray):
+    def publish_waypoint(self, waypoint:np.ndarray, all_waypoints_reached:bool):
         ''' Builds the waypoint message and publishes it 
             to the commander node.
         '''
-        msg = NedEnuSetpoint()
+        msg = NedEnuWaypoint()
         msg.is_enu = self.is_ENU
-        msg.position_setpoint = np.float32(waypoint)
+        msg.all_waypoints_reached = all_waypoints_reached
+        msg.position_waypoint = np.float32(waypoint)
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.waypoint_pub.publish(msg)
@@ -72,12 +73,13 @@ class WaypointTrackerNode(Node):
             self.iter += 1
         try:
             nxt_wp = np.float32(self.wp_list[self.iter])
+            all_wps_reached = False
         # if there are no more waypoints to go to:
         except IndexError:
-            nxt_wp = np.empty(3, dtype=np.float32)
             self.destroy_subscription(self.ned_enu_odom_sub)
             self.destroy_publisher(self.waypoint_pub)
-        return nxt_wp
+            all_wps_reached = True
+        return nxt_wp, all_wps_reached
 
     '''
     def init_waypoint_list(self, mission_file_name):
