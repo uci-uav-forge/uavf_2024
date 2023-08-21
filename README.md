@@ -132,8 +132,6 @@
 	```
 	cd ros2_ws/src
 	git clone https://github.com/PX4/px4_msgs.git
-	git clone https://github.com/PX4/px4_ros_com.git
-	git clone git@github.com:Herpderk/uavf_msgs.git
 	cd ..
 	source /opt/ros/foxy/setup.bash
 	```
@@ -151,7 +149,7 @@
 
 4. Test it out with an example
 	```
-	ros2 launch px4_ros_com sensor_combined_listener.launch.py
+	ros2 launch px4_offboard_mpc telemetry_interface_node.py
 	```
 
 
