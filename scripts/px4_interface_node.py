@@ -4,8 +4,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRatesSetpoint,\
-    OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleLocalPosition, VehicleOdometry
-from uavf_msgs.msg import NedEnuOdometry, CommanderOutput
+    OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleOdometry, VehicleGlobalPosition
+from uavf_msgs.msg import GpsAltitudePosition, NedEnuOdometry, CommanderOutput
 
 from px4_offboard_mpc.ned_enu_conversions import convert_NED_ENU_in_inertial, convert_NED_ENU_in_body, \
     convert_body_to_inertial_frame, convert_inertial_to_body_frame
@@ -32,7 +32,10 @@ class PX4InterfaceNode(Node):
 
 
         ''' This section talks to our ROS network '''
-        # publish position, velocity, angle, and angle rate feedback in desired format
+        # publisher for gps and altitude feedback in desired format
+        self.gps_alt_pub = self.create_publisher(
+            GpsAltitudePosition, '/px4_interface/out/gps_altitude_position', qos_profile)
+        # publisher position, velocity, angle, and angle rate feedback in desired format
         self.ned_enu_odom_pub = self.create_publisher(
             NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', qos_profile)
         # subscriber that receives command
@@ -41,19 +44,21 @@ class PX4InterfaceNode(Node):
 
 
         ''' This section talks to PX4 '''
-        # subscribe to px4 status
+        # subscribers for px4 status, global position, and odometry (NED)
         self.status_sub = self.create_subscription(
             VehicleStatus, '/fmu/out/vehicle_status', self.status_cb, qos_profile)
+        self.global_pos_sub = self.create_subscription(
+            VehicleGlobalPosition, '/fmu/out/vehicle_global_position', self.global_pos_cb, qos_profile)
         self.odom_sub = self.create_subscription(
-            VehicleOdometry, '/fmu/out/vehicle_odometry', self.convert_odom_cb, qos_profile)
+            VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
 
-        # publish heartbeat and commands to px4
+        # publishers for heartbeat and commands to px4
         self.offboard_ctrl_mode_pub = self.create_publisher(
             OffboardControlMode, '/fmu/in/offboard_control_mode', qos_profile)
         self.command_pub = self.create_publisher(
             VehicleCommand, '/fmu/in/vehicle_command', qos_profile)
         
-        # publish position, velocity, angle, and angle rate setpoints to px4
+        # publishers for position, velocity, angle, and angle rate setpoints to px4
         self.traj_setpt_pub = self.create_publisher(
             TrajectorySetpoint, '/fmu/in/trajectory_setpoint', qos_profile)
         self.att_setpt_pub = self.create_publisher(
@@ -96,7 +101,24 @@ class PX4InterfaceNode(Node):
         self.status = status
     
 
-    def convert_odom_cb(self, odom):
+    def global_pos_cb(self, global_pos):
+        ''' Gets relevant gps and altitude information
+            and publishes it to the ROS network
+        '''
+        msg = GpsAltitudePosition()
+        msg.lat = global_pos.lat
+        msg.lon = global_pos.lon
+        msg.alt = global_pos.alt
+        msg.alt_ellipsoid = global_pos.alt_ellipsoid
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.gps_alt_pub.publish(msg)
+        self.get_logger().info(f"Publishing GPS and altitude feedback.")
+    
+
+    def odom_cb(self, odom):
+        '''
+        '''
         # getting ned states
         pos_ned = np.float32(odom.position)
         vel_ned = np.float32(odom.velocity)
@@ -130,7 +152,6 @@ class PX4InterfaceNode(Node):
         msg.inertial_angle_rate_enu = inertial_ang_rate_enu
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
-        # publishing and logging
         self.ned_enu_odom_pub.publish(msg)
         self.get_logger().info(f"Publishing NED and ENU feedback.")
 
@@ -156,7 +177,6 @@ class PX4InterfaceNode(Node):
 
         self.traj_setpt_pub.publish(msg)
         self.get_logger().info(f"Publishing position setpoints {pos_f32}")
-        return
     
 
     def publish_quaternion_NED_setpoint(self, q_NED:np.ndarray):
