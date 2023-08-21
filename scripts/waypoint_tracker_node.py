@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from uavf_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuWaypoint
+from px4_offboard_mpc.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuWaypoint
 
 import numpy as np
 import json

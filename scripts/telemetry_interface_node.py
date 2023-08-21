@@ -5,7 +5,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRatesSetpoint,\
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleOdometry, VehicleGlobalPosition
-from uavf_msgs.msg import GpsAltitudePosition, NedEnuOdometry, CommanderOutput
+from px4_offboard_mpc.msg import GpsAltitudePosition, NedEnuOdometry, CommanderOutput
 
 from px4_offboard_mpc.ned_enu_conversions import convert_NED_ENU_in_inertial, convert_NED_ENU_in_body, \
     convert_body_to_inertial_frame, convert_inertial_to_body_frame

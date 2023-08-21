@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from px4_offboard_mpc.sqp_nlmpc import derive_quad_dynamics, SQP_NLMPC
-from uavf_msgs.msg import NedEnuOdometry, NedEnuSetpoint
+from px4_offboard_mpc.msg import NedEnuOdometry, NedEnuSetpoint
 
 import numpy as np
 

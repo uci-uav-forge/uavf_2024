@@ -3,11 +3,11 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from uavf_msgs.msg import NedEnuOdometry, NedEnuSetpoint, CommanderOutput
+from px4_offboard_mpc.msg import NedEnuWaypoint, NedEnuSetpoint, CommanderOutput
 
 
 class CommanderNode(Node):
-    ''' Received input from every ongoing process.
+    ''' Receives input from every ongoing process.
         Output to PX4 Interface Node.
     '''
 
