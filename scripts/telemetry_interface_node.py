@@ -13,14 +13,14 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 
-class PX4InterfaceNode(Node):
+class TelemetryInterfaceNode(Node):
     ''' Numpy ROS 2 node for interfacing with PX4 Offboard Control. 
         Your programs should only directly interface with the Commander node,
         which talks to this node.
     '''
 
     def __init__(self):
-        super().__init__('px4_interface_node')
+        super().__init__('telemetry_interface_node')
 
         # Configure QoS profile according to PX4
         qos_profile = QoSProfile(
@@ -34,13 +34,13 @@ class PX4InterfaceNode(Node):
         ''' This section talks to our ROS network '''
         # publisher for gps and altitude feedback in desired format
         self.gps_alt_pub = self.create_publisher(
-            GpsAltitudePosition, '/px4_interface/out/gps_altitude_position', qos_profile)
+            GpsAltitudePosition, '/telemetry_interface/out/gps_altitude_position', qos_profile)
         # publisher position, velocity, angle, and angle rate feedback in desired format
         self.ned_enu_odom_pub = self.create_publisher(
-            NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', qos_profile)
+            NedEnuOdometry, '/telemetry_interface/out/ned_enu_odometry', qos_profile)
         # subscriber that receives command
         self.commander_sub = self.create_subscription(
-           CommanderOutput, '/px4_interface/in/commander_output', self.commander_cb, qos_profile)
+           CommanderOutput, '/telemetry_interface/in/commander_output', self.commander_cb, qos_profile)
 
 
         ''' This section talks to PX4 '''
@@ -176,7 +176,7 @@ class PX4InterfaceNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.traj_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing position setpoints {pos_f32}")
+        self.get_logger().info(f"Publishing trajectory setpoint.")
     
 
     def publish_quaternion_NED_setpoint(self, q_NED:np.ndarray):
@@ -190,7 +190,7 @@ class PX4InterfaceNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.att_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing quaternion attitude setpoint {q_NED_f32}")
+        self.get_logger().info(f"Publishing quaternion attitude setpoint.")
         return
 
 
@@ -211,7 +211,7 @@ class PX4InterfaceNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.att_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing euler angle attitude setpoint {ang_f32}")
+        self.get_logger().info(f"Publishing euler angle attitude setpoint.")
         return
 
 
@@ -235,7 +235,7 @@ class PX4InterfaceNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.rate_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing euler angle rates setpoint {ang_rate_f32}")
+        self.get_logger().info(f"Publishing euler angle rates setpoint.")
         return
     
     
@@ -325,7 +325,7 @@ class PX4InterfaceNode(Node):
 def main(args=None):
     print('Starting px4 interface node...')
     rclpy.init(args=args)
-    node = PX4InterfaceNode()
+    node = TelemetryInterfaceNode()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
