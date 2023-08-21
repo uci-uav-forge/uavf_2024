@@ -15,17 +15,38 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(px4_msgs REQUIRED)
-find_package(uavf_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
 
-include_directories(include)
 
+# message generation
+find_package(rosidl_default_generators REQUIRED)
+set(msg_files
+  "msg/GpsAltitudePosition.msg"
+  "msg/NedEnuSetpoint.msg"
+  "msg/NedEnuOdometry.msg"
+  "msg/CommanderOutput.msg"
+  "msg/NedEnuWaypoint.msg"
+)
+set(srv_files
+)
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
+  ${srv_files}
+)
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION include/${PROJECT_NAME}
+)
+ament_export_dependencies(rosidl_default_runtime)
+
+
+include_directories(include)
 # Create Cpp executable
 # add_executable(cpp_executable src/cpp_node.cpp)
 # ament_target_dependencies(cpp_executable rclcpp)
@@ -39,7 +60,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  scripts/px4_interface_node.py
+  scripts/telemetry_interface_node.py
   scripts/commander_node.py
   scripts/controller_node.py
   scripts/waypoint_tracker_node.py
