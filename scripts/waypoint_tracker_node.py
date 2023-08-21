@@ -3,18 +3,21 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from uavf_msgs.msg import NedEnuOdometry, NedEnuSetpoint, CommanderOutput
+from uavf_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuSetpoint
 
 import numpy as np
+import json
 
 
 class WaypointTrackerNode(Node):
     ''' Reads in the static mission waypoints in an 
         input file and keeps track of the 
         current and next waypoint to go to.
+        Initialize with the acceptable error between
+        current position and waypoint in terms of meters.
     '''
 
-    def __init__(self, mission_file, is_ENU:bool):
+    def __init__(self, mission_file_name:str, epsilon=10.0):
         super().__init__('commander_node')
 
         # Configure QoS profile according to PX4
@@ -27,18 +30,59 @@ class WaypointTrackerNode(Node):
 
         self.ned_enu_odom_sub = self.create_subscription(
             NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
-        self.controller_setpt_pub = self.create_publisher(
+        self.waypoint_pub = self.create_publisher(
             NedEnuSetpoint, '/commander/in/waypoint_tracker', qos_profile)
         
-        # do something to generate queue or list from mission_file: self.file
-        # define coordinate transform betwee gps coords in mission_file to enu and ned coords in px4 telem
-        # self.curr_pos = np.zeros(3, dtype=np.float32)
+        self.is_ENU = True
+        self.epsilon = epsilon
+        self.iter = 0
+        self.wp_list = self.init_waypoint_list(mission_file_name)
+    
+
+    def odom_cb(self, odom):
+        curr_pos_enu = np.float32[odom.position_enu]
+        waypoint = self.evaluate_waypoint(curr_pos_enu)
+        self.publish_waypoint(waypoint)
         
+
+    def publish_waypoint(self, waypoint:np.ndarray):
+        '''
+        '''
+        msg = NedEnuSetpoint()
+        msg.is_enu = self.is_ENU
+        msg.position_setpoint = waypoint
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.waypoint_pub.publish(msg)
+        self.get_logger().info(f"Publishing waypoint to commander: {msg}")
+        return
+
+
+    def evaluate_waypoint(self, curr_pos:np.ndarray):
+        ''' Compares the current position to the current waypoint
+            and decides on the waypoint to the send to the commander.
+        '''
+        curr_wp = self.wp_list[self.iter]
+        dist = np.linalg.norm(curr_wp - curr_pos)
+        if dist < self.epsilon:
+            self.iter += 1
+        nxt_wp = self.wp_list[self.iter]
+        return nxt_wp
+
+
+    def init_waypoint_list(self, mission_file_name):
+        wps = []
+        f = open(mission_file_name)
+        data = json.load(f)
+        for wp in data['waypoints']:
+            wps += np.float32(wp)
+        return wps
+
 
 def main(args=None):
     print('Starting waypoint tracker node...')
     rclpy.init(args=args)
-    node = WaypointTrackerNode()
+    node = WaypointTrackerNode('mission_waypoints_enu.json', epsilon=10)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
