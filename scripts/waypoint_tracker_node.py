@@ -18,7 +18,7 @@ class WaypointTrackerNode(Node):
     '''
 
     def __init__(self, waypoint_list:list, epsilon=10.0):
-        super().__init__('commander_node')
+        super().__init__('waypoint_tracker_node')
 
         # Configure QoS profile according to PX4
         qos_profile = QoSProfile(
@@ -29,7 +29,7 @@ class WaypointTrackerNode(Node):
         )
 
         self.ned_enu_odom_sub = self.create_subscription(
-            NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
+            NedEnuOdometry, '/telemetry_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
         self.waypoint_pub = self.create_publisher(
             NedEnuSetpoint, '/commander/in/waypoint_tracker', qos_profile)
         
@@ -58,7 +58,7 @@ class WaypointTrackerNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.waypoint_pub.publish(msg)
-        self.get_logger().info(f"Publishing waypoint to commander: {msg}")
+        self.get_logger().info(f"Publishing waypoint to commander.")
         return
 
 

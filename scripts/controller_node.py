@@ -26,7 +26,7 @@ class ControllerNode(Node):
         )
 
         self.ned_enu_odom_sub = self.create_subscription(
-            NedEnuOdometry, '/px4_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
+            NedEnuOdometry, '/telemetry_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
         self.commander_sub = self.create_subscription(
             NedEnuOdometry, '/commander/out/controller_command', self.commander_cb, qos_profile)
         self.controller_setpt_pub = self.create_publisher(
@@ -131,7 +131,7 @@ class ControllerNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.controller_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing controller setpoint to commander: {msg}")
+        self.get_logger().info(f"Publishing controller setpoint to commander.")
         
 
 def main(args=None):
