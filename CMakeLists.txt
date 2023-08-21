@@ -40,8 +40,9 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/px4_interface_node.py
-  scripts/controller_node.py
   scripts/commander_node.py
+  scripts/controller_node.py
+  scripts/waypoint_tracker_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
