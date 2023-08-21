@@ -17,7 +17,7 @@ class WaypointTrackerNode(Node):
         current position and waypoint in terms of meters.
     '''
 
-    def __init__(self, mission_file_name:str, epsilon=10.0):
+    def __init__(self, waypoint_list:list, epsilon=10.0):
         super().__init__('commander_node')
 
         # Configure QoS profile according to PX4
@@ -35,22 +35,26 @@ class WaypointTrackerNode(Node):
         
         self.is_ENU = True
         self.epsilon = epsilon
+        self.wp_list = waypoint_list
         self.iter = 0
-        self.wp_list = self.init_waypoint_list(mission_file_name)
     
 
     def odom_cb(self, odom):
-        curr_pos_enu = np.float32[odom.position_enu]
+        ''' Gets the current position, evaluates
+            the current waypoint, and publishes a waypoint.
+        '''
+        curr_pos_enu = np.float32(odom.position_enu)
         waypoint = self.evaluate_waypoint(curr_pos_enu)
         self.publish_waypoint(waypoint)
         
 
     def publish_waypoint(self, waypoint:np.ndarray):
-        '''
+        ''' Builds the waypoint message and publishes it 
+            to the commander node.
         '''
         msg = NedEnuSetpoint()
         msg.is_enu = self.is_ENU
-        msg.position_setpoint = waypoint
+        msg.position_setpoint = np.float32(waypoint)
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.waypoint_pub.publish(msg)
@@ -60,16 +64,22 @@ class WaypointTrackerNode(Node):
 
     def evaluate_waypoint(self, curr_pos:np.ndarray):
         ''' Compares the current position to the current waypoint
-            and decides on the waypoint to the send to the commander.
+            and decides on the waypoint to send to the commander.
         '''
-        curr_wp = self.wp_list[self.iter]
+        curr_wp = np.float32(self.wp_list[self.iter])
         dist = np.linalg.norm(curr_wp - curr_pos)
         if dist < self.epsilon:
             self.iter += 1
-        nxt_wp = self.wp_list[self.iter]
+        try:
+            nxt_wp = np.float32(self.wp_list[self.iter])
+        # if there are no more waypoints to go to:
+        except IndexError:
+            nxt_wp = np.empty(3, dtype=np.float32)
+            self.destroy_subscription(self.ned_enu_odom_sub)
+            self.destroy_publisher(self.waypoint_pub)
         return nxt_wp
 
-
+    '''
     def init_waypoint_list(self, mission_file_name):
         wps = []
         f = open(mission_file_name)
@@ -77,12 +87,20 @@ class WaypointTrackerNode(Node):
         for wp in data['waypoints']:
             wps += np.float32(wp)
         return wps
+    '''
 
 
 def main(args=None):
+    wp_list = [
+        [0, 0, 20], 
+        [0, 10, 20],
+        [10, 10, 20],
+        [10, 0, 20],
+        [0, 0, 20]
+    ]
     print('Starting waypoint tracker node...')
     rclpy.init(args=args)
-    node = WaypointTrackerNode('mission_waypoints_enu.json', epsilon=10)
+    node = WaypointTrackerNode(waypoint_list=wp_list, epsilon=10)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
