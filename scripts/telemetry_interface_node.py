@@ -78,6 +78,9 @@ class TelemetryInterfaceNode(Node):
 
 
     def commander_cb(self, commander_output):
+        ''' Sends the appropriate message to PX4 
+            based on what the commander decides.
+        '''
         if commander_output.disarm:
             self.disarm()
         elif commander_output.arm:
@@ -98,26 +101,20 @@ class TelemetryInterfaceNode(Node):
 
 
     def status_cb(self, status):
+        ''' Updates status, might use this in a future feature.
+        '''
         self.status = status
     
 
     def global_pos_cb(self, global_pos):
         ''' Gets relevant gps and altitude information
-            and publishes it to the ROS network
+            and publishes it to our ROS network.
         '''
-        msg = GpsAltitudePosition()
-        msg.lat = global_pos.lat
-        msg.lon = global_pos.lon
-        msg.alt = global_pos.alt
-        msg.alt_ellipsoid = global_pos.alt_ellipsoid
-        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-
-        self.gps_alt_pub.publish(msg)
-        self.get_logger().info(f"Publishing GPS and altitude feedback.")
+        self.publish_gps_altitude_feedback(global_pos)
     
 
     def odom_cb(self, odom):
-        '''
+        ''' Gets ned odometry, converts to enu odometry, and publishes them.
         '''
         # getting ned states
         pos_ned = np.float32(odom.position)
@@ -127,14 +124,39 @@ class TelemetryInterfaceNode(Node):
         ang_ned = np.float32(rot.as_euler('xyz'))
         body_ang_rate_ned = np.float32(odom.angular_velocity)
         inertial_ang_rate_ned = convert_body_to_inertial_frame(body_ang_rate_ned, ang_ned)
+        odom_ned_list = [pos_ned, vel_ned, ang_ned, body_ang_rate_ned, inertial_ang_rate_ned]
 
         # getting enu states
         pos_enu = convert_NED_ENU_in_inertial(pos_ned)
         vel_enu = convert_NED_ENU_in_inertial(vel_ned)
-        # quat_enu
         ang_enu = convert_NED_ENU_in_inertial(ang_ned)
         body_ang_rate_enu = convert_NED_ENU_in_body(body_ang_rate_ned)
         inertial_ang_rate_enu = convert_body_to_inertial_frame(body_ang_rate_enu, ang_enu)
+        odom_enu_list = [pos_enu, vel_enu, ang_enu, body_ang_rate_enu, inertial_ang_rate_enu]
+        
+        # publish the odometries
+        self.publish_ned_enu_odometry_feedback(odom_ned_list, odom_enu_list)
+    
+
+    def publish_gps_altitude_feedback(self, global_pos_msg:VehicleGlobalPosition):
+        ''' Publishes latitude, longitude in degrees; altitude in meters (ASML)
+        '''
+        msg = GpsAltitudePosition()
+        msg.lat = global_pos_msg.lat
+        msg.lon = global_pos_msg.lon
+        msg.alt = global_pos_msg.alt
+        msg.alt_ellipsoid = global_pos_msg.alt_ellipsoid
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.gps_alt_pub.publish(msg)
+        self.get_logger().info(f"Publishing GPS and altitude feedback.")
+
+
+    def publish_ned_enu_odometry_feedback(self, odom_ned_list:list, odom_enu_list:list):
+        ''' Unpacks the odometry lists, generated the message, and publishes it.
+        '''
+        pos_ned, vel_ned, ang_ned, body_ang_rate_ned, inertial_ang_rate_ned = odom_ned_list
+        pos_enu, vel_enu, ang_enu, body_ang_rate_enu, inertial_ang_rate_enu = odom_enu_list
 
         # generating ned and enu message
         msg = NedEnuOdometry()
@@ -143,7 +165,6 @@ class TelemetryInterfaceNode(Node):
         msg.euler_angle_ned = ang_ned
         msg.body_angle_rate_ned = body_ang_rate_ned
         msg.inertial_angle_rate_ned = inertial_ang_rate_ned
-        msg.quaternion_ned = quat_ned
 
         msg.position_enu = pos_enu
         msg.velocity_enu = vel_enu
@@ -191,7 +212,6 @@ class TelemetryInterfaceNode(Node):
 
         self.att_setpt_pub.publish(msg)
         self.get_logger().info(f"Publishing quaternion attitude setpoint.")
-        return
 
 
     def publish_euler_angle_setpoint(self, ang:np.ndarray, is_ENU):
@@ -212,7 +232,6 @@ class TelemetryInterfaceNode(Node):
 
         self.att_setpt_pub.publish(msg)
         self.get_logger().info(f"Publishing euler angle attitude setpoint.")
-        return
 
 
     def publish_euler_angle_rate_setpoint(self, ang_rate, is_ENU, is_inertial):
@@ -236,7 +255,6 @@ class TelemetryInterfaceNode(Node):
 
         self.rate_setpt_pub.publish(msg)
         self.get_logger().info(f"Publishing euler angle rates setpoint.")
-        return
     
     
     def publish_offboard_control_mode(self) -> None:
@@ -252,7 +270,6 @@ class TelemetryInterfaceNode(Node):
         msg.body_rate = True
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.offboard_ctrl_mode_pub.publish(msg)
-        return
 
 
     def publish_command(self, command, **params) -> None:
@@ -275,7 +292,6 @@ class TelemetryInterfaceNode(Node):
         msg.from_external = True
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.command_pub.publish(msg)
-        return
 
 
     def arm(self) -> None:
