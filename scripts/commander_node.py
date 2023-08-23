@@ -7,10 +7,11 @@ from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRat
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleOdometry, VehicleGlobalPosition
 from uavf_ros2_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuSetpoint, NedEnuWaypoint
 
-from px4_offboard_mpc.conversions import convert_quaternion_to_euler_angles, convert_NED_ENU_in_inertial,\
+from uavf_2024.conversions import convert_quaternion_to_euler_angles, convert_NED_ENU_in_inertial,\
     convert_NED_ENU_in_body, convert_body_to_inertial_frame, convert_inertial_to_body_frame
 import numpy as np
 from scipy.spatial.transform import Rotation
+from typing import List 
 
 
 class CommanderNode(Node):
@@ -18,7 +19,7 @@ class CommanderNode(Node):
         Output to PX4 Interface Node.
     '''
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('commander_node')
         ''' Initialize publishers, subscribers, and class attributes.
         '''
@@ -31,7 +32,7 @@ class CommanderNode(Node):
         )
 
 
-        ''' This section talks to our ROS network '''
+        # This section talks to our own ROS network
         # publisher for gps and altitude feedback in desired format
         self.gps_alt_pub = self.create_publisher(
             GpsAltitudePosition, '/commander/out/gps_altitude_position', qos_profile)
@@ -42,15 +43,14 @@ class CommanderNode(Node):
         self.traj_plan_pub = self.create_publisher(
             NedEnuOdometry, '/commander/out/trajectory_planner_command', qos_profile)
         
-        # subscribe to topics owned by slave process nodes
+        # subscribe to topics owned by worker process nodes
         self.traj_plan_sub = self.create_subscription(
             NedEnuSetpoint, '/commander/in/ned_enu_setpoint', self.traj_plan_cb, qos_profile)
         self.wp_tracker_sub = self.create_subscription(
-            NedEnuWaypoint, '/waypoint_tracker/out/ned_enu_waypoint', self.wp_tracker_cb, qos_profile
-        )
+            NedEnuWaypoint, '/waypoint_tracker/out/ned_enu_waypoint', self.wp_tracker_cb, qos_profile)
         
-        
-        ''' This section talks to PX4 '''
+
+        # This section talks to PX4
         # publishers for heartbeat and commands to px4
         self.offboard_ctrl_mode_pub = self.create_publisher(
             OffboardControlMode, '/fmu/in/offboard_control_mode', qos_profile)
@@ -73,22 +73,15 @@ class CommanderNode(Node):
         self.odom_sub = self.create_subscription(
             VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
         
+
         self.traj_planner_is_ENU = True
         self.all_wp_reached = False
         self.waypoint_is_ENU = False
         self.waypoint = np.zeros(3, dtype=np.float32)
         self.status = VehicleStatus()
-
-        '''
-        self.setpt_count = 0
-        self.takeoff_height = -5.0
-
-        # Create a timer to publish control commands
-        self.timer = self.create_timer(0.1, self.timer_cb)
-        '''
     
     
-    def make_decision(self):
+    def make_decision(self) -> None:
         ''' Reads in class attributes that are updated by worker processes.
             Publishes the offboard control heartbeat. Arrives at a decision 
             based on an arbitrarily defined switch state.
@@ -101,16 +94,17 @@ class CommanderNode(Node):
             self.disarm()
 
     
-    def traj_plan_cb(self, ned_enu_setpt):
+    def traj_plan_cb(self, ned_enu_setpt:NedEnuSetpoint) -> None:
         ''' Reads the setpoint calculated by the trajectory planner
             and publishes the corresponding setpoints to PX4.
             Incomplete.
         '''
+        # assert something
         self.traj_planner_is_ENU = ned_enu_setpt.is_enu
         pass
     
 
-    def wp_tracker_cb(self, ned_enu_wp):
+    def wp_tracker_cb(self, ned_enu_wp:NedEnuWaypoint) -> None:
         ''' Gets the "NED-ENU-ness" of the waypoint tracker
             and the waypoint to go to.
         '''
@@ -122,20 +116,24 @@ class CommanderNode(Node):
             self.all_wp_reached = ned_enu_wp.all_waypoints_reached
 
 
-    def status_cb(self, status):
+    def status_cb(self, status:VehicleStatus) -> None:
         ''' Updates status, might use this in a future feature.
         '''
         self.status = status
     
 
-    def global_pos_cb(self, global_pos):
+    def global_pos_cb(self, global_pos:VehicleGlobalPosition) -> None:
         ''' Gets relevant gps and altitude information
             and publishes it to our ROS network.
         '''
-        self.publish_gps_altitude_feedback(global_pos)
+        lat = global_pos.lat
+        lon = global_pos.lon
+        alt = global_pos.alt
+        alt_ellipsoid = global_pos.alt_ellipsoid
+        self.publish_gps_altitude_feedback(lat, lon, alt, alt_ellipsoid)
     
 
-    def odom_cb(self, odom):
+    def odom_cb(self, odom:VehicleOdometry) -> None:
         ''' Gets ned odometry, converts to enu odometry, and publishes them.
         '''
         # getting ned states
@@ -159,11 +157,14 @@ class CommanderNode(Node):
         self.publish_ned_enu_odometry_feedback(odom_ned_list, odom_enu_list)
     
 
-    def publish_trajectory_planner_command(self, pos_decision:np.ndarray, pos_is_ENU:bool):
+    def publish_trajectory_planner_command(self, pos_decision:np.ndarray, pos_is_ENU:bool) -> None:
         ''' Publishes position command to the trajectory planner after
             arriving at a decision. Converts between NED and ENU depending
             on the the "NED-ENU-ness" of the waypoint tracker.
         '''
+        assert len(pos_decision) == 3
+        assert type(pos_is_ENU) == bool
+
         if not pos_is_ENU:
             # getting ned states
             pos_ned = np.float32(pos_decision)
@@ -180,13 +181,14 @@ class CommanderNode(Node):
             inertial_ang_rate_enu = np.zeros(3, dtype=np.float32)
 
         else:
+            # getting enu states
             pos_enu = np.float32(pos_decision)
             vel_enu = np.zeros(3, dtype=np.float32)
             '''NEED TO ADD IN FEATURE FOR CALCULATING YAW'''
             ang_enu = np.float32([0, 0, 0]) 
             body_ang_rate_enu = np.zeros(3, dtype=np.float32)
             inertial_ang_rate_enu = np.zeros(3, dtype=np.float32)
-            # getting enu states
+            # getting ned states
             pos_ned = convert_NED_ENU_in_inertial(pos_ned)
             vel_ned = np.zeros(3, dtype=np.float32)
             ang_ned = convert_NED_ENU_in_inertial(ang_ned)
@@ -211,23 +213,25 @@ class CommanderNode(Node):
         self.get_logger().info(f"Publishing NED and ENU command to trajectory planner.")
 
 
-    def publish_gps_altitude_feedback(self, global_pos_msg:VehicleGlobalPosition):
+    def publish_gps_altitude_feedback(self, lat:float, lon:float, alt:float, alt_ellipsoid:float) -> None:
         ''' Publishes latitude, longitude in degrees; altitude in meters (ASML)
         '''
         msg = GpsAltitudePosition()
-        msg.lat = global_pos_msg.lat
-        msg.lon = global_pos_msg.lon
-        msg.alt = global_pos_msg.alt
-        msg.alt_ellipsoid = global_pos_msg.alt_ellipsoid
+        msg.lat = np.float32(lat)
+        msg.lon = np.float32(lon)
+        msg.alt = np.float32(alt)
+        msg.alt_ellipsoid = alt_ellipsoid
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
         self.gps_alt_pub.publish(msg)
         self.get_logger().info(f"Publishing GPS and altitude feedback.")
 
 
-    def publish_ned_enu_odometry_feedback(self, odom_ned_list:list, odom_enu_list:list):
+    def publish_ned_enu_odometry_feedback(self, odom_ned_list:List[np.ndarray], odom_enu_list:List[np.ndarray]) -> None:
         ''' Unpacks the odometry lists, generated the message, and publishes it.
         '''
+        assert len(odom_ned_list) == 4
+        assert len(odom_enu_list) == 4
         pos_ned, vel_ned, ang_ned, body_ang_rate_ned, inertial_ang_rate_ned = odom_ned_list
         pos_enu, vel_enu, ang_enu, body_ang_rate_enu, inertial_ang_rate_enu = odom_enu_list
 
@@ -250,7 +254,7 @@ class CommanderNode(Node):
         self.get_logger().info(f"Publishing NED and ENU feedback.")
 
 
-    def publish_trajectory_setpoint(self, pos:np.ndarray, vel:np.ndarray, is_ENU):
+    def publish_trajectory_setpoint(self, pos:np.ndarray, vel:np.ndarray, is_ENU:bool) -> None:
         ''' (x, y, z)
             Publish the 3D position and velocity setpoints. 
             Set "is_ENU" to True if inputting ENU coordinates. 
@@ -273,12 +277,13 @@ class CommanderNode(Node):
         self.get_logger().info(f"Publishing trajectory setpoint.")
 
 
-    def publish_euler_angle_setpoint(self, ang:np.ndarray, is_ENU):
+    def publish_euler_angle_setpoint(self, ang:np.ndarray, is_ENU:bool) -> None:
         ''' (Roll, Pitch, Yaw)
             Publish 3D euler angle attitude setpoint. 
             Set "is_ENU" to True if inputting ENU coordinates. 
         '''
         assert len(ang) == 3
+        assert type(is_ENU) == bool
         ang_f32 = np.float32(ang)
         if is_ENU:
             ang_f32 = self.convert_NED_ENU_in_inertial(ang_f32)
@@ -293,13 +298,15 @@ class CommanderNode(Node):
         self.get_logger().info(f"Publishing euler angle attitude setpoint.")
 
 
-    def publish_euler_angle_rate_setpoint(self, ang_rate, is_ENU, is_inertial):
+    def publish_euler_angle_rate_setpoint(self, ang_rate:float, is_ENU:bool, is_inertial:bool) -> None:
         ''' (Roll, Pitch, Yaw)
             Publish 3D euler angular rate setpoint in body frame.
             Set "is_inertial" to True if inputting inertial frame angle rates. 
             Set "is_ENU" to True if inputting ENU coordinate angle rates. 
         '''
         assert len(ang_rate) == 3
+        assert type(is_ENU) == bool
+        assert type(is_inertial) == bool
         ang_rate_f32 = np.float32(ang_rate)
         if is_ENU:
             ang_rate_f32 = self.convert_NED_ENU_in_body(ang_rate_f32)
@@ -397,7 +404,7 @@ class CommanderNode(Node):
     """
 
 
-def main(args=None):
+def main(args=None) -> None:
     print('Starting commander node...')
     rclpy.init(args=args)
     node = CommanderNode()
