@@ -7,6 +7,7 @@ from uavf_ros2_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuWaypoi
 
 import numpy as np
 import json
+from typing import List, Tuple
 
 
 class WaypointTrackerNode(Node):
@@ -17,8 +18,10 @@ class WaypointTrackerNode(Node):
         current position and waypoint in terms of meters.
     '''
 
-    def __init__(self, waypoint_list:list, epsilon=10.0):
+    def __init__(self, waypoint_list:List[List], epsilon=10.0) -> None:
         super().__init__('waypoint_tracker_node')
+        ''' Initialize publishers, subscribers, and class attributes.
+        '''
 
         # Configure QoS profile according to PX4
         qos_profile = QoSProfile(
@@ -39,7 +42,7 @@ class WaypointTrackerNode(Node):
         self.iter = 0
     
 
-    def odom_cb(self, odom):
+    def odom_cb(self, odom:NedEnuOdometry) -> None:
         ''' Gets the current position, evaluates
             the current waypoint, and publishes a waypoint.
         '''
@@ -48,7 +51,7 @@ class WaypointTrackerNode(Node):
         self.publish_waypoint(waypoint, all_wps_reached)
         
 
-    def publish_waypoint(self, waypoint:np.ndarray, all_waypoints_reached:bool):
+    def publish_waypoint(self, waypoint:np.ndarray, all_waypoints_reached:bool) -> None:
         ''' Builds the waypoint message and publishes it 
             to the commander node.
         '''
@@ -60,10 +63,9 @@ class WaypointTrackerNode(Node):
 
         self.waypoint_pub.publish(msg)
         self.get_logger().info(f"Publishing waypoint to commander.")
-        return
 
 
-    def evaluate_waypoint(self, curr_pos:np.ndarray):
+    def evaluate_waypoint(self, curr_pos:np.ndarray) -> Tuple[np.ndarray, bool]:
         ''' Compares the current position to the current waypoint
             and decides on the waypoint to send to the commander.
         '''

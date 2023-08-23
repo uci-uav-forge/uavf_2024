@@ -15,7 +15,7 @@ class TrajectoryPlannerNode(Node):
         Make sure your planner has a method "next_state"
     '''
 
-    def __init__(self, is_ENU:bool, is_inertial:bool, time_step:float):
+    def __init__(self, is_ENU:bool, is_inertial:bool, time_step:float) -> None:
         super().__init__('trajectory_planner_node')
         ''' Initialize publishers, subscribers, and class attributes.
         '''
@@ -46,7 +46,7 @@ class TrajectoryPlannerNode(Node):
         self.curr_state = np.zeros(12, dtype=np.float32)
 
 
-    def init_planner(self, time_step):
+    def init_planner(self, time_step:float) -> SQP_NLMPC:
         ''' Any type of planner can be inserted into "init_planner".
             The resulting object must have a "get_next_state" function 
             with arguments of initial state, setpoint, and a 
@@ -71,14 +71,14 @@ class TrajectoryPlannerNode(Node):
         return mpc
     
 
-    def odom_cb(self, ned_enu_odom):
+    def odom_cb(self, ned_enu_odom:NedEnuOdometry) -> None:
         ''' Takes in the appropriate reference frame for the 
             position, angle, velocity, and angular rate states.
         '''
         self.curr_state = self.get_state_from_odometry(ned_enu_odom)
     
 
-    def commander_cb(self, ned_enu_setpt):
+    def commander_cb(self, ned_enu_setpt:NedEnuOdometry) -> None:
         ''' Takes in the appropriate reference frame for the
             setpoint, runs the planner, and publishes
             to the commander. Loops once every dt seconds.
@@ -94,7 +94,7 @@ class TrajectoryPlannerNode(Node):
             self.time_tracker = self.get_clock().now().nanoseconds 
     
 
-    def get_state_from_odometry(self, ned_enu_msg):
+    def get_state_from_odometry(self, ned_enu_msg:NedEnuOdometry) -> np.ndarray:
         ''' Assigns the appropriate values to the 
             state vector according to the reference frame.
         '''
@@ -118,7 +118,7 @@ class TrajectoryPlannerNode(Node):
         return state
 
 
-    def publish_planner_setpoint(self, setpoint:np.ndarray):
+    def publish_planner_setpoint(self, setpoint:np.ndarray) -> None:
         ''' Assigns the next desired state vector to a setpoint message.
         '''
         assert len(setpoint) == 12
@@ -137,7 +137,7 @@ class TrajectoryPlannerNode(Node):
         self.get_logger().info(f"Publishing planner setpoint to commander.")
         
 
-def main(args=None):
+def main(args=None) -> None:
     is_ENU = True
     is_inertial = True
     time_step = 0.1     # seconds
@@ -148,7 +148,7 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
-    
+
     atexit.register(node.planner.delete_compiled_files)
     
 
