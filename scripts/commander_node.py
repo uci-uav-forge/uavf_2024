@@ -34,19 +34,19 @@ class CommanderNode(Node):
         ''' This section talks to our ROS network '''
         # publisher for gps and altitude feedback in desired format
         self.gps_alt_pub = self.create_publisher(
-            GpsAltitudePosition, '/commander/gps_altitude_position', qos_profile)
+            GpsAltitudePosition, '/commander/out/gps_altitude_position', qos_profile)
         # publisher position, velocity, angle, and angle rate feedback in desired format
         self.ned_enu_odom_pub = self.create_publisher(
-            NedEnuOdometry, '/commander/ned_enu_odometry', qos_profile)
+            NedEnuOdometry, '/commander/out/ned_enu_odometry', qos_profile)
         # tell the trajectory planner where to plan for
         self.traj_plan_pub = self.create_publisher(
-            NedEnuOdometry, '/commander/trajectory_planner_command', qos_profile)
+            NedEnuOdometry, '/commander/out/trajectory_planner_command', qos_profile)
         
         # subscribe to topics owned by slave process nodes
         self.traj_plan_sub = self.create_subscription(
-            NedEnuSetpoint, '/trajectory_planner/ned_enu_setpoint', self.traj_plan_cb, qos_profile)
+            NedEnuSetpoint, '/commander/in/ned_enu_setpoint', self.traj_plan_cb, qos_profile)
         self.wp_tracker_sub = self.create_subscription(
-            NedEnuWaypoint, '/waypoint_tracker/ned_enu_waypoint', self.wp_tracker_cb, qos_profile
+            NedEnuWaypoint, '/waypoint_tracker/out/ned_enu_waypoint', self.wp_tracker_cb, qos_profile
         )
         
         

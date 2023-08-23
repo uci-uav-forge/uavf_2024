@@ -29,9 +29,9 @@ class WaypointTrackerNode(Node):
         )
 
         self.ned_enu_odom_sub = self.create_subscription(
-            NedEnuOdometry, '/commander/ned_enu_odometry', self.odom_cb, qos_profile)
+            NedEnuOdometry, '/commander/out/ned_enu_odometry', self.odom_cb, qos_profile)
         self.waypoint_pub = self.create_publisher(
-            NedEnuWaypoint, '/waypoint_tracker/ned_enu_waypoint', qos_profile)
+            NedEnuWaypoint, '/waypoint_tracker/out/ned_enu_waypoint', qos_profile)
         
         self.is_ENU = True
         self.epsilon = epsilon
