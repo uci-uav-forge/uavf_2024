@@ -26,11 +26,11 @@ class TrajectoryPlannerNode(Node):
         )
 
         self.ned_enu_odom_sub = self.create_subscription(
-            NedEnuOdometry, '/commander/out/ned_enu_odometry', self.odom_cb, qos_profile)
+            NedEnuOdometry, '/commander/ned_enu_odometry', self.odom_cb, qos_profile)
         self.commander_sub = self.create_subscription(
-            NedEnuOdometry, '/commander/out/trajectory_planner_command', self.commander_cb, qos_profile)
+            NedEnuOdometry, '/commander/trajectory_planner_command', self.commander_cb, qos_profile)
         self.ned_enu_setpt_pub = self.create_publisher(
-            NedEnuSetpoint, '/commander/in/trajectory_planner_setpoint', qos_profile)
+            NedEnuSetpoint, '/trajectory_planner/ned_enu_setpoint', qos_profile)
         
         self.planner = self.init_planner(time_step)
         self.is_ENU = is_ENU
