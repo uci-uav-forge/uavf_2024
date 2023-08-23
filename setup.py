@@ -1,16 +1,16 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='px4_offboard_mpc',
+    name='uavf_2024',
     version='0.0.1',
     packages=find_packages(include=[
-        'px4_offboard_mpc', 'px4_offboard_mpc.*'
+        'uavf_2024', 'uavf_2024.*'
     ]),
     install_requires=[
         'numpy',
         'scipy',
         'matplotlib',
         'casadi',
-        'acados_template'
+        'acados_template',
     ]
 )

@@ -4,9 +4,10 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from uavf_ros2_msgs.msg import NedEnuOdometry, NedEnuSetpoint
-from px4_offboard_mpc.sqp_nlmpc import derive_quad_dynamics, SQP_NLMPC
 
+from uavf_2024.sqp_nlmpc import derive_quad_dynamics, SQP_NLMPC
 import numpy as np
+import atexit
 
 
 class TrajectoryPlannerNode(Node):
@@ -16,6 +17,8 @@ class TrajectoryPlannerNode(Node):
 
     def __init__(self, is_ENU:bool, is_inertial:bool, time_step:float):
         super().__init__('trajectory_planner_node')
+        ''' Initialize publishers, subscribers, and class attributes.
+        '''
 
         # Configure QoS profile according to PX4
         qos_profile = QoSProfile(
@@ -145,6 +148,8 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
+    
+    atexit.register(node.planner.delete_compiled_files)
     
 
 if __name__ == '__main__':
