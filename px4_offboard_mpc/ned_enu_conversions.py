@@ -1,13 +1,13 @@
 import numpy as np
 
 def convert_NED_ENU_in_inertial(x) -> np.ndarray:
-        ''' Converts a state between NED or ENU inertial frames.
-            This operation is commutative. 
-        '''
-        assert len(x) == 3
-        new_x = np.float32(
-            [x[1], x[0], -x[2]])
-        return new_x
+    ''' Converts a state between NED or ENU inertial frames.
+        This operation is commutative. 
+    '''
+    assert len(x) == 3
+    new_x = np.float32(
+        [x[1], x[0], -x[2]])
+    return new_x
     
 
 def convert_NED_ENU_in_body(x) -> np.ndarray:
