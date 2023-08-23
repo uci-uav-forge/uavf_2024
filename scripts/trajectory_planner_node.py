@@ -3,19 +3,19 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+from uavf_ros2_msgs.msg import NedEnuOdometry, NedEnuSetpoint
 from px4_offboard_mpc.sqp_nlmpc import derive_quad_dynamics, SQP_NLMPC
-from px4_offboard_mpc.msg import NedEnuOdometry, NedEnuSetpoint
 
 import numpy as np
 
 
-class ControllerNode(Node):
-    ''' Initialize your controller in "init_controller".
-        Make sure your controller has a method "next_state"
+class TrajectoryPlannerNode(Node):
+    ''' Initialize your planner in "init_planner".
+        Make sure your planner has a method "next_state"
     '''
 
     def __init__(self, is_ENU:bool, is_inertial:bool, time_step:float):
-        super().__init__('controller_node')
+        super().__init__('trajectory_planner_node')
 
         # Configure QoS profile according to PX4
         qos_profile = QoSProfile(
@@ -26,16 +26,16 @@ class ControllerNode(Node):
         )
 
         self.ned_enu_odom_sub = self.create_subscription(
-            NedEnuOdometry, '/telemetry_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
+            NedEnuOdometry, '/commander/out/ned_enu_odometry', self.odom_cb, qos_profile)
         self.commander_sub = self.create_subscription(
-            NedEnuOdometry, '/commander/out/controller_command', self.commander_cb, qos_profile)
-        self.controller_setpt_pub = self.create_publisher(
-            NedEnuSetpoint, '/commander/in/controller', qos_profile)
+            NedEnuOdometry, '/commander/out/trajectory_planner_command', self.commander_cb, qos_profile)
+        self.ned_enu_setpt_pub = self.create_publisher(
+            NedEnuSetpoint, '/commander/in/trajectory_planner_setpoint', qos_profile)
         
-        self.controller = self.init_controller(time_step)
+        self.planner = self.init_planner(time_step)
         self.is_ENU = is_ENU
         self.is_inertial = is_inertial
-        self.time_step = time_step                          # runtime for 1 mpc loop in seconds
+        self.time_step = time_step  # runtime for 1 mpc loop in seconds
         self.time_tracker = self.get_clock().now().nanoseconds 
 
         # the state vector consists of: x,y,z, roll,pitch,yaw, 
@@ -43,8 +43,8 @@ class ControllerNode(Node):
         self.curr_state = np.zeros(12, dtype=np.float32)
 
 
-    def init_controller(self, time_step):
-        ''' Any type of controller can be inserted into "init controller".
+    def init_planner(self, time_step):
+        ''' Any type of planner can be inserted into "init_planner".
             The resulting object must have a "get_next_state" function 
             with arguments of initial state, setpoint, and a 
             return type that is a 12-dimensional state vector.
@@ -59,7 +59,7 @@ class ControllerNode(Node):
         km = 1.858 * 10**(-5)
         nl_quad_model = derive_quad_dynamics(m,l,Ixx,Iyy,Izz,kf,km)
 
-        # initializing controller
+        # initializing mpc
         Q = np.diag([4,4,4, 2,2,2, 1,1,1, 1,1,1])
         R = 0.1 * np.diag([1,1,1,1] )
         mpc = SQP_NLMPC(
@@ -77,7 +77,7 @@ class ControllerNode(Node):
 
     def commander_cb(self, ned_enu_setpt):
         ''' Takes in the appropriate reference frame for the
-            setpoint, runs the controller, and publishes
+            setpoint, runs the planner, and publishes
             to the commander. Loops once every dt seconds.
         '''
         now = self.get_clock().now().nanoseconds 
@@ -85,9 +85,9 @@ class ControllerNode(Node):
 
         if dt >= self.time_step:
             setpoint = self.get_state_from_odometry(ned_enu_setpt)
-            next_state = self.controller.get_next_state(
+            next_state = self.planner.get_next_state(
                 x0=self.curr_state, x_set=setpoint, timer=True)
-            self.publish_controller_setpoint(next_state)
+            self.publish_planner_setpoint(next_state)
             self.time_tracker = self.get_clock().now().nanoseconds 
     
 
@@ -115,7 +115,7 @@ class ControllerNode(Node):
         return state
 
 
-    def publish_controller_setpoint(self, setpoint:np.ndarray):
+    def publish_planner_setpoint(self, setpoint:np.ndarray):
         ''' Assigns the next desired state vector to a setpoint message.
         '''
         assert len(setpoint) == 12
@@ -130,8 +130,8 @@ class ControllerNode(Node):
         msg.euler_angle_rate_setpoint = setpoint_f32[9:12]
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
-        self.controller_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing controller setpoint to commander.")
+        self.ned_enu_setpt_pub.publish(msg)
+        self.get_logger().info(f"Publishing planner setpoint to commander.")
         
 
 def main(args=None):
@@ -139,9 +139,9 @@ def main(args=None):
     is_inertial = True
     time_step = 0.1     # seconds
 
-    print('Starting controller node...')
+    print('Starting trajectory planner node...')
     rclpy.init(args=args)
-    node = ControllerNode(is_ENU, is_inertial, time_step)
+    node = TrajectoryPlannerNode(is_ENU, is_inertial, time_step)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
