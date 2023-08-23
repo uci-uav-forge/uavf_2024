@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(px4_offboard_mpc)
 
+
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
@@ -22,28 +23,8 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(px4_msgs REQUIRED)
+find_package(uavf_ros2_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
-
-
-# message generation
-find_package(rosidl_default_generators REQUIRED)
-set(msg_files
-  "msg/GpsAltitudePosition.msg"
-  "msg/NedEnuSetpoint.msg"
-  "msg/NedEnuOdometry.msg"
-  "msg/CommanderOutput.msg"
-  "msg/NedEnuWaypoint.msg"
-)
-set(srv_files
-)
-rosidl_generate_interfaces(${PROJECT_NAME}
-  ${msg_files}
-  ${srv_files}
-)
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION include/${PROJECT_NAME}
-)
-ament_export_dependencies(rosidl_default_runtime)
 
 
 include_directories(include)
@@ -56,13 +37,11 @@ include_directories(include)
 #  DESTINATION lib/${PROJECT_NAME}
 #)
 
-ament_python_install_package(${PROJECT_NAME})
-
 # Install Python executables
+ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
-  scripts/telemetry_interface_node.py
   scripts/commander_node.py
-  scripts/controller_node.py
+  scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -83,5 +62,6 @@ if(BUILD_TESTING)
     )
   endforeach()
 endif()
+
 
 ament_package()
