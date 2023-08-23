@@ -5,12 +5,13 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRatesSetpoint,\
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleOdometry, VehicleGlobalPosition
-from uavf_ros2_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuSetpoint
+from uavf_ros2_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuSetpoint, NedEnuWaypoint
 
-from px4_offboard_mpc.ned_enu_conversions import convert_NED_ENU_in_inertial, convert_NED_ENU_in_body, \
-    convert_body_to_inertial_frame, convert_inertial_to_body_frame
+from px4_offboard_mpc.conversions import convert_quaternion_to_euler_angles, convert_NED_ENU_in_inertial,\
+    convert_NED_ENU_in_body, convert_body_to_inertial_frame, convert_inertial_to_body_frame
 import numpy as np
 from scipy.spatial.transform import Rotation
+
 
 class CommanderNode(Node):
     ''' Receives input from every ongoing process.
@@ -19,7 +20,8 @@ class CommanderNode(Node):
 
     def __init__(self):
         super().__init__('commander_node')
-
+        ''' Initialize publishers, subscribers, and class attributes.
+        '''
         # Configure QoS profile according to PX4
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -28,28 +30,27 @@ class CommanderNode(Node):
             depth=1
         )
 
+
         ''' This section talks to our ROS network '''
         # publisher for gps and altitude feedback in desired format
         self.gps_alt_pub = self.create_publisher(
-            GpsAltitudePosition, '/commander/out/gps_altitude_position', qos_profile)
+            GpsAltitudePosition, '/commander/gps_altitude_position', qos_profile)
         # publisher position, velocity, angle, and angle rate feedback in desired format
         self.ned_enu_odom_pub = self.create_publisher(
-            NedEnuOdometry, '/commander/out/ned_enu_odometry', qos_profile)
+            NedEnuOdometry, '/commander/ned_enu_odometry', qos_profile)
+        # tell the trajectory planner where to plan for
+        self.traj_plan_pub = self.create_publisher(
+            NedEnuOdometry, '/commander/trajectory_planner_command', qos_profile)
         
-        self.ned_enu_setpt_sub = self.create_publisher(
-            NedEnuSetpoint, '/commander/in/trajectory_planner_setpoint', qos_profile
+        # subscribe to topics owned by slave process nodes
+        self.traj_plan_sub = self.create_subscription(
+            NedEnuSetpoint, '/trajectory_planner/ned_enu_setpoint', self.traj_plan_cb, qos_profile)
+        self.wp_tracker_sub = self.create_subscription(
+            NedEnuWaypoint, '/waypoint_tracker/ned_enu_waypoint', self.wp_tracker_cb, qos_profile
         )
-
-
+        
+        
         ''' This section talks to PX4 '''
-        # subscribers for px4 status, global position, and odometry (NED)
-        self.status_sub = self.create_subscription(
-            VehicleStatus, '/fmu/out/vehicle_status', self.status_cb, qos_profile)
-        self.global_pos_sub = self.create_subscription(
-            VehicleGlobalPosition, '/fmu/out/vehicle_global_position', self.global_pos_cb, qos_profile)
-        self.odom_sub = self.create_subscription(
-            VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
-
         # publishers for heartbeat and commands to px4
         self.offboard_ctrl_mode_pub = self.create_publisher(
             OffboardControlMode, '/fmu/in/offboard_control_mode', qos_profile)
@@ -64,6 +65,18 @@ class CommanderNode(Node):
         self.rate_setpt_pub = self.create_publisher(
             VehicleRatesSetpoint, 'fmu/in/vehicle_rates_setpoint', qos_profile)
         
+        # subscribers for px4 status, global position, and odometry (NED)
+        self.status_sub = self.create_subscription(
+            VehicleStatus, '/fmu/out/vehicle_status', self.status_cb, qos_profile)
+        self.global_pos_sub = self.create_subscription(
+            VehicleGlobalPosition, '/fmu/out/vehicle_global_position', self.global_pos_cb, qos_profile)
+        self.odom_sub = self.create_subscription(
+            VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
+        
+        self.traj_planner_is_ENU = True
+        self.all_wp_reached = False
+        self.waypoint_is_ENU = False
+        self.waypoint = np.zeros(3, dtype=np.float32)
         self.status = VehicleStatus()
 
         '''
@@ -74,6 +87,40 @@ class CommanderNode(Node):
         self.timer = self.create_timer(0.1, self.timer_cb)
         '''
     
+    
+    def make_decision(self):
+        ''' Reads in class attributes that are updated by worker processes.
+            Publishes the offboard control heartbeat. Arrives at a decision 
+            based on an arbitrarily defined switch state.
+        '''
+        self.publish_heartbeat()
+        if not self.all_wp_reached:
+            self.publish_trajectory_planner_command(self, self.waypoint, self.waypoint_is_ENU)
+        else:
+            self.land()
+            self.disarm()
+
+    
+    def traj_plan_cb(self, ned_enu_setpt):
+        ''' Reads the setpoint calculated by the trajectory planner
+            and publishes the corresponding setpoints to PX4.
+            Incomplete.
+        '''
+        self.traj_planner_is_ENU = ned_enu_setpt.is_enu
+        pass
+    
+
+    def wp_tracker_cb(self, ned_enu_wp):
+        ''' Gets the "NED-ENU-ness" of the waypoint tracker
+            and the waypoint to go to.
+        '''
+        if not ned_enu_wp.all_waypoints_reached:
+            self.waypoint_is_ENU = ned_enu_wp.is_enu
+            self.waypoint = ned_enu_wp.position_waypoint
+        else:
+            self.destroy_subscription(self.wp_tracker_sub)
+            self.all_wp_reached = ned_enu_wp.all_waypoints_reached
+
 
     def status_cb(self, status):
         ''' Updates status, might use this in a future feature.
@@ -95,8 +142,7 @@ class CommanderNode(Node):
         pos_ned = np.float32(odom.position)
         vel_ned = np.float32(odom.velocity)
         quat_ned = np.float32(odom.q)
-        rot = Rotation.from_quat(quat_ned)
-        ang_ned = np.float32(rot.as_euler('xyz'))
+        ang_ned = convert_quaternion_to_euler_angles(quat_ned)
         body_ang_rate_ned = np.float32(odom.angular_velocity)
         inertial_ang_rate_ned = convert_body_to_inertial_frame(body_ang_rate_ned, ang_ned)
         odom_ned_list = [pos_ned, vel_ned, ang_ned, body_ang_rate_ned, inertial_ang_rate_ned]
@@ -112,6 +158,58 @@ class CommanderNode(Node):
         # publish the odometries
         self.publish_ned_enu_odometry_feedback(odom_ned_list, odom_enu_list)
     
+
+    def publish_trajectory_planner_command(self, pos_decision:np.ndarray, pos_is_ENU:bool):
+        ''' Publishes position command to the trajectory planner after
+            arriving at a decision. Converts between NED and ENU depending
+            on the the "NED-ENU-ness" of the waypoint tracker.
+        '''
+        if not pos_is_ENU:
+            # getting ned states
+            pos_ned = np.float32(pos_decision)
+            vel_ned = np.zeros(3, dtype=np.float32)
+            '''NEED TO ADD IN FEATURE FOR CALCULATING YAW'''
+            ang_ned = np.float32([0, 0, 0]) 
+            body_ang_rate_ned = np.zeros(3, dtype=np.float32)
+            inertial_ang_rate_ned = np.zeros(3, dtype=np.float32)
+            # getting enu states
+            pos_enu = convert_NED_ENU_in_inertial(pos_ned)
+            vel_enu = np.zeros(3, dtype=np.float32)
+            ang_enu = convert_NED_ENU_in_inertial(ang_ned)
+            body_ang_rate_enu = np.zeros(3, dtype=np.float32)
+            inertial_ang_rate_enu = np.zeros(3, dtype=np.float32)
+
+        else:
+            pos_enu = np.float32(pos_decision)
+            vel_enu = np.zeros(3, dtype=np.float32)
+            '''NEED TO ADD IN FEATURE FOR CALCULATING YAW'''
+            ang_enu = np.float32([0, 0, 0]) 
+            body_ang_rate_enu = np.zeros(3, dtype=np.float32)
+            inertial_ang_rate_enu = np.zeros(3, dtype=np.float32)
+            # getting enu states
+            pos_ned = convert_NED_ENU_in_inertial(pos_ned)
+            vel_ned = np.zeros(3, dtype=np.float32)
+            ang_ned = convert_NED_ENU_in_inertial(ang_ned)
+            body_ang_rate_ned = np.zeros(3, dtype=np.float32)
+            inertial_ang_rate_ned = np.zeros(3, dtype=np.float32)
+        
+        msg = NedEnuOdometry()
+        msg.position_ned = pos_ned
+        msg.velocity_ned = vel_ned
+        msg.euler_angle_ned = ang_ned
+        msg.body_angle_rate_ned = body_ang_rate_ned
+        msg.inertial_angle_rate_ned = inertial_ang_rate_ned
+
+        msg.position_enu = pos_enu
+        msg.velocity_enu = vel_enu
+        msg.euler_angle_enu = ang_enu
+        msg.body_angle_rate_enu = body_ang_rate_enu
+        msg.inertial_angle_rate_enu = inertial_ang_rate_enu
+        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+        self.traj_plan_pub.publish(msg)
+        self.get_logger().info(f"Publishing NED and ENU command to trajectory planner.")
+
 
     def publish_gps_altitude_feedback(self, global_pos_msg:VehicleGlobalPosition):
         ''' Publishes latitude, longitude in degrees; altitude in meters (ASML)
@@ -173,20 +271,6 @@ class CommanderNode(Node):
 
         self.traj_setpt_pub.publish(msg)
         self.get_logger().info(f"Publishing trajectory setpoint.")
-    
-
-    def publish_quaternion_NED_setpoint(self, q_NED:np.ndarray):
-        ''' Publish 4D quaternion attitude setpoint. 
-        '''
-        assert len(q_NED) == 4
-        q_NED_f32 = np.float32(q_NED)
-
-        msg = VehicleAttitudeSetpoint()
-        msg.q_d = q_NED_f32
-        msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-
-        self.att_setpt_pub.publish(msg)
-        self.get_logger().info(f"Publishing quaternion attitude setpoint.")
 
 
     def publish_euler_angle_setpoint(self, ang:np.ndarray, is_ENU):
@@ -232,7 +316,7 @@ class CommanderNode(Node):
         self.get_logger().info(f"Publishing euler angle rates setpoint.")
     
     
-    def publish_offboard_control_mode(self) -> None:
+    def publish_heartbeat(self) -> None:
         ''' Enables and disables the desired states to be controlled.
             Serves as the heartbeat to maintain offboard control, must keep publishing this. 
             May parameterize its options in the constructor in the future.
@@ -295,7 +379,7 @@ class CommanderNode(Node):
     """
     def timer_cb(self) -> None:
         '''Callback function for the timer.'''
-        self.publish_offboard_control_mode()
+        self.publish_heartbeat()
 
         if self.offboard_setpoint_counter == 10:
             self.engage_offboard_mode()
