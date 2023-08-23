@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-from px4_offboard_mpc.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuWaypoint
+from uavf_ros2_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuWaypoint
 
 import numpy as np
 import json
@@ -29,7 +29,7 @@ class WaypointTrackerNode(Node):
         )
 
         self.ned_enu_odom_sub = self.create_subscription(
-            NedEnuOdometry, '/telemetry_interface/out/ned_enu_odometry', self.odom_cb, qos_profile)
+            NedEnuOdometry, '/commander/out/ned_enu_odometry', self.odom_cb, qos_profile)
         self.waypoint_pub = self.create_publisher(
             NedEnuWaypoint, '/commander/in/waypoint_tracker', qos_profile)
         
