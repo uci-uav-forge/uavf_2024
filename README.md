@@ -132,6 +132,7 @@
 	```
 	cd ros2_ws/src
 	git clone https://github.com/PX4/px4_msgs.git
+	git clone git@github.com:uci-uav-forge/uavf_ros2_msgs.git
 	cd ..
 	source /opt/ros/foxy/setup.bash
 	```
