@@ -1,4 +1,16 @@
 import numpy as np
+from scipy.spatial.transform import Rotation
+
+
+def convert_quaternion_to_euler_angles(quat:np.ndarray) -> np.ndarray:
+    ''' Converts an orientation represented as a quaternion into a
+        3D vector of Euler angles.
+    '''
+    assert len(quat) == 4
+    rot = Rotation.from_quat(quat)
+    eul_ang = np.float32(rot.as_euler('xyz'))
+    return eul_ang
+
 
 def convert_NED_ENU_in_inertial(x) -> np.ndarray:
     ''' Converts a state between NED or ENU inertial frames.
