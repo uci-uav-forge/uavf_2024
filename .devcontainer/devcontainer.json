@@ -1,0 +1,23 @@
+{
+    "name": "UAV Forge ROS 2 Development Container",
+    "privileged": true,
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "workspaceFolder": "/home/ws/uavf_2024",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/home/ws/uavf_2024,type=bind",
+    "containerEnv": {
+        "DISPLAY": "unix:0",
+        "ROS_LOCALHOST_ONLY": "1",
+        "ROS_DOMAIN_ID": "42"
+    },
+    "runArgs": [
+        "--net=host",
+        "-e", "DISPLAY=${env:DISPLAY}"
+    ],
+    "mounts": [
+        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached",
+        "source=/dev/dri,target=/dev/dri,type=bind,consistency=cached"
+    ],
+    "postCreateCommand": "echo 'source /opt/ros/foxy/setup.sh' > /root/.bashrc"
+}

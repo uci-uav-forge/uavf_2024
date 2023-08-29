@@ -18,7 +18,21 @@
 
 ## Install instructions
 
-### [ROS 2 Foxy for Ubuntu 20.04 Focal](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html)
+### Dev container
+
+1. Open this project in vscode
+2. Install the "Dev Containers" extension
+3. Open the command pallete (ctrl-shift-p), then search for and execute "Dev Containers: (Re-)build and Reopen in Container"
+4. Congratulations, you get to skip all those tedious steps to install ROS 2 manually, and your environment is isolated from the rest of your computer
+5. To make downloading dependencies reproducible, add any important software installation steps to the Dockerfile in this repo.
+6. To use git inside the docker container, you may have to manually log in to GitHub again if the built-in credential forwarding isn't working. I recommend using the [GitHub CLI](https://cli.github.com/) to do this.
+
+I copied a lot of the config from this tutorial: https://docs.ros.org/en/foxy/How-To-Guides/Setup-ROS-2-with-VSCode-and-Docker-Container.html
+
+
+### Manual
+
+#### [ROS 2 Foxy for Ubuntu 20.04 Focal](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html)
 
 1. Uninstall ROS Noetic.
 	```
