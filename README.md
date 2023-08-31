@@ -18,6 +18,16 @@
 
 ## Install instructions
 
+### Install required and local Python libraries
+
+1. cd into this repo's root directory.
+
+2. Run:
+	```
+	pip install -e .
+	```
+
+
 ### [ROS 2 Foxy for Ubuntu 20.04 Focal](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html)
 
 1. Uninstall ROS Noetic.
@@ -159,13 +169,3 @@
 1. [Follow these instructions to install Acados.](https://docs.acados.org/installation/)
 
 2. [Install the Python interface afterwards.](https://docs.acados.org/python_interface/index.html)
-
-
-### Install required and local Python libraries (again, for MPC usage)
-
-1. cd into this repo's root directory.
-
-2. Run:
-	```
-	pip install -e .
-	```
