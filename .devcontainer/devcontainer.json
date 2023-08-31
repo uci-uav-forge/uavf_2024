@@ -1,6 +1,13 @@
 {
     "name": "UAV Forge ROS 2 Development Container",
     "privileged": true,
+    "features": {
+        "desktop-lite": {
+            "password": "vscode",
+            "webPort": 6080,
+            "vncPort": 5901
+        }
+    },
     "build": {
         "dockerfile": "Dockerfile"
     },
@@ -14,10 +21,6 @@
     "runArgs": [
         "--net=host",
         "-e", "DISPLAY=${env:DISPLAY}"
-    ],
-    "mounts": [
-        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached",
-        "source=/dev/dri,target=/dev/dri,type=bind,consistency=cached"
     ],
     "postCreateCommand": "echo 'source /opt/ros/foxy/setup.sh' > /root/.bashrc"
 }
