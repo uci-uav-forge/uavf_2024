@@ -1,4 +1,4 @@
-# Sample repository showcasing model predictive control with PX4's offboard mode and ROS 2.
+# UAV Forge's ROS2 package for GN&C and Aerial Imagery Object Detection.
 
 
 ## Usage
