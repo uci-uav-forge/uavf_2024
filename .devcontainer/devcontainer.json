@@ -4,8 +4,7 @@
     "features": {
         "desktop-lite": {
             "password": "vscode",
-            "webPort": 6080,
-            "vncPort": 5901
+            "webPort": 6080
         }
     },
     "build": {
@@ -21,6 +20,9 @@
     "runArgs": [
         "--net=host",
         "-e", "DISPLAY=${env:DISPLAY}"
+    ],
+    "forwardPorts": [
+        6080
     ],
     "postCreateCommand": "echo 'source /opt/ros/foxy/setup.sh' > /root/.bashrc"
 }
