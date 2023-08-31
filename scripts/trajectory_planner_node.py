@@ -5,7 +5,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from uavf_ros2_msgs.msg import NedEnuOdometry, NedEnuSetpoint
 
-from uavf_2024.sqp_nlmpc import derive_quad_dynamics, SQP_NLMPC
+from uavf_2024.gnc.sqp_nlmpc import derive_quad_dynamics, SQP_NLMPC
 import numpy as np
 import atexit
 

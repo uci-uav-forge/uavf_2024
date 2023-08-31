@@ -7,7 +7,7 @@ from px4_msgs.msg import TrajectorySetpoint, VehicleAttitudeSetpoint, VehicleRat
     OffboardControlMode,  VehicleCommand, VehicleStatus, VehicleOdometry, VehicleGlobalPosition
 from uavf_ros2_msgs.msg import GpsAltitudePosition, NedEnuOdometry, NedEnuSetpoint, NedEnuWaypoint
 
-from uavf_2024.conversions import convert_quaternion_to_euler_angles, convert_NED_ENU_in_inertial,\
+from uavf_2024.gnc.conversions import convert_quaternion_to_euler_angles, convert_NED_ENU_in_inertial,\
     convert_NED_ENU_in_body, convert_body_to_inertial_frame, convert_inertial_to_body_frame
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -74,7 +74,7 @@ class CommanderNode(Node):
             VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_cb, qos_profile)
         
 
-        self.traj_planner_is_ENU = True
+        #self.traj_planner_is_ENU = True
         self.all_wp_reached = False
         self.waypoint_is_ENU = False
         self.waypoint = np.zeros(3, dtype=np.float32)
@@ -88,7 +88,9 @@ class CommanderNode(Node):
         '''
         self.publish_heartbeat()
         if not self.all_wp_reached:
-            self.publish_trajectory_planner_command(self, self.waypoint, self.waypoint_is_ENU)
+            self.publish_trajectory_planner_command(
+                pos_decision=self.waypoint, 
+                pos_is_ENU=self.waypoint_is_ENU)
         else:
             self.land()
             self.disarm()
@@ -97,11 +99,20 @@ class CommanderNode(Node):
     def traj_plan_cb(self, ned_enu_setpt:NedEnuSetpoint) -> None:
         ''' Reads the setpoint calculated by the trajectory planner
             and publishes the corresponding setpoints to PX4.
-            Incomplete.
         '''
-        # assert something
-        self.traj_planner_is_ENU = ned_enu_setpt.is_enu
-        pass
+        #self.traj_planner_is_ENU = ned_enu_setpt.is_enu
+        self.publish_trajectory_setpoint(
+            pos=ned_enu_setpt.position_setpoint, 
+            vel=ned_enu_setpt.velocity_setpoint, 
+            is_ENU=ned_enu_setpt.is_enu)
+        self.publish_euler_angle_setpoint(
+            ang=ned_enu_setpt.euler_angle_setpoint, 
+            is_ENU=ned_enu_setpt.is_enu)
+        self.publish_euler_angle_rate_setpoint(
+            ang_rate=ned_enu_setpt.euler_angle_rate_setpoint, 
+            is_ENU=ned_enu_setpt.is_enu, 
+            is_inertial=ned_enu_setpt.is_inertial
+        )
     
 
     def wp_tracker_cb(self, ned_enu_wp:NedEnuWaypoint) -> None:
@@ -110,7 +121,7 @@ class CommanderNode(Node):
         '''
         if not ned_enu_wp.all_waypoints_reached:
             self.waypoint_is_ENU = ned_enu_wp.is_enu
-            self.waypoint = ned_enu_wp.position_waypoint
+            self.waypoint = np.float32(ned_enu_wp.position_waypoint)
         else:
             self.destroy_subscription(self.wp_tracker_sub)
             self.all_wp_reached = ned_enu_wp.all_waypoints_reached
@@ -265,8 +276,8 @@ class CommanderNode(Node):
         vel_f32 = np.float32(vel)
 
         if is_ENU:
-            pos_f32 = self.convert_NED_ENU_in_inertial(pos_f32)
-            vel_f32 = self.convert_NED_ENU_in_inertial(vel_f32)
+            pos_f32 = convert_NED_ENU_in_inertial(pos_f32)
+            vel_f32 = convert_NED_ENU_in_inertial(vel_f32)
 
         msg = TrajectorySetpoint()
         msg.position = pos_f32
@@ -286,7 +297,7 @@ class CommanderNode(Node):
         assert type(is_ENU) == bool
         ang_f32 = np.float32(ang)
         if is_ENU:
-            ang_f32 = self.convert_NED_ENU_in_inertial(ang_f32)
+            ang_f32 = convert_NED_ENU_in_inertial(ang_f32)
         
         msg = VehicleAttitudeSetpoint()
         msg.roll_body = ang_f32[0]
@@ -309,9 +320,9 @@ class CommanderNode(Node):
         assert type(is_inertial) == bool
         ang_rate_f32 = np.float32(ang_rate)
         if is_ENU:
-            ang_rate_f32 = self.convert_NED_ENU_in_body(ang_rate_f32)
+            ang_rate_f32 = convert_NED_ENU_in_body(ang_rate_f32)
         if is_inertial:
-            ang_rate_f32 = self.convert_inertial_to_body_frame(ang_rate_f32, is_ENU=is_ENU)
+            ang_rate_f32 = convert_inertial_to_body_frame(ang_rate_f32, is_ENU=is_ENU)
         
         msg = VehicleRatesSetpoint()
         msg.roll = ang_rate_f32[0]
