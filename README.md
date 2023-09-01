@@ -143,6 +143,7 @@
 	cd ros2_ws/src
 	git clone https://github.com/PX4/px4_msgs.git
 	git clone git@github.com:uci-uav-forge/uavf_ros2_msgs.git
+ 	git clone git@github.com:uci-uav-forge/uavf_2024.git
 	cd ..
 	source /opt/ros/foxy/setup.bash
 	```
@@ -160,7 +161,7 @@
 
 4. Test it out with an example
 	```
-	ros2 launch px4_offboard_mpc telemetry_interface_node.py
+	ros2 launch uavf_2024 commander_node.py
 	```
 
 
