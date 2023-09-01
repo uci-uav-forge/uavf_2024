@@ -161,7 +161,7 @@
 
 4. Test it out with an example
 	```
-	ros2 launch uavf_2024 commander_node.py
+	ros2 run uavf_2024 commander_node.py
 	```
 
 
