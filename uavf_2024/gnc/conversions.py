@@ -7,7 +7,8 @@ def convert_quaternion_to_euler_angles(quat:np.ndarray) -> np.ndarray:
         3D vector of Euler angles.
     '''
     assert len(quat) == 4
-    rot = Rotation.from_quat(quat)
+    formatted_quat = np.array([quat[1], quat[2], quat[3], quat[0]])
+    rot = Rotation.from_quat(formatted_quat)
     eul_ang = np.float32(rot.as_euler('xyz'))
     return eul_ang
 
