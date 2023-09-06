@@ -25,7 +25,8 @@ def convert_NED_ENU_in_inertial(x) -> np.ndarray:
 
 def convert_NED_ENU_in_body(x) -> np.ndarray:
     ''' Converts a state between NED or ENU body frames.
-        (More formally known as FRD or RLU body frames)
+        (More formally known as FRD or FLU body frames.
+        https://docs.px4.io/main/en/ros/ros2_comm.html#ros-2-px4-frame-conventions)
         This operation is commutative. 
     '''
     assert len(x) == 3
