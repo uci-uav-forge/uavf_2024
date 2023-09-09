@@ -7,7 +7,8 @@ def convert_quaternion_to_euler_angles(quat:np.ndarray) -> np.ndarray:
         3D vector of Euler angles.
     '''
     assert len(quat) == 4
-    rot = Rotation.from_quat(quat)
+    formatted_quat = np.array([quat[1], quat[2], quat[3], quat[0]])
+    rot = Rotation.from_quat(formatted_quat)
     eul_ang = np.float32(rot.as_euler('xyz'))
     return eul_ang
 
@@ -24,7 +25,8 @@ def convert_NED_ENU_in_inertial(x) -> np.ndarray:
 
 def convert_NED_ENU_in_body(x) -> np.ndarray:
     ''' Converts a state between NED or ENU body frames.
-        (More formally known as FRD or RLU body frames)
+        (More formally known as FRD or FLU body frames.
+        https://docs.px4.io/main/en/ros/ros2_comm.html#ros-2-px4-frame-conventions)
         This operation is commutative. 
     '''
     assert len(x) == 3
