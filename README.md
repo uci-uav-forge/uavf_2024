@@ -1,4 +1,4 @@
-# Sample repository showcasing model predictive control with PX4's offboard mode and ROS 2.
+# UAV Forge's ROS2 package for GN&C and Aerial Imagery Object Detection.
 
 
 ## Usage
@@ -17,6 +17,16 @@
 
 
 ## Install instructions
+
+### Install required and local Python libraries
+
+1. cd into this repo's root directory.
+
+2. Run:
+	```
+	pip install -e .
+	```
+
 
 ### Dev container
 
@@ -148,6 +158,7 @@ I copied a lot of the config from this tutorial: https://docs.ros.org/en/foxy/Ho
 	cd ros2_ws/src
 	git clone https://github.com/PX4/px4_msgs.git
 	git clone git@github.com:uci-uav-forge/uavf_ros2_msgs.git
+ 	git clone git@github.com:uci-uav-forge/uavf_2024.git
 	cd ..
 	source /opt/ros/foxy/setup.bash
 	```
@@ -165,7 +176,7 @@ I copied a lot of the config from this tutorial: https://docs.ros.org/en/foxy/Ho
 
 4. Test it out with an example
 	```
-	ros2 launch px4_offboard_mpc telemetry_interface_node.py
+	ros2 run uavf_2024 commander_node.py
 	```
 
 
@@ -174,13 +185,3 @@ I copied a lot of the config from this tutorial: https://docs.ros.org/en/foxy/Ho
 1. [Follow these instructions to install Acados.](https://docs.acados.org/installation/)
 
 2. [Install the Python interface afterwards.](https://docs.acados.org/python_interface/index.html)
-
-
-### Install required and local Python libraries (again, for MPC usage)
-
-1. cd into this repo's root directory.
-
-2. Run:
-	```
-	pip install -e .
-	```

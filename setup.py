@@ -11,6 +11,5 @@ setup(
         'scipy',
         'matplotlib',
         'casadi',
-        'acados_template',
     ]
 )
