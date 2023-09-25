@@ -16,9 +16,7 @@
 3. In a new terminal window, run your roslaunch or script.
 
 
-## Install instructions
-
-### Dockerized Setup
+## Docker Setup Instructions
 Create a local image running Ubuntu 22.04, ROS Humble, and PX4.
 
 This is the preferred setup method for local dev work.
@@ -36,11 +34,14 @@ docker build -t uavf2024 .
 docker pull t0mmyn/uavf_2024:latest
 ```
 
-2. Start it by running the script. It expects the `uavf_2024` and `uavf_ros2_msgs` directories to be cloned under the same parent repository and mounts them to the container.
+2. Start it by running the script. It expects the `uavf_2024` and `uavf_ros2_msgs` repositories to be cloned under the same parent directory and mounts them to the container.
+
 
 ```
 ./run_docker.sh
 ```
+
+To set up X forwarding (so GUI applications will work properly) install `xhost` if necessary and use `run_docker_gui.sh` instead. 
 
 You can start the Gazebo sim as follows once you are in the container:
 
@@ -52,8 +53,8 @@ cd /PX4-Autopilot/
 make px4_sitl gz_x500
 ```
 
-Still TODO is instructions for X forwarding so we can see Gazebo.
 
+## Manual Install Instructions
 
 ### Install required and local Python libraries
 
