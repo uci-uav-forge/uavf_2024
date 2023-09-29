@@ -26,7 +26,7 @@ Steps:
 1. Build the Docker image.
 
 ```
-docker build -t uavf2024 .
+docker build -t uavf_2024 .
 ```
 
 (Alternatively pull a copy of the image from docker hub, building it takes a while.)
@@ -46,11 +46,8 @@ To set up X forwarding (so GUI applications will work properly) install `xhost` 
 You can start the Gazebo sim as follows once you are in the container:
 
 ```
-# in one terminal
-MicroXRCEAgent udp4 -p 8888
-# in another terminal ...
-cd /PX4-Autopilot/
-make px4_sitl gz_x500
+source /root/ros2_ws/install/setup.bash
+ros2 launch ardupilot_gz_bringup iris_runway.launch.py
 ```
 
 
