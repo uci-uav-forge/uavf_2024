@@ -45,7 +45,6 @@ class ImageProcessor:
         img shape should be (channels, width, height)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
 
-        TODO: replace this with actual ML models and tiling
         '''
 
         tiles = self._split_to_tiles(img)
@@ -72,6 +71,7 @@ class ImageProcessor:
             w,h = only_letter_mask.shape
             zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
             zero_padded_letter_silhoutte[:w, :h]  = only_letter_mask
+            # TODO: also do batch processing for letter classification
             letter_conf = self.letter_classifier.predict(zero_padded_letter_silhoutte)
 
             shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
