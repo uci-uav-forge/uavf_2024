@@ -1,31 +1,93 @@
 import numpy as np
 from dataclasses import dataclass
-from imaging_types import Predictions
+import math
+from .imaging_types import FullPrediction,InstanceSegmentationResult
+from .letter_classification.LetterClassifier import LetterClassifier
+from .shape_detection.ShapeInstanceSegmentor import ShapeInstanceSegmentor
+from .color_segment import color_segmentation
+from .color_classify import ColorClassifier
+import itertools
+
+@dataclass
+class Tile:
+    img: np.ndarray
+    x: int
+    y: int
 
 class ImageProcessor:
     def __init__(self):
         '''
-        Initialize and warm-up all ML models here
+        Initialize all models here 
         '''
+        self.tile_size = 640
+        self.letter_size = 128
+        self.shape_detector = ShapeInstanceSegmentor(self.tile_size)
+        self.letter_classifier = LetterClassifier(self.letter_size)
+        self.color_classifier = ColorClassifier()
         pass
-    def process_image(img: np.ndarray) -> Predictions:
+
+    def _split_to_tiles(self, img: np.ndarray) -> list[Tile]:
+        h, w = img.shape[:2]
+        n_horizontal_tiles = math.ceil(w / self.tile_size)
+        n_vertical_tiles = math.ceil(h / self.tile_size)
+        all_tiles: list[Tile] = []
+        v_indices = np.linspace(0, h - self.tile_size, n_vertical_tiles).astype(int)
+        h_indices = np.linspace(0, w - self.tile_size, n_horizontal_tiles).astype(int)
+
+        for v, h in itertools.product(v_indices, h_indices):
+            tile = img[v:v + self.tile_size, h:h + self.tile_size]
+            all_tiles.append(Tile(tile, h, v))
+
+        return all_tiles
+
+    def process_image(self, img: np.ndarray) -> list[FullPrediction]:
         '''
         img shape should be (channels, width, height)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
 
         TODO: replace this with actual ML models and tiling
         '''
-        width, height = img.shape[1:]
 
+        tiles = self._split_to_tiles(img)
 
-        x = np.random.randint(0, width)
-        y = np.random.randint(0, height)
-        width = np.random.randint(30, 60)
-        height = np.random.randint(30, 60)
+        shape_results: list[InstanceSegmentationResult] = []
 
-        shape_confidences = np.random.rand(8)
-        letter_confidences = np.random.rand(36)
-        letter_color_confidences = np.random.rand(8)
-        shape_color_confidences = np.random.rand(8)
+        for tile in tiles:
+            # TODO re-implement batch processing
+            shapes_detected = self.shape_detector.predict(tile.img)
+            for shape in shapes_detected:
+                shape.x+=tile.x
+                shape.y+=tile.y
+                shape_results.append(shape)
 
-        return Predictions(x, y, width, height, shape_confidences, letter_confidences, shape_color_confidences, letter_color_confidences)
+        total_results: list[FullPrediction] = []
+
+        for res in shape_results:
+            shape_conf = res.confidences
+
+            img_black_bg = res.img * res.mask
+            color_seg_result = color_segmentation(img_black_bg)
+
+            only_letter_mask: np.ndarray = color_seg_result.mask * color_seg_result.mask==2
+            w,h = only_letter_mask.shape
+            zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
+            zero_padded_letter_silhoutte[:w, :h]  = only_letter_mask
+            letter_conf = self.letter_classifier.predict(zero_padded_letter_silhoutte)
+
+            shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
+            letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
+
+            total_results.append(
+                FullPrediction(
+                    res.x,
+                    res.y,
+                    res.width,
+                    res.height,
+                    shape_conf,
+                    letter_conf,
+                    shape_color_conf,
+                    letter_color_conf
+                )
+            )
+
+        return total_results
