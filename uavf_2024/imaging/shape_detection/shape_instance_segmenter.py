@@ -1,5 +1,5 @@
 from ultralytics import YOLO
-from ultralytics.engine.results import Results
+from ultralytics.engine.results import Results, Boxes
 import numpy as np
 from dataclasses import dataclass
 from ..imaging_types import InstanceSegmentationResult
@@ -25,18 +25,20 @@ class ShapeInstanceSegmenter:
         masks = single_pred.masks
         if masks is None:
             return []
-        boxes = single_pred.boxes
+        boxes: Boxes = single_pred.boxes
         full_results = []
         for box, mask, prob, cls in zip(boxes.xywh, masks.data, boxes.conf, boxes.cls):
             x,y,w,h = box.int()
+            x-=int(w/2) # adjust to make x,y the top left
+            y-=int(h/2)
             confidences = np.zeros(13) # TODO: change this to 8 for new model
             confidences[cls.int()] = prob
             full_results.append(
                 InstanceSegmentationResult(
-                    x=x,
-                    y=y,
-                    width=w,
-                    height=h,
+                    x=x.item(),
+                    y=y.item(),
+                    width=w.item(),
+                    height=h.item(),
                     confidences = confidences,
                     mask = mask[x:x+w, y:y+h].unsqueeze(2).numpy(),
                     img = img[x:x+w, y:y+h]
