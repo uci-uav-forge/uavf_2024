@@ -24,7 +24,6 @@ class ImageProcessor:
         self.shape_detector = ShapeInstanceSegmenter(self.tile_size)
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
-        pass
 
     def _split_to_tiles(self, img: np.ndarray) -> list[Tile]:
         h, w = img.shape[:2]
