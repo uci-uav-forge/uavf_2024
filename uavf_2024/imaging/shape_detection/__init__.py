@@ -1,0 +1,1 @@
+from .shape_instance_segmenter import ShapeInstanceSegmenter
