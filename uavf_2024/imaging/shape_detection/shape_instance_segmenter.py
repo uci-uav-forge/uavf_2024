@@ -8,7 +8,7 @@ import torch
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-class ShapeInstanceSegmentor:
+class ShapeInstanceSegmenter:
     def __init__(self, img_size):
         self.shape_model = YOLO(f"{CURRENT_FILE_PATH}/weights/seg-v8n.pt")
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
@@ -21,7 +21,6 @@ class ShapeInstanceSegmentor:
         TODO: refactor for batch processing
         '''
         raw_output: list[Results] = self.shape_model.predict(img)
-        rawer_output = self.shape_model.model(torch.Tensor(img).permute(2,0,1).unsqueeze(0))
         single_pred = raw_output[0]
         masks = single_pred.masks
         if masks is None:

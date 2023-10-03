@@ -2,10 +2,10 @@ import numpy as np
 from dataclasses import dataclass
 import math
 from .imaging_types import FullPrediction,InstanceSegmentationResult
-from .letter_classification.LetterClassifier import LetterClassifier
-from .shape_detection.ShapeInstanceSegmentor import ShapeInstanceSegmentor
-from .color_segment import color_segmentation
-from .color_classify import ColorClassifier
+from .letter_classification import LetterClassifier
+from .shape_detection import ShapeInstanceSegmenter
+from .color_segmentation import color_segmentation
+from .color_classification import ColorClassifier
 import itertools
 
 @dataclass
@@ -21,7 +21,7 @@ class ImageProcessor:
         '''
         self.tile_size = 640
         self.letter_size = 128
-        self.shape_detector = ShapeInstanceSegmentor(self.tile_size)
+        self.shape_detector = ShapeInstanceSegmenter(self.tile_size)
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
         pass
