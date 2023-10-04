@@ -91,7 +91,7 @@ class TestImagingFrontend(unittest.TestCase):
         self.image_processor = ImageProcessor()
 
     def test_runs_without_crashing(self):
-        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/test_dataset/images/image0.png")
+        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/fullsize_dataset/images/image0.png")
         res = self.image_processor.process_image(sample_input)
 
     def test_metrics(self):
