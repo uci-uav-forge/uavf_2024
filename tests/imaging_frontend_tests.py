@@ -43,12 +43,12 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.shape_color_confidences)))
                 letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.letter_color_confidences)))
 
-    recall = true_positives / len(ground_truth)
-    precision = true_positives / len(predictions)
-    shape_top1 = np.mean(shape_top_1_accuracies)
-    letter_top1 = np.mean(letter_top_1_accuracies)
-    shape_color_top1 = np.mean(shape_color_top_1_accuracies)
-    letter_color_top1 = np.mean(letter_color_top_1_accuracies)
+    recall = true_positives / len(ground_truth) if len(ground_truth)>0 else None
+    precision = true_positives / len(predictions) if len(predictions)>0 else None
+    shape_top1 = np.mean(shape_top_1_accuracies) if len(shape_top_1_accuracies)>0 else None
+    letter_top1 = np.mean(letter_top_1_accuracies) if len(letter_top_1_accuracies)>0 else None
+    shape_color_top1 = np.mean(shape_color_top_1_accuracies) if len(shape_color_top_1_accuracies)>0 else None
+    letter_color_top1 = np.mean(letter_color_top_1_accuracies) if len(letter_color_top_1_accuracies)>0 else None
 
     return (
         recall,
@@ -59,7 +59,32 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         letter_color_top1
     )
 
+def parse_dataset(imgs_path, labels_path) -> tuple[list[np.ndarray], list[list[FullPrediction]]]:
+    '''
+    ret_value[i] is the list of predictions for the ith image
+    ret_value[i][j] is the jth prediction for the ith image
+    '''
+    imgs = []
+    labels = []
+    for img_file_name in os.listdir(imgs_path):
+        img = cv.imread(f"{imgs_path}/{img_file_name}")
+        ground_truth: list[FullPrediction] = []
+        with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
+            for line in f.readlines():
+                label = line.split(' ')
+                shape, letter, shape_col, letter_col = map(int, label[:4])
+                box = np.array([float(v) for v in label[4:]])
+                box[[0,2]]*=img.shape[1]
+                box[[1,3]]*=img.shape[0]
+                box[[0,1]] -= box[[2,3]]/2 # adjust xy to be top-left
+                x,y,w,h = box.astype(int)
 
+                ground_truth.append(FullPrediction(
+                    x,y,w,h,np.eye(13)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
+                ))
+        imgs.append(img)
+        labels.append(ground_truth)
+    return (imgs, labels)
 
 class TestImagingFrontend(unittest.TestCase):
     def setUp(self) -> None:
@@ -70,38 +95,37 @@ class TestImagingFrontend(unittest.TestCase):
         res = self.image_processor.process_image(sample_input)
 
     def test_metrics(self):
-        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/test_dataset/images/image0.png")
-        predictions = self.image_processor.process_image(sample_input)
-        visualize_predictions(sample_input, predictions, "preds")
-        ground_truth: list[FullPrediction] = []
-        with open(f"{CURRENT_FILE_PATH}/test_dataset/labels/image0.txt", "r") as f:
-            for line in f.readlines():
-                label = line.split(' ')
-                shape, letter, shape_col, letter_col = map(int, label[:4])
-                box = np.array([float(v) for v in label[4:]])
-                box[[0,2]]*=sample_input.shape[1]
-                box[[1,3]]*=sample_input.shape[0]
-                box[[0,1]] -= box[[2,3]]/2 # adjust xy to be top-left
-                x,y,w,h = box.astype(int)
-
-                ground_truth.append(FullPrediction(
-                    x,y,w,h,np.eye(13)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
-                ))
-
-        visualize_predictions(sample_input, ground_truth, "ground_truth")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/tile_dataset/images", f"{CURRENT_FILE_PATH}/tile_dataset/labels")
         
-        (
-            recall,
-            precision,
-            shape_top1,
-            letter_top1,
-            shape_color_top1,
-            letter_color_top1
-        ) = calc_metrics(predictions, ground_truth)
+        recalls = []
+        precisions = []
+        shape_top1s = []
+        letter_top1s = []
+        shape_color_top1s = []
+        letter_color_top1s = []
 
-        print(f"Recall: {recall}")
-        print(f"Precision: {precision}")
-        print(f"Shape top 1 acc: {shape_top1}")
-        print(f"Letter top 1 acc: {letter_top1}")
-        print(f"Shape color top 1 acc: {shape_color_top1}")
-        print(f"Letter color top 1 acc: {letter_color_top1}")
+        for img, ground_truth in zip(imgs, labels):
+            predictions = self.image_processor.process_image(img)
+
+            (
+                recall,
+                precision,
+                shape_top1,
+                letter_top1,
+                shape_color_top1,
+                letter_color_top1
+            ) = calc_metrics(predictions, ground_truth) 
+            
+            for metric, aggregate in zip(
+                [recall, precision, shape_top1, letter_top1, shape_color_top1, letter_color_top1],
+                [recalls, precisions, shape_top1s, letter_top1s, shape_color_top1s, letter_color_top1s]
+            ):
+                if not metric is None:
+                    aggregate.append(metric)
+
+        print(f"Recall: {np.mean(recalls)}")
+        print(f"Precision: {np.mean(precisions)}")
+        print(f"Shape top 1 acc: {np.mean(shape_top1s)}")
+        print(f"Letter top 1 acc: {np.mean(letter_top1s)}")
+        print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
+        print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
