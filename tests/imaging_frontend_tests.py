@@ -11,7 +11,8 @@ import os
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction]):
-    true_positives = 0
+    true_positives = 0 # how many predictions were on top of a ground-truth box
+    targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
     shape_top_1_accuracies = []
     letter_top_1_accuracies = []
     shape_color_top_1_accuracies = []
@@ -30,6 +31,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         shape_col = np.argmax(truth.shape_color_confidences)
         letter_col = np.argmax(truth.letter_color_confidences)
 
+        this_target_was_detected = False
         for pred in predictions:
             pred_box = np.array([[
                 pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
@@ -38,12 +40,16 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
             iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
             if iou>0.1:
                 true_positives+=1
+                this_target_was_detected = True
                 shape_top_1_accuracies.append(int(shape == np.argmax(pred.shape_confidences)))
                 letter_top_1_accuracies.append(int(letter == np.argmax(pred.letter_confidences)))
                 shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.shape_color_confidences)))
                 letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.letter_color_confidences)))
 
-    recall = true_positives / len(ground_truth) if len(ground_truth)>0 else None
+        if this_target_was_detected:
+            targets_detected+=1
+
+    recall = targets_detected / len(ground_truth) if len(ground_truth)>0 else None
     precision = true_positives / len(predictions) if len(predictions)>0 else None
     shape_top1 = np.mean(shape_top_1_accuracies) if len(shape_top_1_accuracies)>0 else None
     letter_top1 = np.mean(letter_top_1_accuracies) if len(letter_top_1_accuracies)>0 else None
