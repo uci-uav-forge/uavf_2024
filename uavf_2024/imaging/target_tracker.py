@@ -5,7 +5,7 @@ import numpy as np
 
 class TargetTracker:
     def __init__(self):
-        self.targets: list[Target3D] = []
+        self._targets: list[Target3D] = []
 
     def update_with_new_data(self, new_preds: list[tuple[FullPrediction,np.ndarray]]):
         '''
@@ -25,9 +25,9 @@ class TargetTracker:
         Finds closest tracked target to the description using the class probabilities.
         Multiplies together P(class==target_class) for all 4 labels, which should be the mathematically correct way to do this, since desc==target_desc means shape_class==target_shape_class AND letter_class==target_letter_class AND ... etc.
         '''
-        best_match, best_score = self.targets[0], 0
+        best_match, best_score = self._targets[0], 0
 
-        for target in self.targets:
+        for target in self._targets:
             shape_score = target.shape_probs[target_desc.shape]
             letter_score = target.letter_probs[target_desc.letter]
             shape_color_score = target.shape_col_probs[target_desc.shape_color]
@@ -39,3 +39,6 @@ class TargetTracker:
                 best_score = new_score
 
         return best_match
+
+    def get_all_targets(self):
+        return self._targets
