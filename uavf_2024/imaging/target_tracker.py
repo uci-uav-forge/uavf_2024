@@ -1,5 +1,5 @@
 from .imaging_types import FullPrediction, Target3D, TargetDescription
-from dataclasses import dataclass
+from .utils import calc_match_score
 import numpy as np
 
 
@@ -28,12 +28,7 @@ class TargetTracker:
         best_match, best_score = self._targets[0], 0
 
         for target in self._targets:
-            shape_score = target.shape_probs[target_desc.shape]
-            letter_score = target.letter_probs[target_desc.letter]
-            shape_color_score = target.shape_col_probs[target_desc.shape_color]
-            letter_color_score = target.letter_col_probs[target_desc.letter_color]
-
-            new_score = shape_score * letter_score * shape_color_score * letter_color_score
+            new_score = calc_match_score(target_desc, target)
             if new_score > best_score:
                 best_match = target
                 best_score = new_score
