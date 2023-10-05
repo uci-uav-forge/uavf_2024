@@ -44,4 +44,8 @@ RUN apt update
 RUN rosdep update
 RUN rosdep install --rosdistro ${ROS_DISTRO} --from-paths src -i -r -y
 RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --cmake-args -DBUILD_TESTING=ON"
+
+RUN echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
+RUN echo 'source /root/ros2_ws/install/setup.bash' >> ~/.bashrc
+
 CMD ["bash"]

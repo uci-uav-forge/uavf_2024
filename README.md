@@ -29,11 +29,6 @@ Steps:
 docker build -t uavf_2024 .
 ```
 
-(Alternatively pull a copy of the image from docker hub, building it takes a while.)
-```
-docker pull t0mmyn/uavf_2024:latest
-```
-
 2. Start it by running the script. It expects the `uavf_2024` and `uavf_ros2_msgs` repositories to be cloned under the same parent directory and mounts them to the container.
 
 
