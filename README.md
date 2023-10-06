@@ -23,10 +23,12 @@ This is the preferred setup method for local dev work.
 
 Steps:
 
-1. Build the Docker image.
+1. Build the Docker image, or pull it as building takes a long time.
 
 ```
 docker build -t uavf_2024 .
+# Alternatively....
+docker pull t0mmyn/uavf_2024
 ```
 
 2. Start it by running the script. It expects the `uavf_2024` and `uavf_ros2_msgs` repositories to be cloned under the same parent directory and mounts them to the container.
