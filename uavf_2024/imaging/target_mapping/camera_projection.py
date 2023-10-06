@@ -46,7 +46,7 @@ class Camera_Projection:
     if ret <= 0:
       print('UNSUCCESSFUL CALIBRATION, NOT SETTING INSTRINICS')
     else:
-      print('SUCCESSFUL CALIBRATION SETTING INSTRINICS")
+      print("SUCCESSFUL CALIBRATION SETTING INSTRINICS")
       #self.instrinics = intrinsics_matrix
       #print(f'INSTRINICS MATRIX {self.instrinics}') #uncomment these afterwards
 
