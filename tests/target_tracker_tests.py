@@ -1,9 +1,9 @@
 import unittest
 from uavf_2024.imaging.target_tracker import TargetTracker
-from uavf_2024.imaging.imaging_types import FullPrediction, TargetDescription, Target3D
+from uavf_2024.imaging.imaging_types import TargetDescription, Target3D
 import numpy as np
 
-class TestImagingFrontend(unittest.TestCase):
+class TestTargetTracker(unittest.TestCase):
     def test_with_certain_match(self):
         tracker = TargetTracker()
         
