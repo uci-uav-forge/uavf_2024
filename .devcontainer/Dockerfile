@@ -3,6 +3,7 @@ FROM ros:humble
 RUN apt update
 RUN apt-get update --fix-missing
 RUN apt-get install -y python3-pip
+RUN apt-get install -y ffmpeg libsm6 libxext6
 # RUN apt install -y curl
 # RUN apt-get install -y wget
 
