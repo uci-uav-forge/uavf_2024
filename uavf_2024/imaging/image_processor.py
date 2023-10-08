@@ -1,12 +1,12 @@
 import numpy as np
 from dataclasses import dataclass
-import math
+
+from uavf_2024.imaging.utils import split_to_tiles
 from .imaging_types import FullPrediction,InstanceSegmentationResult
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
-import itertools
 
 @dataclass
 class Tile:
@@ -25,28 +25,13 @@ class ImageProcessor:
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
 
-    def _split_to_tiles(self, img: np.ndarray) -> list[Tile]:
-        h, w = img.shape[:2]
-        n_horizontal_tiles = math.ceil(w / self.tile_size)
-        n_vertical_tiles = math.ceil(h / self.tile_size)
-        all_tiles: list[Tile] = []
-        v_indices = np.linspace(0, h - self.tile_size, n_vertical_tiles).astype(int)
-        h_indices = np.linspace(0, w - self.tile_size, n_horizontal_tiles).astype(int)
-
-        for v, h in itertools.product(v_indices, h_indices):
-            tile = img[v:v + self.tile_size, h:h + self.tile_size]
-            all_tiles.append(Tile(tile, h, v))
-
-        return all_tiles
-
-    def process_image(self, img: np.ndarray) -> list[FullPrediction]:
+    def process_image(self, img: np.ndarray) -> "list[FullPrediction]":
         '''
         img shape should be (channels, width, height)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
-
         '''
 
-        tiles = self._split_to_tiles(img)
+        tiles = split_to_tiles(img, self.tile_size)
 
         shape_results: list[InstanceSegmentationResult] = []
 
