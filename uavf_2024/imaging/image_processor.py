@@ -1,5 +1,4 @@
 import numpy as np
-from dataclasses import dataclass
 
 from uavf_2024.imaging.utils import generate_tiles
 from .imaging_types import FullPrediction,InstanceSegmentationResult
@@ -7,12 +6,6 @@ from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
-
-@dataclass
-class Tile:
-    img: np.ndarray
-    x: int
-    y: int
 
 class ImageProcessor:
     def __init__(self):

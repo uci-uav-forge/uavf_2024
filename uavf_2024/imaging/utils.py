@@ -4,8 +4,7 @@ from typing import Generator
 
 import numpy as np
 
-from uavf_2024.imaging.image_processor import Tile
-from .imaging_types import TargetDescription, Target3D
+from .imaging_types import TargetDescription, Target3D, Tile
 
 
 def calc_match_score(target_desc: TargetDescription, target: Target3D):
