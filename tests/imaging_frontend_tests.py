@@ -100,11 +100,11 @@ class TestImagingFrontend(unittest.TestCase):
         self.image_processor = ImageProcessor()
 
     def test_runs_without_crashing(self):
-        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/fullsize_dataset/images/image0.png")
+        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         res = self.image_processor.process_image(sample_input)
 
     def test_metrics(self):
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/tile_dataset/images", f"{CURRENT_FILE_PATH}/tile_dataset/labels")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/tile_dataset/labels")
         
         recalls = []
         precisions = []
