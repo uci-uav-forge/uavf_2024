@@ -104,7 +104,7 @@ class TestImagingFrontend(unittest.TestCase):
         res = self.image_processor.process_image(sample_input)
 
     def test_metrics(self):
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/tile_dataset/labels")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
         
         recalls = []
         precisions = []

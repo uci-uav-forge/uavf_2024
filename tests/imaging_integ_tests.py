@@ -82,7 +82,7 @@ class TestPipeline(unittest.TestCase):
                     )
                 )
         
-        images_dirname = f"{CURRENT_FILE_PATH}/sim_dataset/images"
+        images_dirname = f"{CURRENT_FILE_PATH}/imaging_data/sim_dataset/images"
         for file_name in os.listdir(images_dirname):
             img = cv.imread(f"{images_dirname}/{file_name}")
             pose_strs = file_name.split(".")[0].split("_")[1:]
@@ -91,7 +91,7 @@ class TestPipeline(unittest.TestCase):
 
             predictions = image_processor.process_image(img)
             for pred in predictions:
-               target_tracker.update_with_new_data(pred, np.concatenate(cam_position, cam_angles)) 
+               target_tracker.update_with_new_data(pred, np.concatenate([cam_position, cam_angles])) 
         
         EPSILON = 1e-6
         scores = []

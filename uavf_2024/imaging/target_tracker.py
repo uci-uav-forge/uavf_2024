@@ -6,14 +6,14 @@ from typing import Callable, Any
 
 class TargetTracker:
     def __init__(self, 
-                 local_to_latlng: Callable[[tuple[float,float]], np.ndarray], 
-                 latlng_to_global: Callable[[np.ndarray], tuple[float,float]],
+                 latlng_to_local: Callable[[tuple[float,float]], np.ndarray], 
+                 local_to_latlng: Callable[[np.ndarray], tuple[float,float]],
                  camera_fov: float,
                  camera_resolution: int
                  ):
         self._targets: list[Target3D] = []
         self.local_to_latlng = local_to_latlng
-        self.latlng_to_global = latlng_to_global
+        self.latlng_to_global = latlng_to_local
         self.camera_fov = camera_fov
         self.camera_resolution = camera_resolution
 
