@@ -1,13 +1,6 @@
 {
     "name": "UAV Forge ROS 2 Development Container",
     "privileged": true,
-    "features": {
-        "desktop-lite": {
-            "password": "vscode",
-            "webPort": 6080,
-            "vncPort": 5901
-        }
-    },
     "build": {
         "dockerfile": "Dockerfile"
     },
@@ -25,5 +18,5 @@
     "forwardPorts": [
         6080
     ],
-    "postCreateCommand": "echo 'source /opt/ros/foxy/setup.sh' > /root/.bashrc"
+    "postCreateCommand": "echo 'source /opt/ros/humble/setup.sh' > /root/.bashrc"
 }
