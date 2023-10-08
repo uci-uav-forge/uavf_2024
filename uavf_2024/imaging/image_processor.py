@@ -1,7 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
 import math
-from .imaging_types import FullPrediction,InstanceSegmentationResult
+from .imaging_types import FullPrediction,InstanceSegmentationResult,TargetDescription
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
@@ -82,10 +82,12 @@ class ImageProcessor:
                     res.y,
                     res.width,
                     res.height,
-                    shape_conf,
-                    letter_conf,
-                    shape_color_conf,
-                    letter_color_conf
+                    TargetDescription(
+                        shape_conf,
+                        letter_conf,
+                        shape_color_conf,
+                        letter_color_conf
+                    )
                 )
             )
 

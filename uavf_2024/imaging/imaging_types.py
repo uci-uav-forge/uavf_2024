@@ -3,6 +3,13 @@ from enum import Enum
 import numpy as np
 
 @dataclass
+class TargetDescription:
+    shape_probs: np.ndarray
+    letter_probs: np.ndarray
+    shape_col_probs: np.ndarray
+    letter_col_probs: np.ndarray
+
+@dataclass
 class FullPrediction:
     x: int
     y: int
@@ -11,12 +18,7 @@ class FullPrediction:
     '''
     We can worry about typechecking these later, but the gist is that they're probability distributions over the possible classes.
     '''
-    shape_confidences: np.ndarray
-    letter_confidences: np.ndarray
-    shape_color_confidences: np.ndarray
-    letter_color_confidences: np.ndarray
-
-
+    description: TargetDescription
 
 @dataclass
 class InstanceSegmentationResult:
@@ -32,13 +34,6 @@ class InstanceSegmentationResult:
     img: np.ndarray
 
 @dataclass
-class TargetDescription:
-    shape: int
-    letter: int
-    shape_color: int
-    letter_color: int
-
-@dataclass
 class Target3D:
     '''
     TODO: decision to use lat/lng is not final
@@ -46,7 +41,4 @@ class Target3D:
     '''
     lat: float
     lng: float
-    shape_probs: np.ndarray
-    letter_probs: np.ndarray
-    shape_col_probs: np.ndarray
-    letter_col_probs: np.ndarray
+    description: TargetDescription
