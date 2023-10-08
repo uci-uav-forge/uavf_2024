@@ -1,7 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
 
-from uavf_2024.imaging.utils import split_to_tiles
+from uavf_2024.imaging.utils import generate_tiles
 from .imaging_types import FullPrediction,InstanceSegmentationResult
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
@@ -31,7 +31,7 @@ class ImageProcessor:
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
         '''
 
-        tiles = split_to_tiles(img, self.tile_size)
+        tiles = generate_tiles(img, self.tile_size)
 
         shape_results: list[InstanceSegmentationResult] = []
 
