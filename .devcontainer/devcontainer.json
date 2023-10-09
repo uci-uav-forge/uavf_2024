@@ -2,7 +2,9 @@
     "name": "UAV Forge ROS 2 Development Container",
     "privileged": true,
     "build": {
-        "dockerfile": "Dockerfile"
+        "dockerfile": "Dockerfile",
+        "context":".."
+
     },
     "workspaceFolder": "/home/ws/uavf_2024",
     "workspaceMount": "source=${localWorkspaceFolder},target=/home/ws/uavf_2024,type=bind",
