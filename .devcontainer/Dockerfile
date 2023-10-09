@@ -13,5 +13,8 @@ RUN apt-get install -y ffmpeg libsm6 libxext6
 # WORKDIR "/home/ws/PX4-Autopilot"
 # RUN Tools/setup/ubuntu.sh
 # RUN make px4_sitl
+WORKDIR "/home/ws/uavf_2024"
+COPY setup.py setup.py
+RUN pip install -e .
 
 CMD ["/bin/bash"]
