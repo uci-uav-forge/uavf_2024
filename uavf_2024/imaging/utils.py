@@ -24,7 +24,7 @@ def generate_tiles(img: np.ndarray, tile_size: int, min_overlap: int = 0) -> "Ge
     IMO, it's not good practice to have a utils module, especially considering this function only has one caller.
 
     Args:
-        img (np.ndarray): Color, full-resolution input image in the format (channels, height, width)
+        img (np.ndarray): Color, full-resolution input image in the format (height, width, channels)
         tile_size (int): Width/height of each tile
         min_overlap (int, optional): Number of pixels that each tile overlaps with its neighbors. Defaults to 0.
 
@@ -32,7 +32,7 @@ def generate_tiles(img: np.ndarray, tile_size: int, min_overlap: int = 0) -> "Ge
         Generator[Tile, None, None]: Generator that yields each tile
     """
     
-    img_height, img_width = img.shape[1:]
+    img_height, img_width = img.shape[:2]
     
     if tile_size > img_width or tile_size > img_height:
         raise ValueError("tile dimensions cannot be larger than origin dimensions")
@@ -57,7 +57,7 @@ def generate_tiles(img: np.ndarray, tile_size: int, min_overlap: int = 0) -> "Ge
         for vertical_index in range(y_count):
             # Converting back to int because its expected downstream
             # All dimensions should be refactored to use unit16
-            yield Tile(img[:, y:y+tile_size, x:x+tile_size], int(x), int(y))
+            yield Tile(img[y:y+tile_size, x:x+tile_size], int(x), int(y))
             if vertical_index < (y_count-1):
                 y = y + tile_size - remaindersY[vertical_index]
         if horizontal_index < (x_count-1):

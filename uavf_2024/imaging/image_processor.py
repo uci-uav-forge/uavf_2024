@@ -20,7 +20,7 @@ class ImageProcessor:
 
     def process_image(self, img: np.ndarray) -> "list[FullPrediction]":
         '''
-        img shape should be (channels, width, height)
+        img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
         '''
 
