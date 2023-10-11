@@ -38,28 +38,41 @@ def generate_tiles(img: np.ndarray, tile_size: int, min_overlap: int = 0) -> "Ge
         raise ValueError("tile dimensions cannot be larger than origin dimensions")
 
     # Number of tiles in each dimension
-    x_count = np.uint8(np.ceil(img_width / tile_size))
-    y_count = np.uint8(np.ceil(img_height / tile_size))
+    x_count = np.uint8(np.ceil(
+        (img_width - min_overlap) / (tile_size - min_overlap)
+    ))
+    y_count = np.uint8(np.ceil(
+        (img_height - min_overlap) / (tile_size - min_overlap)
+    ))
 
     # Total remainders
-    overflow_x = x_count * tile_size - img_width
-    overflow_y = y_count * tile_size - img_height
+    overflow_x = tile_size + (x_count - 1) * (tile_size - min_overlap) - img_width
+    overflow_y = tile_size + (y_count - 1) * (tile_size - min_overlap) - img_height
 
+    # Temporarily suppress divide-by-zero warnings
+    np.seterr(divide='ignore', invalid='ignore')
+    
     # Set up remainders per tile
     remaindersX = np.ones((x_count-1,), dtype=np.uint8) * np.uint16(np.floor(overflow_x / (x_count-1)))
     remaindersY = np.ones((y_count-1,), dtype=np.uint8) * np.uint16(np.floor(overflow_y / (y_count-1)))
     remaindersX[0:np.remainder(overflow_x, np.uint16(x_count-1))] += 1
     remaindersY[0:np.remainder(overflow_y, np.uint16(y_count-1))] += 1
     
-    x = np.uint16(0)
-    for horizontal_index in range(x_count):
-        y = np.uint16(0)
-        for vertical_index in range(y_count):
+    np.seterr(divide='warn', invalid='warn')
+      
+    y = np.uint16(0)
+    for vertical_index in range(y_count):
+        x = np.uint16(0)
+        for horizontal_index in range(x_count):
             # Converting back to int because its expected downstream
             # All dimensions should be refactored to use unit16
             yield Tile(img[y:y+tile_size, x:x+tile_size], int(x), int(y))
-            if vertical_index < (y_count-1):
-                y = y + tile_size - remaindersY[vertical_index]
-        if horizontal_index < (x_count-1):
-            x = x + tile_size - remaindersX[horizontal_index]
+            
+            if horizontal_index < (x_count-1):
+                next_horizontal_overlap = min_overlap + remaindersX[horizontal_index]
+                x += tile_size - next_horizontal_overlap
+                
+        if vertical_index < (y_count-1):
+            next_vertical_overlap = min_overlap + remaindersY[vertical_index]
+            y += tile_size - next_vertical_overlap
     
