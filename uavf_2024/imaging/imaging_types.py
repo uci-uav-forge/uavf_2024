@@ -1,6 +1,11 @@
 from dataclasses import dataclass
-from enum import Enum
 import numpy as np
+
+@dataclass
+class Tile:
+    img: np.ndarray
+    x: int
+    y: int
 
 @dataclass
 class FullPrediction:
