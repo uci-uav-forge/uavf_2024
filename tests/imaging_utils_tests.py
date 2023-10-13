@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from itertools import pairwise
 
 from uavf_2024.imaging.utils import generate_tiles
 
@@ -48,3 +49,35 @@ class ImagingUtilsTest(unittest.TestCase):
                 
             # Check that all values in the image were covered by the tiles
             self.assertEqual(len(all_values), 0)
+
+    def test_uniform_spacing(self):
+        def test_with_params(width,height,tile_size,overlap):
+            img = np.zeros([width,height,3])
+            tile_size = 15
+            overlap  = 5
+            
+            x_coords = set() 
+            y_coords = set() 
+            for tile in generate_tiles(img, tile_size, overlap):
+                x_coords.add(tile.x)
+                y_coords.add(tile.y)
+
+            diffs_x = set()
+            diffs_y = set()
+            for x1, x2 in pairwise(sorted(x_coords)):
+                diffs_x.add(x2-x1)
+
+            for y1, y2 in pairwise(sorted(y_coords)):
+                diffs_y.add(y2-y1)
+            
+            self.assertLessEqual(len(diffs_x), 2)
+            self.assertLessEqual(len(diffs_y), 2)
+
+            self.assertLessEqual(max(diffs_x)-min(diffs_x), 1)
+            self.assertLessEqual(max(diffs_y)-min(diffs_y), 1)
+
+        for i in range(64, 128, 7):
+            for j in range(64, 128, 4):
+                tile_size = np.random.randint(5,30)
+                test_with_params(i,j,tile_size,np.random.randint(0,tile_size))
+
