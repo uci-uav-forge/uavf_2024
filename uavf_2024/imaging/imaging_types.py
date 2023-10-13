@@ -9,6 +9,12 @@ class TargetDescription:
     letter_col_probs: np.ndarray
 
 @dataclass
+class Tile:
+    img: np.ndarray
+    x: int
+    y: int
+
+@dataclass
 class FullPrediction:
     x: int
     y: int

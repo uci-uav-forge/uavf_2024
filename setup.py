@@ -11,6 +11,7 @@ setup(
         'scipy',
         'matplotlib',
         'casadi',
-        'ultalytics'
+        'ultralytics',
+        'coverage'
     ]
 )
