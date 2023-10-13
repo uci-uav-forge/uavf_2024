@@ -2,7 +2,7 @@ import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import FullPrediction
+from uavf_2024.imaging.imaging_types import FullPrediction, TargetDescription
 from uavf_2024.imaging.visualizations import visualize_predictions
 import numpy as np
 import cv2 as cv
@@ -26,10 +26,10 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
             x,y,x+w,y+h
         ]])
 
-        shape = np.argmax(truth.shape_confidences)
-        letter = np.argmax(truth.letter_confidences)
-        shape_col = np.argmax(truth.shape_color_confidences)
-        letter_col = np.argmax(truth.letter_color_confidences)
+        shape = np.argmax(truth.description.shape_probs)
+        letter = np.argmax(truth.description.letter_probs)
+        shape_col = np.argmax(truth.description.shape_col_probs)
+        letter_col = np.argmax(truth.description.letter_col_probs)
 
         this_target_was_detected = False
         for pred in predictions:
@@ -41,10 +41,10 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
             if iou>0.1:
                 true_positives+=1
                 this_target_was_detected = True
-                shape_top_1_accuracies.append(int(shape == np.argmax(pred.shape_confidences)))
-                letter_top_1_accuracies.append(int(letter == np.argmax(pred.letter_confidences)))
-                shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.shape_color_confidences)))
-                letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.letter_color_confidences)))
+                shape_top_1_accuracies.append(int(shape == np.argmax(pred.description.shape_probs)))
+                letter_top_1_accuracies.append(int(letter == np.argmax(pred.description.letter_probs)))
+                shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.description.shape_col_probs)))
+                letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.description.letter_col_probs)))
 
         if this_target_was_detected:
             targets_detected+=1
@@ -86,7 +86,10 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[np.ndarray], list[list[F
                 x,y,w,h = box.astype(int)
 
                 ground_truth.append(FullPrediction(
-                    x,y,w,h,np.eye(13)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
+                    x,y,w,h,
+                    TargetDescription(
+                        np.eye(13)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
+                    )
                 ))
         imgs.append(img)
         labels.append(ground_truth)
@@ -97,11 +100,11 @@ class TestImagingFrontend(unittest.TestCase):
         self.image_processor = ImageProcessor()
 
     def test_runs_without_crashing(self):
-        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/fullsize_dataset/images/image0.png")
+        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         res = self.image_processor.process_image(sample_input)
 
     def test_metrics(self):
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/tile_dataset/images", f"{CURRENT_FILE_PATH}/tile_dataset/labels")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
         
         recalls = []
         precisions = []

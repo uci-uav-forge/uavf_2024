@@ -1,7 +1,7 @@
 import numpy as np
 
 from uavf_2024.imaging.utils import generate_tiles
-from .imaging_types import FullPrediction,InstanceSegmentationResult
+from .imaging_types import FullPrediction, InstanceSegmentationResult, TargetDescription
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
@@ -60,10 +60,12 @@ class ImageProcessor:
                     res.y,
                     res.width,
                     res.height,
-                    shape_conf,
-                    letter_conf,
-                    shape_color_conf,
-                    letter_color_conf
+                    TargetDescription(
+                        shape_conf,
+                        letter_conf,
+                        shape_color_conf,
+                        letter_color_conf
+                    )
                 )
             )
 
