@@ -1,0 +1,24 @@
+{
+    "name": "UAV Forge ROS 2 Development Container",
+    "privileged": true,
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context":".."
+
+    },
+    "workspaceFolder": "/home/ws/uavf_2024",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/home/ws/uavf_2024,type=bind",
+    "containerEnv": {
+        "DISPLAY": "unix:0",
+        "ROS_LOCALHOST_ONLY": "1",
+        "ROS_DOMAIN_ID": "42"
+    },
+    "runArgs": [
+        "--net=host",
+        "-e", "DISPLAY=${env:DISPLAY}"
+    ],
+    "forwardPorts": [
+        6080
+    ],
+    "postCreateCommand": "echo 'source /opt/ros/humble/setup.sh' > /root/.bashrc"
+}
