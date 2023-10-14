@@ -18,10 +18,6 @@ RUN pip3 install -r requirements.txt
 
 
 RUN apt-get install -y default-jre socat ros-humble-geographic-msgs ros-dev-tools
-RUN git clone --recurse-submodules https://github.com/ardupilot/Micro-XRCE-DDS-Gen.git
-WORKDIR /Micro-XRCE-DDS-Gen
-RUN ./gradlew assemble
-RUN echo "export PATH=$PATH:/Micro-XRCE-DDS-Gen/scripts" >> ~/.bashrc
 RUN echo "export PATH=$PATH:/opt/ros/humble/setup.bash" >> ~/.bashrc
 
 WORKDIR /root/ros2_ws/src
@@ -47,5 +43,16 @@ RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --cmake-args -DBU
 
 RUN echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
 RUN echo 'source /root/ros2_ws/install/setup.bash' >> ~/.bashrc
+
+RUN echo 'export PATH=$PATH:/root/ros2_ws/src/ardupilot/Tools/autotest' >> ~/.bashrc
+RUN echo 'export PATH=/usr/lib/ccache:$PATH' >> ~/.bashrc
+
+RUN sudo apt-get install -y python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame
+RUN pip3 install PyYAML mavproxy --user
+RUN echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
+
+RUN cp src/ardupilot/Tools/vagrant/mavinit.scr /root/.mavinit.scr
+# i love python env management!!! <.<
+RUN python -m pip uninstall matplotlib -y
 
 CMD ["bash"]
