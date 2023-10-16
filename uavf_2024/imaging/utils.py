@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-from .imaging_types import TargetDescription, Target3D
-def calc_match_score(target_desc: TargetDescription, target: Target3D):
-        shape_score = target.shape_probs[target_desc.shape]
-        letter_score = target.letter_probs[target_desc.letter]
-        shape_color_score = target.shape_col_probs[target_desc.shape_color]
-        letter_color_score = target.letter_col_probs[target_desc.letter_color]
-
-        return shape_score * letter_score * shape_color_score * letter_color_score
-=======
 from .imaging_types import TargetDescription
 
 from typing import Generator
@@ -89,4 +79,3 @@ def generate_tiles(img: np.ndarray, tile_size: int, min_overlap: int = 0) -> "Ge
             next_vertical_overlap = min_overlap + remaindersY[vertical_index]
             y += tile_size - next_vertical_overlap
     
->>>>>>> upstream/main
