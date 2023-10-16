@@ -1,5 +1,9 @@
 # UAV Forge's ROS2 package for GN&C and Aerial Imagery Object Detection.
 
+## Dev Container Setup
+1. Clone the repo
+2. In VSCode, open the command palette and run `rebuild and reopen in dev container`
+3. To verify your setup, run `run_tests.sh`
 
 ## Usage
 
