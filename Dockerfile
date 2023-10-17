@@ -18,7 +18,6 @@ RUN pip3 install -r requirements.txt
 
 
 RUN apt-get install -y default-jre socat ros-humble-geographic-msgs ros-dev-tools
-RUN echo "export PATH=$PATH:/opt/ros/humble/setup.bash" >> ~/.bashrc
 
 WORKDIR /root/ros2_ws/src
 
@@ -44,7 +43,7 @@ RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --cmake-args -DBU
 RUN echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
 RUN echo 'source /root/ros2_ws/install/setup.bash' >> ~/.bashrc
 
-RUN echo 'export PATH=$PATH:/root/ros2_ws/src/ardupilot/Tools/autotest' >> ~/.bashrc
+RUN echo 'export PATH=/root/ros2_ws/src/ardupilot/Tools/autotest:$PATH' >> ~/.bashrc
 RUN echo 'export PATH=/usr/lib/ccache:$PATH' >> ~/.bashrc
 
 RUN sudo apt-get install -y python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame
