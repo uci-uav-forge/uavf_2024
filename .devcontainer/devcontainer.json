@@ -19,6 +19,5 @@
     ],
     "forwardPorts": [
         6080
-    ],
-    "postCreateCommand": "echo 'source /opt/ros/humble/setup.sh' > /root/.bashrc"
+    ]
 }
