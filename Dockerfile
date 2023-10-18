@@ -1,7 +1,5 @@
 FROM ardupilot/ardupilot-dev-ros
 
-VOLUME ["/root/ros2_ws/src/uavf_2024"]
-
 RUN apt-get update
 
 # opencv dependencies (https://stackoverflow.com/questions/55313610/importerror-libgl-so-1-cannot-open-shared-object-file-no-such-file-or-directo)
