@@ -22,7 +22,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
-# find_package(px4_msgs REQUIRED)
+find_package(px4_msgs REQUIRED)
 find_package(uavf_ros2_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
 
