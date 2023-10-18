@@ -13,8 +13,9 @@ RUN apt-get install -y tmux vim
 # comment this out if you have a GPU
 RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+WORKDIR "/home/ws/uavf_2024"
+COPY setup.py setup.py
+RUN pip install -e .
 
 
 RUN apt-get install -y default-jre socat ros-humble-geographic-msgs ros-dev-tools
