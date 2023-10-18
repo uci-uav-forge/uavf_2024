@@ -2,3 +2,7 @@ c_generated_code
 acados_ocp_nlp.json
 __pycache__
 *.egg-info
+mav.*
+terrain
+eeprom.bin
+logs
