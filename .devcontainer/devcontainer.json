@@ -20,5 +20,14 @@
     "forwardPorts": [
         6080
     ],
-    "postCreateCommand": "echo 'source /opt/ros/humble/setup.sh' > /root/.bashrc"
+	"postCreateCommand": "echo 'source /opt/ros/humble/setup.sh' > /root/.bashrc",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-vscode.cmake-tools",
+				"ms-azuretools.vscode-docker"
+			]
+		}
+	}
 }
