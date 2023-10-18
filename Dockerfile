@@ -1,6 +1,6 @@
 FROM ardupilot/ardupilot-dev-ros
 
-VOLUME ["/root/ros2_ws/src/uavf_2024", "/root/ros2_ws/src/uavf_ros2_msgs"]
+VOLUME ["/root/ros2_ws/src/uavf_2024"]
 
 RUN apt-get update
 
