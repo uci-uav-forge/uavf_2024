@@ -28,11 +28,14 @@ with open(str(current_dir) + "/Dockerfile", "r") as file:
     data = file.readlines()
 
 if arm64:
-    data[2] = f"FROM {arm64image}\n"
+    data[2] = f"FROM {arm64image} as main-setup\n"
+    data[13] = "    g++-aarch64-linux-gnu \\\n"
+    data.insert(14, "    gcc-aarch64-linux-gnu \\\n")
+    data.insert(15, "    pkg-config \\\n")
     data.append("\n")
     data.extend(arm64commands)
 else:
-    data[2] = f"FROM {x86image}\n"
+    data[2] = f"FROM {x86image} as main-setup\n"
 
 # Write to Dockerfile
 with open(str(current_dir) + "/.devcontainer/Dockerfile", "w") as file:
