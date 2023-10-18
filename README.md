@@ -1,9 +1,20 @@
 # UAV Forge's ROS2 package for GN&C and Aerial Imagery Object Detection.
 
+# This version is for ARM64 devices (apple silicon macs!)
+It should all run the same for the most part and it will be kept in sync with main routinely. 
+As more bugs are found with using this modified version, they will be patched specifically for ARM64 in this branch.
+If you find any problems, please post an issue.
+
 ## Dev Container Setup
 1. Clone the repo
 2. In VSCode, open the command palette and run `rebuild and reopen in dev container`
 3. To verify your setup, run `run_tests.sh`
+
+## How to pull from main
+Since we are no longer on the main branch, but we need to integrate changes from it, it is a bit different.
+`git pull origin main`
+Similarly, from the main branch you can do
+`git pull origin main-arm64`
 
 ## Usage
 
