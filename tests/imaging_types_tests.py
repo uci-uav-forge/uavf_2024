@@ -18,6 +18,9 @@ class ImageClassTest(unittest.TestCase):
         self.assertTrue((valid_chw.get_array() == array_chw).all())
         self.assertTrue((valid_hwc.get_array() == array_hwc).all())
         
+        self.assertEqual(valid_chw.dim_order, CHW)
+        self.assertEqual(valid_hwc.dim_order, HWC)
+        
         self.assertRaises(Exception, Image, array_hwc, CHW)
         self.assertRaises(Exception, Image, array_chw, HWC)
         
@@ -52,6 +55,8 @@ class ImageClassTest(unittest.TestCase):
         
         self.assertNotEqual(hwc_cube, chw_cube)
         self.assertNotEqual(hwc_cube, zeros)
+        
+        self.assertEqual(Image(torch.zeros((3, 4, 5)), CHW), Image(torch.zeros((3, 4, 5)), CHW))
         
     def test_get_set_item_torch(self):
         numbers = torch.arange(3 * 4 * 5)
