@@ -2,3 +2,4 @@ c_generated_code
 acados_ocp_nlp.json
 __pycache__
 *.egg-info
+.devcontainer/Dockerfile
