@@ -129,6 +129,18 @@ class Image:
     def get_array(self):
         return self._array
     
+    def make_sub_image(self, x_coord, y_coord, width, height) -> 'Image':
+        """
+        Does not copy the underlying array.
+        """
+        return Image(self._array[x_coord:x_coord+width, y_coord:y_coord+height], self._dim_order)
+    
+    def make_tile(self, x_coord, y_coord, tile_size) -> Tile:
+        """
+        Does not copy the underlying array.
+        """
+        return Tile(self.make_sub_image(x_coord, y_coord, tile_size, tile_size), x_coord, y_coord)
+    
     @property
     def shape(self):
         return self._array.shape
@@ -221,7 +233,7 @@ class Image:
             for horizontal_index in range(x_count):
                 # Converting back to int because its expected downstream
                 # All dimensions should be refactored to use unit16
-                yield Tile(self._array[y:y+tile_size, x:x+tile_size], int(x), int(y))
+                yield self.make_tile(x, y, tile_size)
                 
                 if horizontal_index < (x_count-1):
                     next_horizontal_overlap = min_overlap + remaindersX[horizontal_index]
