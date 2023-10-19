@@ -2,7 +2,7 @@ import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
 import numpy as np
-from ..imaging_types import Image, InstanceSegmentationResult
+from ..imaging_types import Image, InstanceSegmentationResult, img_coord_t
 import os
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -40,10 +40,10 @@ class ShapeInstanceSegmenter:
             confidences[cls.int()] = prob
             full_results.append(
                 InstanceSegmentationResult(
-                    x=x.item(),
-                    y=y.item(),
-                    width=w.item(),
-                    height=h.item(),
+                    x=img_coord_t(x.item()),
+                    y=img_coord_t(y.item()),
+                    width=img_coord_t(w.item()),
+                    height=img_coord_t(h.item()),
                     confidences = confidences,
                     mask = mask[x:x+w, y:y+h].unsqueeze(2).numpy(),
                     img = np.array(img[x:x+w, y:y+h])

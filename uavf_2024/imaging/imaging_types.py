@@ -4,7 +4,12 @@ import numpy as np
 from enum import Enum
 
 import torch
-from torch import types as torch_types
+
+# TODO: Limit these to the types we actually use
+integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]
+real = Union[float, np.float16, np.float32, np.float64, np.float128]
+
+img_coord_t = np.uint16
 
 @dataclass
 class TargetDescription:
@@ -16,15 +21,15 @@ class TargetDescription:
 @dataclass
 class Tile:
     img: 'Image'
-    x: int
-    y: int
+    x: img_coord_t
+    y: img_coord_t
 
 @dataclass
 class FullPrediction:
-    x: int
-    y: int
-    width: int
-    height: int
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
     '''
     We can worry about typechecking these later, but the gist is that they're probability distributions over the possible classes.
     '''
@@ -35,10 +40,10 @@ class InstanceSegmentationResult:
     '''
     `mask` and `img` should be (w,h,c) where c is 1 for mask and 3 for img
     '''
-    x: np.number | torch_types.Number
-    y: np.number | torch_types.Number
-    width: np.number | torch_types.Number
-    height: np.number | torch_types.Number
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
     confidences: np.ndarray
     mask: np.ndarray
     img: np.ndarray
