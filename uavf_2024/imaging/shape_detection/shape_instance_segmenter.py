@@ -1,8 +1,7 @@
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
 import numpy as np
-from dataclasses import dataclass
-from ..imaging_types import InstanceSegmentationResult
+from ..imaging_types import Image, InstanceSegmentationResult
 import os
 import torch
 
@@ -15,7 +14,7 @@ class ShapeInstanceSegmenter:
         self.shape_model.predict(list(rand_input), verbose=False)
 
 
-    def predict(self, img: np.ndarray) -> list[InstanceSegmentationResult]:
+    def predict(self, img: Image) -> list[InstanceSegmentationResult]:
         '''
         Currently assumes batch size is 1
         TODO: refactor for batch processing

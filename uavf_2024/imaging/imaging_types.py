@@ -14,7 +14,7 @@ class TargetDescription:
 
 @dataclass
 class Tile:
-    img: np.ndarray | torch.Tensor
+    img: 'Image'
     x: int
     y: int
 
@@ -34,10 +34,10 @@ class InstanceSegmentationResult:
     '''
     `mask` and `img` should be (w,h,c) where c is 1 for mask and 3 for img
     '''
-    x: int
-    y: int
-    width: int
-    height: int
+    x: np.number
+    y: np.number
+    width: np.number
+    height: np.number
     confidences: np.ndarray
     mask: np.ndarray
     img: np.ndarray
