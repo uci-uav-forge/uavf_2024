@@ -121,23 +121,59 @@ ENV BUILDLOGS=/tmp/buildlogs
 ENV TZ=UTC
 
 #-------------------------------------
-# You can edit anything below
-
+# EVERYTHING BELOW THIS LINE IS EDITABLE
+#-------------------------------------
 RUN apt update
 RUN apt-get update --fix-missing
 RUN apt-get install -y python3-pip
 RUN apt-get install -y ffmpeg libsm6 libxext6
-# RUN apt install -y curl
-# RUN apt-get install -y wget
 
-# RUN git clone --recursive https://github.com/PX4/PX4-Autopilot.git /home/ws/PX4-Autopilot
-# RUN curl -sSL http://get.gazebosim.org | sh
-
-# WORKDIR "/home/ws/PX4-Autopilot"
-# RUN Tools/setup/ubuntu.sh
-# RUN make px4_sitl
 WORKDIR "/home/ws/uavf_2024"
 COPY setup.py setup.py
 RUN pip install -e .
 
-CMD ["/bin/bash"]
+# GNC setup stuff (gazebo garden, ardupilot sitl, and respective ros2 plugins etc)
+
+RUN apt-get install -y tmux vim
+RUN apt-get install -y default-jre socat ros-humble-geographic-msgs ros-dev-tools
+
+WORKDIR /root/ros2_ws/src
+
+RUN wget https://raw.githubusercontent.com/ArduPilot/ardupilot/master/Tools/ros2/ros2.repos
+RUN vcs import --recursive < ros2.repos
+RUN wget https://raw.githubusercontent.com/ArduPilot/ardupilot_gz/main/ros2_gz.repos
+RUN vcs import --recursive < ros2_gz.repos
+# env so now its persistant for future colcon builds
+ENV GZ_VERSION=garden
+
+RUN apt-get -y install lsb-release wget gnupg
+RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+RUN apt-get update
+RUN apt-get -y install gz-garden
+
+WORKDIR /root/ros2_ws
+RUN apt update
+RUN rosdep update
+RUN rosdep install --rosdistro ${ROS_DISTRO} --from-paths src -i -r -y
+# we dont need the extra args here
+RUN bash -c "source /opt/ros/humble/setup.bash && colcon build"
+
+# Unfortunately this is not persistant in docker so you need to source them during runtime with the CMD at the end
+#RUN echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc
+#RUN echo 'source /root/ros2_ws/install/setup.bash' >> /root/.bashrc
+#RUN echo 'export PATH=/root/ros2_ws/src/ardupilot/Tools/autotest:$PATH' >> /root/.bashrc
+#RUN echo 'export PATH=/usr/lib/ccache:$PATH' >> /root/.bashrc
+
+RUN sudo apt-get install -y python3-dev python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame
+RUN pip3 install PyYAML mavproxy --user
+#RUN echo 'export PATH="$PATH:$HOME/.local/bin"' >> /root/.bashrc
+
+RUN cp src/ardupilot/Tools/vagrant/mavinit.scr /root/.mavinit.scr
+#since apt installs the specific version we want we uninstall the pip version
+RUN python -m pip uninstall matplotlib -y 
+
+# Sourcing script at runtime
+ADD bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
+RUN chmod 777 /usr/local/bin/bashrc_setup.sh
+CMD /usr/local/bin/bashrc_setup.sh

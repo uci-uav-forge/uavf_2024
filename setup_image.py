@@ -8,7 +8,7 @@ import pathlib
 arm64image = "arm64v8/ros:humble"
 x86image = "ros:humble"
 
-# additional arm64 commands
+# additional arm64 commands (add to list as needed)
 arm64commands = ["RUN pip install --force-reinstall -v torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2\n"]
 
 # Get system architecture
