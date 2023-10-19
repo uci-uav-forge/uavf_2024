@@ -2,7 +2,7 @@ import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import FullPrediction, TargetDescription
+from uavf_2024.imaging.imaging_types import HWC, FullPrediction, Image, TargetDescription
 from uavf_2024.imaging.visualizations import visualize_predictions
 import numpy as np
 import cv2 as cv
@@ -65,15 +65,15 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         letter_color_top1
     )
 
-def parse_dataset(imgs_path, labels_path) -> tuple[list[np.ndarray], list[list[FullPrediction]]]:
+def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPrediction]]]:
     '''
     ret_value[i] is the list of predictions for the ith image
     ret_value[i][j] is the jth prediction for the ith image
     '''
-    imgs = []
+    imgs: list[Image] = []
     labels = []
     for img_file_name in os.listdir(imgs_path):
-        img = cv.imread(f"{imgs_path}/{img_file_name}")
+        img = Image(np.array(cv.imread(f"{imgs_path}/{img_file_name}")), HWC)
         ground_truth: list[FullPrediction] = []
         with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
             for line in f.readlines():
@@ -100,7 +100,7 @@ class TestImagingFrontend(unittest.TestCase):
         self.image_processor = ImageProcessor()
 
     def test_runs_without_crashing(self):
-        sample_input = cv.imread(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
+        sample_input = Image(np.array(cv.imread(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")), HWC)
         res = self.image_processor.process_image(sample_input)
 
     def test_metrics(self):

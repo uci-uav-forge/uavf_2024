@@ -2,7 +2,7 @@ import unittest
 from uavf_2024.imaging.target_tracker import TargetTracker
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.color_classification import ColorClassifier
-from uavf_2024.imaging.imaging_types import TargetDescription, Target3D
+from uavf_2024.imaging.imaging_types import HWC, Image, TargetDescription, Target3D
 import os
 import numpy as np
 import cv2 as cv
@@ -84,7 +84,7 @@ class TestPipeline(unittest.TestCase):
         
         images_dirname = f"{CURRENT_FILE_PATH}/imaging_data/sim_dataset/images"
         for file_name in os.listdir(images_dirname):
-            img = cv.imread(f"{images_dirname}/{file_name}")
+            img = Image(np.array(cv.imread(f"{images_dirname}/{file_name}")), HWC)
             pose_strs = file_name.split(".")[0].split("_")[1:]
             cam_position = csv_to_np(pose_strs[0])
             cam_angles = csv_to_np(pose_strs[1])
