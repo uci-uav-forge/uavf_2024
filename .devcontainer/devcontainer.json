@@ -20,7 +20,7 @@
     "forwardPorts": [
         6080
     ],
-	"postCreateCommand": "echo 'source /opt/ros/humble/setup.sh' > /root/.bashrc",
+	"postCreateCommand": "/usr/local/bin/bashrc_setup.sh",
 	"customizations": {
 		"vscode": {
 			"extensions": [

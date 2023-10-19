@@ -174,6 +174,8 @@ RUN cp src/ardupilot/Tools/vagrant/mavinit.scr /root/.mavinit.scr
 RUN python -m pip uninstall matplotlib -y 
 
 # Sourcing script at runtime
-ADD bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
+COPY .devcontainer/bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
 RUN chmod 777 /usr/local/bin/bashrc_setup.sh
-CMD /usr/local/bin/bashrc_setup.sh
+#CMD ["/usr/local/bin/bashrc_setup.sh"]
+
+CMD ["/bin/bash"]
