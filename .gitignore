@@ -3,3 +3,4 @@ acados_ocp_nlp.json
 __pycache__
 *.egg-info
 .devcontainer/Dockerfile
+.devcontainer/devcontainer.json
