@@ -53,4 +53,7 @@ RUN cp src/ardupilot/Tools/vagrant/mavinit.scr /root/.mavinit.scr
 # i love python env management!!! <.<
 RUN python -m pip uninstall matplotlib -y
 
+RUN sudo apt-get install -y ros-humble-mavros ros-humble-mavros-extras
+RUN bash -ic "ros2 run mavros install_geographiclib_datasets.sh"
+
 CMD ["bash"]
