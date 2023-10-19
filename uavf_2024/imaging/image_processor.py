@@ -27,8 +27,6 @@ class ImageProcessor:
 
         for tile in img.generate_tiles(self.tile_size):
             # TODO re-implement batch processing
-            if not isinstance(tile.img, np.ndarray):
-                tile.img = tile.img.numpy()
             shapes_detected = self.shape_detector.predict(tile.img)
             for shape in shapes_detected:
                 shape.x+=tile.x

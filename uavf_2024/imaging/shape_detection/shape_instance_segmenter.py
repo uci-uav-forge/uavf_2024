@@ -1,9 +1,9 @@
+import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
 import numpy as np
 from ..imaging_types import Image, InstanceSegmentationResult
 import os
-import torch
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -21,9 +21,15 @@ class ShapeInstanceSegmenter:
         '''
         raw_output: list[Results] = self.shape_model.predict(img)
         single_pred = raw_output[0]
+        
         masks = single_pred.masks
         if masks is None:
             return []
+        
+        if not isinstance(single_pred.boxes, Boxes):
+            warnings.warn("ShapeInstanceSegmenter.predict() could not extract Boxes from YOLO output")
+            return []
+        
         boxes: Boxes = single_pred.boxes
         full_results = []
         for box, mask, prob, cls in zip(boxes.xywh, masks.data, boxes.conf, boxes.cls):
@@ -40,7 +46,7 @@ class ShapeInstanceSegmenter:
                     height=h.item(),
                     confidences = confidences,
                     mask = mask[x:x+w, y:y+h].unsqueeze(2).numpy(),
-                    img = img[x:x+w, y:y+h]
+                    img = np.array(img[x:x+w, y:y+h])
                 )
             )
         return full_results

@@ -4,6 +4,7 @@ import numpy as np
 from enum import Enum
 
 import torch
+from torch import types as torch_types
 
 @dataclass
 class TargetDescription:
@@ -34,10 +35,10 @@ class InstanceSegmentationResult:
     '''
     `mask` and `img` should be (w,h,c) where c is 1 for mask and 3 for img
     '''
-    x: np.number
-    y: np.number
-    width: np.number
-    height: np.number
+    x: np.number | torch_types.Number
+    y: np.number | torch_types.Number
+    width: np.number | torch_types.Number
+    height: np.number | torch_types.Number
     confidences: np.ndarray
     mask: np.ndarray
     img: np.ndarray
