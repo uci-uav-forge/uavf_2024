@@ -13,7 +13,7 @@ def normalize_distribution( b: TargetDescription, offset):
     shape_col_norm_prob = (b.shape_col_probs + offset)/sum(b.shape_col_probs + offset)
     letter_col_norm_prob = (b.letter_col_probs + offset)/sum(b.letter_col_probs + offset)
     
-    return TargetDescription(shape_norm_prob, letter_norm_prob, shape_col_norm_prob, letter_norm_prob)
+    return TargetDescription(shape_norm_prob, letter_norm_prob, shape_col_norm_prob, letter_col_norm_prob)
 
 
 def calc_match_score(a: TargetDescription, b: TargetDescription):

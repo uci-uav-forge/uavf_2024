@@ -34,7 +34,13 @@ class TestTargetTracker(unittest.TestCase):
            target_1, target_2 
         ]
 
-        desc = TargetDescription(1,3,3,7)
+        desc = TargetDescription(
+                    np.eye(13)[1],
+                    np.eye(35)[3],
+                    np.eye(8)[3],
+                    np.eye(8)[7],
+                )
+            
         assert tracker.closest_match(desc) is target_1
 
     def test_with_near_match(self):
@@ -67,6 +73,11 @@ class TestTargetTracker(unittest.TestCase):
            target_1, target_2 
         ]
 
-        desc = TargetDescription(2,2,2,7)
+        desc = TargetDescription(
+                    np.eye(13)[2],
+                    np.eye(35)[2],
+                    np.eye(8)[2],
+                    np.eye(8)[7],
+                )
         assert tracker.closest_match(desc) is target_2
 
