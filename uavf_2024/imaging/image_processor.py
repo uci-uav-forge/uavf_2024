@@ -1,6 +1,6 @@
 import numpy as np
 
-from .imaging_types import FullPrediction, Image, InstanceSegmentationResult, TargetDescription
+from .imaging_types import HWC, FullPrediction, Image, InstanceSegmentationResult, TargetDescription
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
@@ -22,6 +22,11 @@ class ImageProcessor:
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
         '''
+        if not isinstance(img, Image):
+            raise TypeError("img must be an Image object")
+        
+        if not img.dim_order == HWC:
+            raise ValueError("img must be in HWC order")
 
         shape_results: list[InstanceSegmentationResult] = []
 
