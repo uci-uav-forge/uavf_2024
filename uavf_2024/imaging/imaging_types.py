@@ -47,7 +47,7 @@ class InstanceSegmentationResult:
     height: img_coord_t
     confidences: np.ndarray
     mask: np.ndarray
-    img: np.ndarray
+    img: 'Image'
 
 @dataclass
 class Target3D:

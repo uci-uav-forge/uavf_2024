@@ -46,7 +46,7 @@ class ShapeInstanceSegmenter:
                     height=img_coord_t(h.item()),
                     confidences = confidences,
                     mask = mask[x:x+w, y:y+h].unsqueeze(2).numpy(),
-                    img = np.array(img[x:x+w, y:y+h])
+                    img = img.make_sub_image(x, y, w, h)
                 )
             )
         return full_results
