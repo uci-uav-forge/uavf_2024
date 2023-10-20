@@ -8,9 +8,13 @@ class TargetTracker:
     def __init__(self, 
                  latlng_to_local: Callable[[tuple[float,float]], np.ndarray], 
                  local_to_latlng: Callable[[np.ndarray], tuple[float,float]],
-                 camera_fov: float,
-                 camera_resolution: int
+                 camera_fov: tuple[float, float],
+                 camera_resolution: tuple[int,int]
                  ):
+        '''
+        `camera_fov` is (h,v) where h is the horizontal FOV and v is the vertical FOV, both in degrees
+        `camera_resolution` (w,h) in pixels
+        '''
         self._targets: list[Target3D] = []
         self.local_to_latlng = local_to_latlng
         self.latlng_to_global = latlng_to_local
@@ -23,7 +27,18 @@ class TargetTracker:
             where x,y, and z are euclidian right-hand coordinates, and rot_x,rot_y,and rot_z
             are right-handed rotation angles in degrees around their respective axes, applied in order x->y->z
         '''
+
+        x,y = pred.x, pred.y
+        w,h = self.camera_resolution
+        h_fov, v_fov = self.camera_fov
+        focal_len = w/(2*np.tan(np.deg2rad(h_fov/2)))
+
+        # the vector pointing out the camera at the target, if the camera was facing positive Z
+        initial_direction_vector = np.array([w//2-x,h//2-y,focal_len])
+
         
+
+
         raise NotImplementedError()
 
     def closest_match(self, target_desc: TargetDescription) -> Target3D:
