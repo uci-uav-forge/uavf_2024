@@ -8,6 +8,7 @@ import torch
 # TODO: Limit these to the types we actually use
 integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]
 real = Union[float, np.float16, np.float32, np.float64, np.float128]
+number = Union[integer, real]
 
 img_coord_t = np.uint16
 
@@ -130,6 +131,15 @@ class Image:
         Checks whether two images are equal, including whether they have the same dimension order.
         """
         return isinstance(other, Image) and self._dim_order == other._dim_order and (self._array == other._array).all()
+    
+    def __repr__(self):
+        return f"Image({self._array}, {self._dim_order})"
+    
+    def __mul__(self, other: number | np.ndarray | torch.Tensor) -> 'Image':
+        """
+        Multiplies the underlying array by a scalar or another array.
+        """
+        return Image(self._array * other, self._dim_order)
     
     def get_array(self):
         return self._array
