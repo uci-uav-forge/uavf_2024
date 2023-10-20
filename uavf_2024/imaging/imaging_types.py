@@ -193,10 +193,7 @@ class Image:
 
         @read: https://stackoverflow.com/questions/58383814/how-to-divide-an-image-into-evenly-sized-overlapping-if-needed-tiles
 
-        IMO, it's not good practice to have a utils module, especially considering this function only has one caller.
-
         Args:
-            img (np.ndarray): Color, full-resolution input image in the format (height, width, channels)
             tile_size (int): Width/height of each tile
             min_overlap (int, optional): Number of pixels that each tile overlaps with its neighbors. Defaults to 0.
 
