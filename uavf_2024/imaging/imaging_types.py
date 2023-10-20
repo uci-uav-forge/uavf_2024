@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generator, NamedTuple, Union
+from typing import Generator, Generic, NamedTuple, TypeVar, Union
 import numpy as np
 from enum import Enum
 
@@ -78,7 +78,8 @@ HWC = ImageDimensionsOrder(HEIGHT, WIDTH, CHANNELS)
 CHW = ImageDimensionsOrder(CHANNELS, HEIGHT, WIDTH)
 _VALID_DIM_ORDERS = {HWC, CHW}
 
-class Image:
+_UnderlyingImageT = TypeVar('_UnderlyingImageT', np.ndarray, torch.Tensor)
+class Image(Generic[_UnderlyingImageT]):
     """
     Wraps a numpy array or torch tensor representing an image.
     Contains information about the dimension order of the underlying array, e.g., (height, width, channels) or (channels, height, width).
@@ -86,17 +87,18 @@ class Image:
     Except for passing data to predictors, you should interface through it directly instead of accessing _array.
     NOTE: Add methods to interface with it if necessary.
     
-    TODO: Refactor imaging modules to use this class
+    Args:
+        array (np.ndarray | torch.Tensor): The underlying array
+        dim_order (ImageDimensionsOrder): The dimension order of the underlying array
     
     Examples:
-    
-    image_hwc = Image(np.zeros((20, 20, 3)), HWC)
-    
-    image_chw = Image(np.zeros((3, 20, 20)), CHW)
+        image_hwc[np.ndarray] = Image(np.zeros((20, 20, 3)), HWC)
+
+        image_chw[torch.Tensor] = Image(torch.zeros((3, 20, 20)), CHW)
     """    
     def __init__(
         self, 
-        array: np.ndarray | torch.Tensor, 
+        array: _UnderlyingImageT, 
         dim_order: ImageDimensionsOrder
     ):
         if not isinstance(array, np.ndarray) and not isinstance(array, torch.Tensor):
@@ -135,9 +137,9 @@ class Image:
     def __repr__(self):
         return f"Image({self._array}, {self._dim_order})"
     
-    def __mul__(self, other: number | np.ndarray | torch.Tensor) -> 'Image':
+    def __mul__(self, other: number | _UnderlyingImageT) -> 'Image':
         """
-        Multiplies the underlying array by a scalar or another array.
+        Multiplies the underlying array by a scalar or another array/tensor.
         """
         return Image(self._array * other, self._dim_order)
     
