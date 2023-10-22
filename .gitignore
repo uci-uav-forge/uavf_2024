@@ -4,3 +4,7 @@ __pycache__
 *.egg-info
 .devcontainer/Dockerfile
 .devcontainer/devcontainer.json
+mav.*
+terrain
+eeprom.bin
+logs
