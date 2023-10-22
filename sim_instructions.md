@@ -42,7 +42,7 @@ Gazebo is another option, but I found it very slow through the layer of virtuali
 Launch MAVROS. (It converts ROS messages sent to it into commands sent to the flight control software.)
 
 ```
-ros2 launch mavros apm.launch fcu_url:=udp://:14550@
+ros2 launch mavros apm.launch fcu_url:=udp://:14551@
 ```
 
 

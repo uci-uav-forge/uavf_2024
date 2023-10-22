@@ -22,8 +22,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
-find_package(px4_msgs REQUIRED)
-find_package(uavf_ros2_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 
@@ -37,14 +36,29 @@ include_directories(include)
 #  DESTINATION lib/${PROJECT_NAME}
 #)
 
+
+set(msg_files
+  "msg/GpsAltitudePosition.msg"
+)
+set(srv_files
+)
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
+  ${srv_files}
+)
+
+
 # Install Python executables
-ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/commander_node.py
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION include/${PROJECT_NAME}
+)
+ament_export_dependencies(rosidl_default_runtime)
 
 
 if(BUILD_TESTING)
