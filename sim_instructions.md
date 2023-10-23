@@ -1,4 +1,6 @@
-# Instructions for running the Gazebo sim
+# Instructions for testing using SITL
+
+(We recommend using `tmux` in the dev-container - you'll be running a lot of programs at once!)
 
 ## Set up params
 ```
@@ -10,6 +12,8 @@ Once it's started, type the following command and then control-c:
 ```
 param set DDS_ENABLE 1
 ```
+
+You should only need to do this once.
 
 ## Launch SITL
 
@@ -44,5 +48,24 @@ Launch MAVROS. (It converts ROS messages sent to it into commands sent to the fl
 ```
 ros2 launch mavros apm.launch fcu_url:=udp://:14551@
 ```
+
+Build uavf_2024.
+
+```
+cd /home/ws && colcon build --merge-install && source install/setup.bash
+```
+
+In the GCS (the window where you have `mavproxy` open), manually make the drone takeoff:
+```
+mode guided
+arm throttle # might need to wait a bit for the sim to "heat up"
+takeoff 20
+```
+
+Launch the demo commander node. For now it just pushes a set of waypoints and switches the drone to AUTO to start it.
+```
+ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION
+```
+
 
 

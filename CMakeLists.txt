@@ -36,7 +36,6 @@ include_directories(include)
 #  DESTINATION lib/${PROJECT_NAME}
 #)
 
-
 set(msg_files
   "msg/GpsAltitudePosition.msg"
 )
@@ -47,10 +46,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   ${srv_files}
 )
 
-
 # Install Python executables
 install(PROGRAMS
   scripts/commander_node.py
+  scripts/demo_commander_node.py
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
   DESTINATION lib/${PROJECT_NAME}
