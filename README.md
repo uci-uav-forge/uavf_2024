@@ -1,11 +1,17 @@
 # UAV Forge's ROS2 package for GN&C and Aerial Imagery Object Detection.
 
-## Dev Container Setup
-1. Clone the repo
-2. In VSCode, open the command palette and run `rebuild and reopen in dev container`
-3. To verify your setup, run `run_tests.sh`
+## Dev Container Setup (one time setup)
+1. Ensure you have Docker and X-11 forwarding installed on your device (google this)
+2. Clone the repo and edit devcontainer.json accordingly for your X-11 setup
+3. In VSCode, first run `python3 setup_image.py`
+4. Then open the command palette (cmd/ctrl+shift+p) and run `rebuild and reopen in dev container`
+5. To verify your setup, run `run_tests.sh`
 
-## Usage
+## Dev Container Usage
+1. Open VScode to the repo
+2. Open the command palette (cmd/ctrl+shift+p) and run `rebuild and reopen in dev container`
+
+## Sim Usage
 
 1. Refer to `sim_instructions.md` for instructions on starting and running the simulation.
 
