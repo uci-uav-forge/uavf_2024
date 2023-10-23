@@ -176,7 +176,9 @@ RUN python -m pip uninstall matplotlib -y
 RUN sudo apt-get install -y ros-humble-mavros ros-humble-mavros-extras
 RUN bash -ic "ros2 run mavros install_geographiclib_datasets.sh"
 
+# Sourcing script at runtime
 COPY .devcontainer/bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
 RUN chmod 777 /usr/local/bin/bashrc_setup.sh
+#CMD ["/usr/local/bin/bashrc_setup.sh"]
 
 CMD ["/bin/bash"]
