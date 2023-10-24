@@ -152,7 +152,11 @@ class Image(Generic[_UnderlyingImageT]):
         """
         Does not copy the underlying array.
         """
-        return Image(self._array[y_coord:y_coord+height, x_coord:x_coord+width], self._dim_order) 
+        indicies = [slice(None)] * 3
+        indicies[self._dim_order.index(HEIGHT)] = slice(y_coord, y_coord+height)
+        indicies[self._dim_order.index(WIDTH)] = slice(x_coord, x_coord+width)
+        
+        return Image(self._array[tuple(indicies)], self._dim_order) 
     
     def make_tile(self, x_coord, y_coord, tile_size) -> Tile:
         """
