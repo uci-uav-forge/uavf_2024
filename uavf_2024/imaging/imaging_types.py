@@ -280,16 +280,16 @@ class Image(Generic[_UnderlyingImageT]):
         np.seterr(divide='ignore', invalid='ignore')
 
         # Set up remainders per tile
-        remaindersX = np.ones((x_count-1,), dtype=np.uint8) * np.uint16(np.floor(overflow_x / (x_count-1)))
-        remaindersY = np.ones((y_count-1,), dtype=np.uint8) * np.uint16(np.floor(overflow_y / (y_count-1)))
-        remaindersX[0:np.remainder(overflow_x, np.uint16(x_count-1))] += 1
-        remaindersY[0:np.remainder(overflow_y, np.uint16(y_count-1))] += 1
+        remaindersX = np.ones((x_count-1,), dtype=np.uint8) * img_coord_t(np.floor(overflow_x / (x_count-1)))
+        remaindersY = np.ones((y_count-1,), dtype=np.uint8) * img_coord_t(np.floor(overflow_y / (y_count-1)))
+        remaindersX[0:np.remainder(overflow_x, img_coord_t(x_count-1))] += 1
+        remaindersY[0:np.remainder(overflow_y, img_coord_t(y_count-1))] += 1
 
         np.seterr(divide='warn', invalid='warn')
             
-        y = np.uint16(0)
+        y = img_coord_t(0)
         for vertical_index in range(y_count):
-            x = np.uint16(0)
+            x = img_coord_t(0)
             for horizontal_index in range(x_count):
                 # Converting back to int because its expected downstream
                 # All dimensions should be refactored to use unit16
