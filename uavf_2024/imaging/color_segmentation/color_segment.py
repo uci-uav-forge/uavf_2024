@@ -3,18 +3,25 @@ import numpy as np
 import cv2
 import itertools
 
+from uavf_2024.imaging.imaging_types import HWC, Image
+
 @dataclass
 class ColorSegmentationResult:
     mask: np.ndarray
     shape_color: np.ndarray
     letter_color: np.ndarray
 
-def color_segmentation(image: np.ndarray, rgb_mask_save_path: str = None):
+def color_segmentation(image: Image, rgb_mask_save_path: str | None = None):
     """
     Segments the image with k=3 k-means clustering, and returns the mask and the centroids.
     The mask is a numpy array of shape (w,h) where each pixel is an integer in [0,1,2]. 0=background, 1=shape, 2=image
     The centroids are a numpy array of shape (2,3) where the first row is the color of the shape and the second is the color of the letter.
     """
+    if not isinstance(image, Image):
+        raise TypeError(f"image must be of type Image, not {type(image)}")
+    
+    if image.dim_order != HWC:
+        raise ValueError(f"image must be in HWC order, not {image.dim_order}")
 
     #making a numpy with 5 dimensions
     center_augmented_data = []
@@ -52,7 +59,7 @@ def color_segmentation(image: np.ndarray, rgb_mask_save_path: str = None):
     )
 
 if __name__ == "__main__":
-    image = cv2.imread("crop0.png")
+    image = Image.from_file("crop0.png")
     res = color_segmentation(image, rgb_mask_save_path="rgb_mask.png")
     print(res.shape_color, res.letter_color)
     cv2.imwrite('res.png', res.mask*127)

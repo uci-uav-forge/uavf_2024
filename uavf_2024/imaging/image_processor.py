@@ -1,7 +1,6 @@
 import numpy as np
 
-from uavf_2024.imaging.utils import generate_tiles
-from .imaging_types import FullPrediction, InstanceSegmentationResult, TargetDescription
+from .imaging_types import HWC, FullPrediction, Image, InstanceSegmentationResult, TargetDescription
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
@@ -18,17 +17,20 @@ class ImageProcessor:
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
 
-    def process_image(self, img: np.ndarray) -> "list[FullPrediction]":
+    def process_image(self, img: Image) -> "list[FullPrediction]":
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
         '''
-
-        tiles = generate_tiles(img, self.tile_size)
+        if not isinstance(img, Image):
+            raise TypeError("img must be an Image object")
+        
+        if not img.dim_order == HWC:
+            raise ValueError("img must be in HWC order")
 
         shape_results: list[InstanceSegmentationResult] = []
 
-        for tile in tiles:
+        for tile in img.generate_tiles(self.tile_size):
             # TODO re-implement batch processing
             shapes_detected = self.shape_detector.predict(tile.img)
             for shape in shapes_detected:
