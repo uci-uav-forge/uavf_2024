@@ -152,13 +152,7 @@ class Image(Generic[_UnderlyingImageT]):
         """
         Does not copy the underlying array.
         """
-        indicies = [slice(None)] * 3
-        indicies[self._dim_order.index(HEIGHT)] = slice(y_coord, y_coord+height)
-        indicies[self._dim_order.index(WIDTH)] = slice(x_coord, x_coord+width)
-        img = Image(self._array[y_coord:y_coord+height, x_coord:x_coord+width], self._dim_order)
-        if img.height != height or img.width != width:
-            raise ValueError("Sub-image has incorrect dimensions")
-        return img
+        return Image(self._array[y_coord:y_coord+height, x_coord:x_coord+width], self._dim_order) 
     
     def make_tile(self, x_coord, y_coord, tile_size) -> Tile:
         """
