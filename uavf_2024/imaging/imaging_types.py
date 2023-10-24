@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Generator, Generic, NamedTuple, TypeVar, Union
+import cv2
 import numpy as np
 from enum import Enum
 
@@ -177,6 +178,46 @@ class Image(Generic[_UnderlyingImageT]):
     @property
     def channels(self):
         return self._array.shape[self._dim_order.index(CHANNELS)]
+    
+    @staticmethod
+    def from_file(
+        fp: str, 
+        dim_order: ImageDimensionsOrder = HWC, 
+        array_type: type[np.ndarray | torch.Tensor] = np.ndarray, 
+        dtype: type[integer] = np.uint8
+    ) -> 'Image[np.ndarray] | Image[torch.Tensor]':
+        """
+        Reads an image from a file. Uses cv2.imread internally, so the image will be in BGR format.
+        
+        Args:
+            fp (str): The file path
+            dim_order (ImageDimensionsOrder, optional): The desired dimension order of the underlying array. Defaults to HWC, cv2's default.
+            array_type (type[np.ndarray | torch.Tensor], optional): The type of the underlying array. Defaults to np.ndarray.
+            dtype (type[integer], optional): The type of the underlying array's elements. Defaults to np.uint8.
+        
+        Returns:
+            Image: The image
+        """
+        if array_type == np.ndarray:
+            array = cv2.imread(fp).astype(dtype)
+            img = Image(array, HWC)
+            if dim_order != HWC:
+                img.change_dim_order(dim_order)
+            
+            return img
+        
+        elif array_type == torch.Tensor:
+            # Inherits np.ndarray's dtype
+            array = torch.from_numpy(cv2.imread(fp).astype(dtype))
+            img = Image(array, HWC)
+            if dim_order != HWC:
+                img.change_dim_order(dim_order)
+            
+            return img
+        
+        else:
+            raise TypeError("array_type must be np.ndarray or torch.Tensor")
+        
     
     def change_dim_order(self, target_dim_order: ImageDimensionsOrder) -> None:
         """

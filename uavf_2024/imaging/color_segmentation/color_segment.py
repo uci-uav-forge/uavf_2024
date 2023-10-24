@@ -59,7 +59,7 @@ def color_segmentation(image: Image, rgb_mask_save_path: str | None = None):
     )
 
 if __name__ == "__main__":
-    image = Image(cv2.imread("crop0.png"), HWC)
+    image = Image.from_file("crop0.png")
     res = color_segmentation(image, rgb_mask_save_path="rgb_mask.png")
     print(res.shape_color, res.letter_color)
     cv2.imwrite('res.png', res.mask*127)

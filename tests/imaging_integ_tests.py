@@ -84,7 +84,7 @@ class TestPipeline(unittest.TestCase):
         
         images_dirname = f"{CURRENT_FILE_PATH}/imaging_data/sim_dataset/images"
         for file_name in os.listdir(images_dirname):
-            img = Image(np.array(cv.imread(f"{images_dirname}/{file_name}")), HWC)
+            img = Image.from_file(f"{images_dirname}/{file_name}")
             pose_strs = file_name.split(".")[0].split("_")[1:]
             cam_position = csv_to_np(pose_strs[0])
             cam_angles = csv_to_np(pose_strs[1])

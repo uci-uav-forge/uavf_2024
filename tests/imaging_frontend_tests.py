@@ -73,7 +73,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
     imgs: list[Image] = []
     labels = []
     for img_file_name in os.listdir(imgs_path):
-        img = Image(np.array(cv.imread(f"{imgs_path}/{img_file_name}")), HWC)
+        img = Image.from_file(f"{imgs_path}/{img_file_name}")
         ground_truth: list[FullPrediction] = []
         with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
             for line in f.readlines():
@@ -100,7 +100,7 @@ class TestImagingFrontend(unittest.TestCase):
         self.image_processor = ImageProcessor()
 
     def test_runs_without_crashing(self):
-        sample_input = Image(np.array(cv.imread(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")), HWC)
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         res = self.image_processor.process_image(sample_input)
 
     def test_metrics(self):
