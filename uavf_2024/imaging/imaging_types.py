@@ -11,7 +11,8 @@ integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int1
 real = Union[float, np.float16, np.float32, np.float64, np.float128]
 number = Union[integer, real]
 
-img_coord_t = np.uint16
+# Can't use np.uint16 because torch doesn't support it. We're good as long as we don't have a gigapixel camera.
+img_coord_t = np.int16
 
 @dataclass
 class TargetDescription:
@@ -151,7 +152,11 @@ class Image(Generic[_UnderlyingImageT]):
         """
         Does not copy the underlying array.
         """
-        return Image(self._array[x_coord:x_coord+width, y_coord:y_coord+height], self._dim_order)
+        img = Image(self._array[x_coord:x_coord+width, y_coord:y_coord+height], self._dim_order)
+        
+        if img.shape[0] != width or img.shape[1] != height:
+            raise ValueError("Sub-image dimensions do not match specified dimensions")
+        return img
     
     def make_tile(self, x_coord, y_coord, tile_size) -> Tile:
         """

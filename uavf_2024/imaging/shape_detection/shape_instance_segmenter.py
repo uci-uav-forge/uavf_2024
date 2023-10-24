@@ -19,7 +19,7 @@ class ShapeInstanceSegmenter:
         Currently assumes batch size is 1
         TODO: refactor for batch processing
         '''
-        raw_output: list[Results] = self.shape_model.predict(img)
+        raw_output: list[Results] = self.shape_model.predict(img.get_array())
         single_pred = raw_output[0]
         
         masks = single_pred.masks
