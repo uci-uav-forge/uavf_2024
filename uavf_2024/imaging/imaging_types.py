@@ -101,7 +101,7 @@ class Image(Generic[_UnderlyingImageT]):
     def __init__(
         self, 
         array: _UnderlyingImageT, 
-        dim_order: ImageDimensionsOrder
+        dim_order: ImageDimensionsOrder = HWC
     ):
         if not isinstance(array, np.ndarray) and not isinstance(array, torch.Tensor):
             raise TypeError("array must be a numpy array or torch tensor")
