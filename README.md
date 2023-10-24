@@ -38,7 +38,7 @@
 6. To use git inside the docker container, you may have to manually log in to GitHub again if the built-in credential forwarding isn't working. I recommend using the [GitHub CLI](https://cli.github.com/) to do this.
 7. If you want to use the simulator:
 	1. Follow instructions in `sim_instructions.md`.
-	2. If you want it to run it in a GUI, one way is using the remote desktop environment in the dev container. Open `localhost:6080` in a web browser, then enter password `vscode`, then use the menu in the bottom left to open a terminal, `cd /home/ws/PX4-Autopilot`, then run `make px4_sitl gazebo-classic`.
+	2. If you want it to run it in a GUI, one way is using the remote desktop environment in the dev container. Open `localhost:6080` in a web browser, then enter password `vscode`, then use the menu in the bottom left to open a terminal.
 	3. The X sockets should also be mounted and should work if you run `xhost +` on your machine.
 
 
