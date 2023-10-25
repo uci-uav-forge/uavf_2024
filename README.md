@@ -3,7 +3,7 @@
 ## Dev Container Setup (one time setup)
 1. Ensure you have Docker and X-11 forwarding installed on your device (google this)
 2. Clone the repo and edit devcontainer.json accordingly for your X-11 setup
-3. In VSCode, first run `python3 setup_image.py`
+3. In VSCode, first run `python3 setup_image.py` (alternatively run `echo "FROM t0mmyn/uavf_2024" > .devcontainer/Dockerfile` to download from a mirrored x86 image)
 4. Then open the command palette (cmd/ctrl+shift+p) and run `rebuild and reopen in dev container`
 5. To verify your setup, run `run_tests.sh`
 
@@ -38,7 +38,7 @@
 6. To use git inside the docker container, you may have to manually log in to GitHub again if the built-in credential forwarding isn't working. I recommend using the [GitHub CLI](https://cli.github.com/) to do this.
 7. If you want to use the simulator:
 	1. Follow instructions in `sim_instructions.md`.
-	2. If you want it to run it in a GUI, one way is using the remote desktop environment in the dev container. Open `localhost:6080` in a web browser, then enter password `vscode`, then use the menu in the bottom left to open a terminal, `cd /home/ws/PX4-Autopilot`, then run `make px4_sitl gazebo-classic`.
+	2. If you want it to run it in a GUI, one way is using the remote desktop environment in the dev container. Open `localhost:6080` in a web browser, then enter password `vscode`, then use the menu in the bottom left to open a terminal.
 	3. The X sockets should also be mounted and should work if you run `xhost +` on your machine.
 
 

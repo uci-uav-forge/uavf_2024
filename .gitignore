@@ -8,3 +8,6 @@ mav.*
 terrain
 eeprom.bin
 logs
+build
+install
+log

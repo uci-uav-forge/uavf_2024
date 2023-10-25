@@ -173,6 +173,9 @@ RUN cp src/ardupilot/Tools/vagrant/mavinit.scr /root/.mavinit.scr
 #since apt installs the specific version we want we uninstall the pip version
 RUN python -m pip uninstall matplotlib -y 
 
+RUN sudo apt-get install -y ros-humble-mavros ros-humble-mavros-extras
+RUN bash -ic "source /opt/ros/humble/setup.bash && ros2 run mavros install_geographiclib_datasets.sh"
+
 # Sourcing script at runtime
 COPY .devcontainer/bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
 RUN chmod 777 /usr/local/bin/bashrc_setup.sh
