@@ -37,9 +37,10 @@ include_directories(include)
 #)
 
 set(msg_files
-  "msg/GpsAltitudePosition.msg"
+  "msg/TargetDetection.msg"
 )
 set(srv_files
+  "srv/TakePicture.srv"
 )
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
