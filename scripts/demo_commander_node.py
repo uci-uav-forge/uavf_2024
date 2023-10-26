@@ -8,7 +8,6 @@ import rclpy.node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 import sensor_msgs.msg
 from threading import Thread
-from uavf_2024.msg import GpsAltitudePosition
 import sys
 
 class CommanderNode(rclpy.node.Node):
