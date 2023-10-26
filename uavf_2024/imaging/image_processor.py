@@ -33,8 +33,8 @@ class ImageProcessor:
 
         batch_size = 3
         for tiles in batched(img.generate_tiles(self.tile_size), batch_size):
-            # TODO re-implement batch processing
-            shape_results = self.shape_detector.predict(tiles)
+            temp = self.shape_detector.predict(tiles)
+            if temp is not None: shape_results.extend(temp)
 
         total_results: list[FullPrediction] = []
 

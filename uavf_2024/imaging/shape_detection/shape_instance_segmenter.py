@@ -19,7 +19,7 @@ class ShapeInstanceSegmenter:
         Currently assumes batch size is 1
         TODO: refactor for batch processing
         '''
-        imgs_list = [tile.img.get_array for tile in tiles if tile is not None]
+        imgs_list = [tile.img.get_array() for tile in tiles if tile is not None]
         predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False)
         prediction_tensors: list[Boxes] = [x.to('cpu') for x in predictions] # do i need this
         full_results = []
