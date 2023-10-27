@@ -5,7 +5,7 @@ import cv2
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 class Camera_Projection:
-  def __init__(self, intrinsics = None, resolution = (1920, 1080):
+  def __init__(self, intrinsics = None, resolution = (1920, 1080)):
     """initalizes camera projection model based on camera instrinics
   
     Parameters:
@@ -17,8 +17,8 @@ class Camera_Projection:
     The values fx and fy are the pixel focal length, and are identical for square pixels. The values ox and oy are the offsets of the principal point from the top-left corner of the image frame. All values are expressed in pixels.
   
     """
-    assert isinstance(intrinsics, np.ndarray) or isinstance(intrinsics, None)s, f'input for instrinsics is type {type(intrinsics)} when it should be np.ndarray'
-    assert instrinics.shape == (3, 3), f'shape of instrinics matrix is {instrinics.shape} when it should be (3,3)'
+    assert isinstance(intrinsics, np.ndarray) or isinstance(intrinsics, None), f'input for instrinsics is type {type(intrinsics)} when it should be np.ndarray'
+    assert intrinsics.shape == (3, 3), f'shape of instrinics matrix is {intrinsics.shape} when it should be (3,3)'
     
     self.intrinsics_matrix = intrinsics
     self.resolution = resolution
@@ -49,7 +49,3 @@ class Camera_Projection:
       print("SUCCESSFUL CALIBRATION SETTING INSTRINICS")
       #self.instrinics = intrinsics_matrix
       #print(f'INSTRINICS MATRIX {self.instrinics}') #uncomment these afterwards
-
-    
-
-    
