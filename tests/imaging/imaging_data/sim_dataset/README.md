@@ -1,0 +1,1 @@
+1st label (octagon+Y) is on image4 at (1367, 1841)

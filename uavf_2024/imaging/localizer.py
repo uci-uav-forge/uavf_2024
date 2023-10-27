@@ -26,6 +26,11 @@ class Localizer:
         w,h = self.camera_resolution
         focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
 
+        camera_to_world = np.array([
+            [0,0,1],
+            [-1,0,0],
+            [0,-1,0]
+        ])
 
         rot_x_rad, rot_y_rad, rot_z_rad = np.deg2rad(camera_pose[3:])
         camera_position = camera_pose[:3]
@@ -44,9 +49,10 @@ class Localizer:
 
         # the vector pointing out the camera at the target, if the camera was facing positive Z
         initial_direction_vector = np.array([w//2-x,h//2-y,focal_len])
+        world_vector = camera_to_world @ initial_direction_vector
 
         # rotate the vector to match the camera's rotation
-        rotated_vector = rot_z_mat @ rot_y_mat @ rot_x_mat @ initial_direction_vector
+        rotated_vector = rot_z_mat @ rot_y_mat @ rot_x_mat @ world_vector
 
         # solve camera_pose + t*rotated_vector = [x,y,0] = target_position
         t = -camera_position[2]/rotated_vector[2]
