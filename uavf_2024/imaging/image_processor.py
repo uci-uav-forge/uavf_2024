@@ -1,5 +1,6 @@
 import numpy as np
 
+from .utils import batched
 from .imaging_types import HWC, FullPrediction, Image, InstanceSegmentationResult, TargetDescription
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
@@ -17,7 +18,7 @@ class ImageProcessor:
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
 
-    def process_image(self, img: Image) -> "list[FullPrediction]":
+    def process_image(self, img: Image) -> list[FullPrediction]:
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
@@ -30,13 +31,10 @@ class ImageProcessor:
 
         shape_results: list[InstanceSegmentationResult] = []
 
-        for tile in img.generate_tiles(self.tile_size):
-            # TODO re-implement batch processing
-            shapes_detected = self.shape_detector.predict(tile.img)
-            for shape in shapes_detected:
-                shape.x+=tile.x
-                shape.y+=tile.y
-                shape_results.append(shape)
+        batch_size = 3
+        for tiles in batched(img.generate_tiles(self.tile_size), batch_size):
+            temp = self.shape_detector.predict(tiles)
+            if temp is not None: shape_results.extend(temp)
 
         total_results: list[FullPrediction] = []
 
