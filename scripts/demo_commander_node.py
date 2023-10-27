@@ -1,45 +1,15 @@
 #!/usr/bin/env python3
 
-import std_msgs.msg
+from uavf_2024.gnc.commander_node import CommanderNode
+from uavf_2024.gnc.util import read_gps
 import mavros_msgs.msg
 import mavros_msgs.srv
 import rclpy
 import rclpy.node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
-import sensor_msgs.msg
 from threading import Thread
 import sys
 
-class CommanderNode(rclpy.node.Node):
-    def __init__(self):
-        super().__init__('uavf_commander_node')
 
-        qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.VOLATILE,
-            depth = 1
-        )
-
-        # set up some clients - not all of these are used right now.
-
-        self.global_pos_sub = self.create_subscription(
-            sensor_msgs.msg.NavSatFix,
-            'ap/geopose/filtered',
-            self.global_pos_cb,
-            qos_profile)
-        self.got_pos = False
-
-        self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')
-        
-        self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
-
-        self.takeoff_client = self.create_client(mavros_msgs.srv.CommandTOL, 'mavros/cmd/takeoff')
-
-        self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
-    
-    def global_pos_cb(self, global_pos):
-        self.got_pos = True
-        self.last_pos = global_pos
 
 if __name__ == '__main__':
     rclpy.init()
@@ -48,12 +18,10 @@ if __name__ == '__main__':
     spinner = Thread(target = rclpy.spin, args = (node,))
     
 
-    with open(sys.argv[1]) as f:
-        waypoints = [tuple(map(float, line.split(','))) for line in f]
+    waypoints = read_gps(sys.argv[1])
 
 
     spinner.start()
-
     
     print('Pushing waypoints')
 
