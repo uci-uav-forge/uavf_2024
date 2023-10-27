@@ -7,6 +7,8 @@ from uavf_2024.imaging.visualizations import visualize_predictions
 import numpy as np
 import cv2 as cv
 import os
+from time import time
+from tqdm import tqdm
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -102,6 +104,18 @@ class TestImagingFrontend(unittest.TestCase):
     def test_runs_without_crashing(self):
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         res = self.image_processor.process_image(sample_input)
+
+    def test_benchmark_fullsize_images(self):
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
+        times = []
+        N_runs = 10
+        for i in tqdm(range(N_runs)):
+            start = time()
+            res = self.image_processor.process_image(sample_input)
+            elapsed = time()-start
+            times.append(elapsed)
+        print(f"Fullsize image benchmarks (average of {N_runs} runs):")
+        print(f"Avg: {np.mean(times)}, StdDev: {np.std(times)}")
 
     def test_metrics(self):
         imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
