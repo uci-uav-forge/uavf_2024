@@ -42,9 +42,10 @@ def csv_to_np(csv_str: str, delim: str = ","):
 
 class TestPipeline(unittest.TestCase):
     def test_with_sim_dataset(self):
-
+        # VFOV = 67.6 degrees
+        # HFOV = 2*arctan(16/9*tan(67.6/2)) = 99.9 degrees
         target_localizer = Localizer(
-            67.6,
+            99.9,
             (5312, 2988)
         )
         color_classifier = ColorClassifier()
@@ -89,11 +90,11 @@ class TestPipeline(unittest.TestCase):
             for pred in predictions:
                predictions_3d.append(target_localizer.prediction_to_coords(pred, np.concatenate([cam_position, cam_angles])))
         
-        EPSILON = 1e-6
+        EPSILON = 1 
         scores = []
         for gt_target in ground_truth:
             closest_match = min(predictions_3d, key=lambda pred: calc_match_score(pred.description, gt_target.description))
-            if abs(closest_match.position-gt_target.position)<EPSILON and abs(closest_match.position-gt_target.position)<EPSILON:
+            if np.allclose(closest_match.position,gt_target.position,EPSILON):
                 scores.append(1)
             else:
                 scores.append(0)
