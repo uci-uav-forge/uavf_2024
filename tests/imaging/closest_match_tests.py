@@ -1,5 +1,5 @@
 import unittest
-from uavf_2024.imaging.imaging_types import TargetDescription, Target3D
+from uavf_2024.imaging.imaging_types import TargetDescription
 from uavf_2024.imaging.utils import calc_match_score
 import numpy as np
 
