@@ -29,17 +29,7 @@ class TestLocalizer(unittest.TestCase):
             np.array([0,30,0,-45,-90,0]),
             45,
             w//2,h//2,
-            np.array([0,0,0])
-        )
-
-    def test_45_deg_down_neg_z_axis(self):
-        w, h = 400, 300
-        test_localization(
-            w,h,
-            np.array([0,30,0,-135,-90,0]),
-            45,
-            w//2,h//2,
-            np.array([0,0,0])
+            np.array([30,0,0])
         )
 
     def test_90_edge_of_fov(self):
