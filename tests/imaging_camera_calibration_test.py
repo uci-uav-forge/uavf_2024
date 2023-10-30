@@ -55,7 +55,6 @@ class TestTargetTracker(unittest.TestCase):
 
     def test_with_diff_batches(self):
         # Testing on camera photos with same pose but different lighting/details
-        print("test_3")
         resolution = resizing_photos(batch_name= "DNG")
         return_resolution = resizing_photos(batch_name= "PNG", re_shape_resolution= resolution)
         batch_1_results = Camera_Projection(batch = "DNG")

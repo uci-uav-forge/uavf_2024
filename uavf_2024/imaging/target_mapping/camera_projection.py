@@ -25,7 +25,7 @@ class Camera_Projection:
     self.resolution = resolution
 
     if self.intrinsics_matrix is None:
-      print('Initalized with no camera intrinsics, use class method calibrate_cv2(imgs = [imgs_chessboard]) to preform opencv camera calibration for camera intrinsics')
+      #print('Initalized with no camera intrinsics, use class method calibrate_cv2(imgs = [imgs_chessboard]) to preform opencv camera calibration for camera intrinsics')
     
       '''uploading camera photos from stated folder'''
       img_directory = os.path.join(CURRENT_FILE_PATH, batch)
@@ -34,9 +34,9 @@ class Camera_Projection:
       img_list = np.array([cv2.imread(os.path.join(img_directory, f_name)) for f_name in img_directory_ls])
       self.calibrate_cv2( img_list )
 
-    else:
-      print(f'Initalized with camera intrinsics {self.intrinsics_matrix}')
-    print(f'initalized with resolution {self.resolution}')
+    #else:
+      #print(f'Initalized with camera intrinsics {self.intrinsics_matrix}')
+    #print(f'initalized with resolution {self.resolution}')
 
 
   
@@ -57,8 +57,8 @@ class Camera_Projection:
 
     resolution_input = (imgs[0].shape[0], imgs[0].shape[1])
     if self.resolution != resolution_input:
-      print(f'images input for calibration are resolution {resolution_input} do not match initalized resolution {self.resolution}')
-      print(f'setting class member self.resolution to {resolution_input}')
+      #print(f'images input for calibration are resolution {resolution_input} do not match initalized resolution {self.resolution}')
+      #print(f'setting class member self.resolution to {resolution_input}')
       self.resolution = resolution_input
 
     for camera_photo in imgs:
@@ -94,15 +94,15 @@ class Camera_Projection:
 
     self.reprojection_error = mean_error/ len(objpoints)
     
-    print(f"total reprojection error: { self.reprojection_error}")
+    #print(f"total reprojection error: { self.reprojection_error}")
 
     if ret <= 0:
       print('UNSUCCESSFUL CALIBRATION, NOT SETTING INSTRINICS')
     else:
-      print("SUCCESSFUL CALIBRATION SETTING INSTRINICS")
+      #print("SUCCESSFUL CALIBRATION SETTING INSTRINICS")
       self.intrinsics_matrix = np.around(intrinsics_matrix, decimals = 4)
       np.savetxt(os.path.join(CURRENT_FILE_PATH, "intrinsics_matrix.txt"), self.intrinsics_matrix, delimiter = ",")
-      print(f'INSTRINICS MATRIX {self.intrinsics_matrix}') #uncomment these afterwards
+      #print(f'INSTRINICS MATRIX {self.intrinsics_matrix}') #uncomment these afterwards
     
     
 
