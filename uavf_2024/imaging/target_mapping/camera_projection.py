@@ -21,36 +21,23 @@ class Camera_Projection:
     """
     assert isinstance(intrinsics, np.ndarray) or isinstance(intrinsics, type(None)), f'input for instrinsics is type {type(intrinsics)} when it should be np.ndarray'
     
-    
     self.intrinsics_matrix = intrinsics
     self.resolution = resolution
 
-    if self.intrinsics_matrix == None:
+    if self.intrinsics_matrix is None:
       print('Initalized with no camera intrinsics, use class method calibrate_cv2(imgs = [imgs_chessboard]) to preform opencv camera calibration for camera intrinsics')
     
-      '''uploading camera photos from img folder'''
+      '''uploading camera photos from stated folder'''
       img_directory = os.path.join(CURRENT_FILE_PATH, batch)
       img_directory_ls = os.listdir(img_directory)
-      '''
-      img_list = []
-      
-      height_pixels, width_pixels = 0 
-      for f_name in img_directory_ls:
-        img = cv2.imread( os.path.join(img_directory, f_name))
-        img_r = cv2.resize( img, self.resolution)
-        img_list.append(img_r)
-        
-      self.calibrate_cv2( img_list ) '''
-
-
+     
       img_list = np.array([cv2.imread(os.path.join(img_directory, f_name)) for f_name in img_directory_ls])
-      self.calibrate_cv2( img_list ) # img_resized_array )
+      self.calibrate_cv2( img_list )
 
     else:
       print(f'Initalized with camera intrinsics {self.intrinsics_matrix}')
     print(f'initalized with resolution {self.resolution}')
 
-    #return self.intrinsics_matrix
 
   
   def calibrate_cv2( self, imgs ):
@@ -61,8 +48,8 @@ class Camera_Projection:
     critera = ( cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
     objp = np.zeros(( chess_board_col_points * chess_board_row_points, real_coord_axis), np.float32)
-    objp[ :, :2] = np.mgrid[ 0: chess_board_row_points, 0: chess_board_col_points].T.reshape( -1, 2) * 20
-    '''Adjust square size to 20 mm for real world coordinates'''
+    objp[ :, :2] = np.mgrid[ 0: chess_board_row_points, 0: chess_board_col_points].T.reshape( -1, 2) 
+    
 
     '''objpoints is storing points in the real world coordinate system while imgpoints is storing points in the 2d image coordinate system'''
     objpoints = []
@@ -113,7 +100,8 @@ class Camera_Projection:
       print('UNSUCCESSFUL CALIBRATION, NOT SETTING INSTRINICS')
     else:
       print("SUCCESSFUL CALIBRATION SETTING INSTRINICS")
-      self.intrinsics_matrix = intrinsics_matrix
+      self.intrinsics_matrix = np.around(intrinsics_matrix, decimals = 4)
+      np.savetxt(os.path.join(CURRENT_FILE_PATH, "intrinsics_matrix.txt"), self.intrinsics_matrix, delimiter = ",")
       print(f'INSTRINICS MATRIX {self.intrinsics_matrix}') #uncomment these afterwards
     
     
