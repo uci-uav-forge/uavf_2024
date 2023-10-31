@@ -5,7 +5,7 @@ import rclpy
 import rclpy.node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 import sensor_msgs.msg
-import uavf_2024_msg.srv
+import uavf_2024.srv
 
 class CommanderNode(rclpy.node.Node):
     # Manages subscriptions to ROS topics and services necessary for the main GNC node. 
@@ -33,7 +33,7 @@ class CommanderNode(rclpy.node.Node):
 
         self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
 
-        self.take_picture_client = self.create_client(uavf_2024_msg.srv.TakePicture, 'uavf_2024/take_picture')
+        self.take_picture_client = self.create_client(uavf_2024.srv.TakePicture, 'uavf_2024/take_picture')
     
     def global_pos_cb(self, global_pos):
         self.got_pos = True
