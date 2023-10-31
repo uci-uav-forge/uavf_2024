@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(uavf_2024)
+project(uavf_2024_msg)
 
 
 # Default to C99
@@ -42,7 +42,8 @@ set(msg_files
 set(srv_files
   "srv/TakePicture.srv"
 )
-rosidl_generate_interfaces(${PROJECT_NAME}
+
+rosidl_generate_interfaces(uavf_2024_msg
   ${msg_files}
   ${srv_files}
 )
@@ -51,6 +52,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 install(PROGRAMS
   scripts/commander_node.py
   scripts/demo_commander_node.py
+  scripts/demo_dropzone_planner.py
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
   DESTINATION lib/${PROJECT_NAME}

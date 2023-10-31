@@ -1,8 +1,9 @@
-from typing import List
+from typing import List, Tuple
+
 
 class DropzonePlanner:
     # Handles all logic related to controlling drone motion during the payload drop.
-    def ___init__(self, commander, dropzone_coords: List[(float, float)], image_width_m, image_height_m):
+    def __init__(self, commander, dropzone_coords: List[Tuple[float, float]], image_width_m: float, image_height_m: float):
         self.commander = commander
         self.dropzone_coords = dropzone_coords
         self.image_width_m = image_width_m
@@ -15,6 +16,7 @@ class DropzonePlanner:
                         payload_color_id: int,
                         payload_shape_id: int):
         # Called when a waypoint lap has been finished.
+        # Expects that the drone has taken off and is in GUIDED mode.
         # Moves to drop zone from current position,
         # scans drop zone for targets if necessary,
         # navigates to the target matching the current payload,

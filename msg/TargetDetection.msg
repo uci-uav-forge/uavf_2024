@@ -1,7 +1,7 @@
 uint64 timestamp
 
-float64 lat
-float64 lon
+float64 dx_meters
+float64 dy_meters
 
 float64[8] shape_conf 
 # should sum to 1
