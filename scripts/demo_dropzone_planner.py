@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('dropzone_file')
     parser.add_argument('payload_color_id', type = int)
     parser.add_argument('payload_shape_id', type = int)
+    parser.add_argument('payload_letter_id', type = int)
     parser.add_argument('image_width_m', type = float)
     parser.add_argument('image_height_m', type = float)
 
@@ -28,7 +29,7 @@ if __name__ == '__main__':
 
     planner = DropzonePlanner(node, read_gps(args.dropzone_file), args.image_width_m, args.image_height_m)
 
-    planner.conduct_air_drop(args.payload_color_id, args.payload_shape_id)
+    planner.conduct_air_drop(args.payload_color_id, args.payload_shape_id, args.payload_letter_id)
 
 
 

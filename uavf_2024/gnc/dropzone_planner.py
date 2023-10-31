@@ -14,7 +14,8 @@ class DropzonePlanner:
 
     def conduct_air_drop(self,
                         payload_color_id: int,
-                        payload_shape_id: int):
+                        payload_shape_id: int,
+                        payload_letter_id: int):
         # Called when a waypoint lap has been finished.
         # Expects that the drone has taken off and is in GUIDED mode.
         # Moves to drop zone from current position,
