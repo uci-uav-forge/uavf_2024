@@ -48,3 +48,10 @@ I copied a lot of the config from this tutorial: https://docs.ros.org/en/foxy/Ho
 ### Manual
 
 (WIP). It's recommended to use the Dockerfile for development.
+
+### Running Imaging ROS Node
+1. go into `/home/ws`
+2. `source install/setup.sh`
+3. `colcon build --merge-install`
+4. `ros2 run uavf_2024 imaging_node.py` (this starts the service)
+5. from another terminal, run `ros2 service call /imaging_service uavf_2024/srv/TakePicture`
