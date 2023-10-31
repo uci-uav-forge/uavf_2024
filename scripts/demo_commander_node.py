@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from uavf_2024.gnc.commander_node import CommanderNode
-from uavf_2024.gnc.util import read_gps
+from libuavf_2024.gnc.commander_node import CommanderNode
+from libuavf_2024.gnc.util import read_gps
 import mavros_msgs.msg
 import mavros_msgs.srv
 import rclpy
