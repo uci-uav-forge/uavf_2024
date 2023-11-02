@@ -6,6 +6,7 @@ import numpy as np
 
 from .imaging_types import TargetDescription, Tile
 
+from itertools import islice
 
 def normalize_distribution( b: TargetDescription, offset):
     shape_norm_prob = (b.shape_probs + offset)/sum(b.shape_probs + offset)
@@ -28,3 +29,10 @@ def calc_match_score(a: TargetDescription, b: TargetDescription):
         letter_color_score = sum(a.letter_col_probs * b.letter_col_probs)
         return shape_score * letter_score * shape_color_score * letter_color_score
     
+def batched(iterable, n):
+    # batched('ABCDEFG', 3) --> ABC DEF G
+    if n < 1:
+        raise ValueError('n must be at least one')
+    it = iter(iterable)
+    while batch := tuple(islice(it, n)):
+        yield batch
