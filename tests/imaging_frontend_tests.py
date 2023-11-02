@@ -102,6 +102,13 @@ class TestImagingFrontend(unittest.TestCase):
     def test_runs_without_crashing(self):
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         res = self.image_processor.process_image(sample_input)
+        # assert len(res)==4
+
+    def test_no_duplicates(self):
+        # Ensures that there are not duplicates, should have four bounding boxes after removing duplicates using nms
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
+        res = self.image_processor.process_image(sample_input)
+        assert len(res)==4
 
     def test_metrics(self):
         imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
