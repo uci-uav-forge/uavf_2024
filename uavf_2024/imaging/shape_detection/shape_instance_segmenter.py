@@ -21,7 +21,7 @@ class ShapeInstanceSegmenter:
         '''
         imgs_list = [tile.img.get_array() for tile in tiles if tile is not None]
         predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False)
-        prediction_tensors: list[Boxes] = [x.to('cpu') for x in predictions] # do i need this
+
         full_results = []
         img_index = -1
         for single_pred in predictions:
