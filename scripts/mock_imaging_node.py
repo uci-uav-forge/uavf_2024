@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# example usage: ros2 run uavf_2024 mock_imaging_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY
+# example usage: ros2 run uavf_2024 mock_imaging_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 35 26
 
 # generates and mocks 5 unique, different targets
 
@@ -17,11 +17,11 @@ from uavf_2024.srv import TakePicture
 from geometry_msgs.msg import PoseStamped
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
 from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m
+from scipy.spatial.transform import Rotation as R
 import numpy as np
 import argparse
 from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import NavSatFix
-import tf2_ros
 import numpy as np
 import random
 import time
@@ -42,7 +42,7 @@ def gen_fake_targets(dropzone_bounds):
             id = (random.randrange(8),random.randrange(36),random.randrange(8),random.randrange(8))
         
         p = None
-        while p is None or (len(cur_targets) and min(np.linalg.norm(p2 - p) for ct,p2 in cur_targets) < 20):
+        while p is None or (len(cur_targets) and min(np.linalg.norm(p2 - p) for ct,p2 in cur_targets) < 5):
             p = sample_point(dropzone_bounds)
         cur_targets.append((id,p))
     return cur_targets
@@ -63,12 +63,16 @@ class MockImagingNode(Node):
         self.imaging_service = self.create_service(TakePicture, '/imaging_service', self.imaging_callback)
 
         self.dropzone_bounds = read_gps(args.dropzone_file)
+        self.img_w_m = args.img_w_m
+        self.img_h_m = args.img_h_m
 
     def got_pose_cb(self, pose):
         self.cur_pose = pose
+        self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,]).as_rotvec()
         self.got_pose = True
 
     def got_global_pos_cb(self, pos):
+        #Todo this feels gross - there should be a cleaner way to get home-pos through MAVROS.
         if not self.got_global_pos:
             self.got_global_pos = True
             self.first_global_pos = pos
@@ -88,7 +92,17 @@ class MockImagingNode(Node):
         cur_xy = np.array([self.cur_pose.pose.position.x,self.cur_pose.pose.position.y])
 
         for target in self.targets:
-            if np.linalg.norm(target[1] - cur_xy) < 50:
+            print(cur_xy)
+            delta = target[1] - cur_xy
+            heading = np.array([np.cos(self.cur_rot[-1]), np.sin(self.cur_rot[-1])])
+
+            amt_fwd = np.dot(heading, delta)
+
+            amt_side = (np.linalg.norm(delta)**2 - amt_fwd**2)**0.5
+
+            print(delta, amt_fwd, amt_side)
+
+            if abs(amt_fwd) < self.img_w_m/2 and abs(amt_side) < self.img_h_m/2:
                 response.detections.append(TargetDetection(
                     timestamp = int(1000*time.time()),
                     x = target[1][0],
@@ -104,6 +118,8 @@ class MockImagingNode(Node):
 def main(args=None) -> None:
     ap = argparse.ArgumentParser('mock_imaging_node.py')
     ap.add_argument('dropzone_file')
+    ap.add_argument('img_w_m', type = float)
+    ap.add_argument('img_h_m', type = float)
     rclpy.init(args=args)
     node = MockImagingNode(ap.parse_args())
     print("spin spin")
