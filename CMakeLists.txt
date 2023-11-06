@@ -53,6 +53,7 @@ install(PROGRAMS
   scripts/demo_commander_node.py
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
+  scripts/imaging_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 install(DIRECTORY include/${PROJECT_NAME}/
