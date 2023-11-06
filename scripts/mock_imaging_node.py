@@ -4,9 +4,9 @@
 
 # generates and mocks 5 unique, different targets
 
-# currently checks if we are in 50m radius.
+# Checks if targets would be in FOV and then returns "perfect" results.
 
-# todo: actually use rect corresponding to correct fovs.
+# todo:
 # add some noise
 # make sure meter calcs are correct.
 
