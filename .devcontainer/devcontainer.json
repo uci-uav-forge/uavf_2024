@@ -16,9 +16,17 @@
         "ROS_LOCALHOST_ONLY": "1",
         "ROS_DOMAIN_ID": "42"
     },
+    // comment out if not on Linux; use VNC instead
     "mounts": [
         "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached"
       ],
+    /*"features": {
+        "desktop-lite": {
+            "password": "vscode",
+            "webPort": "6080",
+            "vncPort": "5901"
+        }
+    }*/
     "runArgs": [
         "--net=host",
         "-e", "DISPLAY=${env:DISPLAY}"
@@ -26,14 +34,14 @@
     "forwardPorts": [
         6080
     ],
-	"postCreateCommand": "/usr/local/bin/bashrc_setup.sh",
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"ms-python.python",
-				"ms-vscode.cmake-tools",
-				"ms-azuretools.vscode-docker"
-			]
-		}
-	}
+    "postCreateCommand": "/usr/local/bin/bashrc_setup.sh",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-vscode.cmake-tools",
+                "ms-azuretools.vscode-docker"
+            ]
+        }
+    }
 }
