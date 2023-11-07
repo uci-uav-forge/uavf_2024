@@ -15,7 +15,7 @@ class LetterClassifier:
     
     def predict(self, imgs : list[np.ndarray]) -> list[np.ndarray]:
         '''
-        Returns 1xN array of class probabilities
+        Returns MxN array of class probabilities
         '''
         imgs = [np.repeat(img[...,np.newaxis],3,axis=2) for img in imgs]
         raw_output: list[Results] = self.model.predict(imgs)
