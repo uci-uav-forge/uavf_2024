@@ -38,23 +38,27 @@ class ImageProcessor:
 
         total_results: list[FullPrediction] = []
 
-        for res in shape_results:
-            shape_conf = res.confidences
-
-            img_black_bg = res.img * res.mask
-            color_seg_result = color_segmentation(img_black_bg)
-
-            only_letter_mask: np.ndarray = color_seg_result.mask * color_seg_result.mask==2
-            w,h = only_letter_mask.shape
-            zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
-            zero_padded_letter_silhoutte[:w, :h]  = only_letter_mask
-            # TODO: also do batch processing for letter classification
-            letter_conf = self.letter_classifier.predict(zero_padded_letter_silhoutte)
-
-            shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
-            letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
-
-            total_results.append(
+        batch_size = 5 # these are small images so we can do a lot at once
+        for results in batched(shape_results, batch_size):
+            zero_padded_letter_silhouttes = []
+            for res in results: # These are all linear operations so not parallelized (yet)
+                # Color segmentations
+                shape_conf = res.confidences
+                img_black_bg = res.img * res.mask
+                color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
+                # deteremine the letter mask
+                only_letter_mask: np.ndarray = color_seg_result.mask * color_seg_result.mask==2
+                w,h = only_letter_mask.shape
+                zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
+                zero_padded_letter_silhoutte[:w, :h]  = only_letter_mask
+                # Add the mask to a list for batch classification
+                zero_padded_letter_silhouttes.append(zero_padded_letter_silhoutte)
+                # Classify the colors
+                shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
+                letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
+                # add to total_results
+                letter_conf = None
+                total_results.append(
                 FullPrediction(
                     res.x,
                     res.y,
@@ -68,5 +72,9 @@ class ImageProcessor:
                     )
                 )
             )
+            letter_conf = self.letter_classifier.predict(zero_padded_letter_silhouttes)
+            # This goes back and changes the respective letter_conf in total_results
+            for i in range(len(results)): 
+                total_results[-(len(results)-i)].description.letter_probs = letter_conf[i]
 
         return total_results
