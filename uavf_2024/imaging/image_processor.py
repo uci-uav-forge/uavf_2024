@@ -9,7 +9,8 @@ from .color_classification import ColorClassifier
 
 def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
     boxes = np.array([[shape.x, shape.y, shape.x + shape.width, shape.y + shape.height, max(shape.confidences)] for shape in shape_results])
-
+    if len(boxes) == 0:
+        return shape_results
     x1 = boxes[:, 0]
     y1 = boxes[:, 1]
     x2 = boxes[:, 2]
@@ -60,7 +61,7 @@ class ImageProcessor:
 
 
 
-    def process_image(self, img: Image, debug = False) -> "list[FullPrediction]":
+    def process_image(self, img: Image, debug = True) -> "list[FullPrediction]":
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
@@ -83,19 +84,6 @@ class ImageProcessor:
                 shape.x+=tile.x
                 shape.y+=tile.y
                 shape_results.append(shape)
-                # cv.rectangle(img_2, (shape.x, shape.y), (shape.x + shape.width, shape.y + shape.height), (0,0,255), 1)
-                # cv.putText(img_2, "Confidence", (shape.x + shape.width, shape.y + shape.height))
-                # cv.putText(
-                #     img = img_2,
-                #     text = f"Confidence: {max(shape.confidences)}",
-                #     org = (shape.x + shape.width, shape.y + shape.height),
-                #     fontFace = cv.FONT_HERSHEY_DUPLEX,
-                #     fontScale = 3.0,
-                #     color = (125, 246, 55),
-                #     thickness = 3
-                # )
-                # cv.addText(img_2, f"Confidence: {max(shape.confidences,)}", (shape.x + (shape.width/2), shape.x + (shape.height/2)))
-            
         shape_results = nms_process(shape_results, self.thresh_iou)
         if debug == True:
             for shape in shape_results:
