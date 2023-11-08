@@ -54,11 +54,9 @@ class InstanceSegmentationResult:
 @dataclass
 class Target3D:
     '''
-    TODO: decision to use lat/lng is not final
     We might also want to incorporate information about the distance from which we've seen this target. Like, if we've only seen it from far away, and we get a new classification from a closer image, it should have more weight.
     '''
-    lat: float
-    lng: float
+    position: np.ndarray # (x,y,z) in local frame
     description: TargetDescription
 
 class ImageDimension(Enum):
