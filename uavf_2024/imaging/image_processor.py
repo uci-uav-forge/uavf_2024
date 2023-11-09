@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 
+from .utils import batched
 from .imaging_types import HWC, FullPrediction, Image, InstanceSegmentationResult, TargetDescription
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
@@ -61,7 +62,7 @@ class ImageProcessor:
 
 
 
-    def process_image(self, img: Image, debug = True) -> "list[FullPrediction]":
+    def process_image(self, img: Image, debug = False) -> "list[FullPrediction]":
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
@@ -73,6 +74,7 @@ class ImageProcessor:
             raise ValueError("img must be in HWC order")
 
         shape_results: list[InstanceSegmentationResult] = []
+
         img_2 = img.get_array().copy()
         for tile in img.generate_tiles(self.tile_size):
             
@@ -99,6 +101,13 @@ class ImageProcessor:
                     )
 
         cv.imwrite("visualizations/tile_viz.png", img_2)
+
+
+        batch_size = 3
+        for tiles in batched(img.generate_tiles(self.tile_size), batch_size):
+            temp = self.shape_detector.predict(tiles)
+            if temp is not None: shape_results.extend(temp)
+
 
         total_results: list[FullPrediction] = []
 
