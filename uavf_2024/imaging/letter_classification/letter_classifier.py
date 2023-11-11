@@ -16,6 +16,9 @@ class LetterClassifier:
     def predict(self, imgs : list[np.ndarray]) -> list[np.ndarray]:
         '''
         Returns MxN array of class probabilities
+        M: number of images
+        N: number of classes
+        For example you can process 3 images at once and get back a 3x26 array where each image has its own array of class probabilities
         '''
         imgs = [np.repeat(img[...,np.newaxis],3,axis=2) for img in imgs]
         raw_output: list[Results] = self.model.predict(imgs)

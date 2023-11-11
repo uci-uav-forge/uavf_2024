@@ -31,20 +31,20 @@ class ImageProcessor:
 
         shape_results: list[InstanceSegmentationResult] = []
 
-        batch_size = 3
-        for tiles in batched(img.generate_tiles(self.tile_size), batch_size):
+        tiles_batch_size = 3
+        for tiles in batched(img.generate_tiles(self.tile_size), tiles_batch_size):
             temp = self.shape_detector.predict(tiles)
             if temp is not None: shape_results.extend(temp)
 
         total_results: list[FullPrediction] = []
 
-        batch_size = 5 # these are small images so we can do a lot at once
-        for results in batched(shape_results, batch_size):
+        shapes_batch_size = 5 # these are small images so we can do a lot at once
+        for results in batched(shape_results, shapes_batch_size):
             zero_padded_letter_silhouttes = []
-            for res in results: # These are all linear operations so not parallelized (yet)
+            for shape_res in results: # These are all linear operations so not parallelized (yet)
                 # Color segmentations
-                shape_conf = res.confidences
-                img_black_bg = res.img * res.mask
+                shape_conf = shape_res.confidences
+                img_black_bg = shape_res.img * shape_res.mask
                 color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
                 # deteremine the letter mask
                 only_letter_mask: np.ndarray = color_seg_result.mask * color_seg_result.mask==2
@@ -60,10 +60,10 @@ class ImageProcessor:
                 letter_conf = None
                 total_results.append(
                 FullPrediction(
-                    res.x,
-                    res.y,
-                    res.width,
-                    res.height,
+                    shape_res.x,
+                    shape_res.y,
+                    shape_res.width,
+                    shape_res.height,
                     TargetDescription(
                         shape_conf,
                         letter_conf,
@@ -73,8 +73,9 @@ class ImageProcessor:
                 )
             )
             letter_conf = self.letter_classifier.predict(zero_padded_letter_silhouttes)
-            # This goes back and changes the respective letter_conf in total_results
-            for i in range(len(results)): 
-                total_results[-(len(results)-i)].description.letter_probs = letter_conf[i]
+            # "index math hard for grug brain" - Eric
+            # Updates letter probs which were previously set to none just in the most recent batch
+            for result, conf in zip(total_results[-len(results):], letter_conf):
+                result.description.letter_probs = conf
 
         return total_results
