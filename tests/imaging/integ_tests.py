@@ -6,7 +6,7 @@ from uavf_2024.imaging.imaging_types import HWC, Image, TargetDescription, Targe
 from uavf_2024.imaging.utils import calc_match_score
 import os
 import numpy as np
-import cv2 as cv
+import shutil
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -49,7 +49,10 @@ class TestPipeline(unittest.TestCase):
             (5312, 2988)
         )
         color_classifier = ColorClassifier()
-        image_processor = ImageProcessor()
+        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/integ_test"
+        if os.path.exists(debug_output_folder):
+            shutil.rmtree(debug_output_folder)
+        image_processor = ImageProcessor(debug_output_folder)
         ground_truth: list[Target3D] = []
 
         with open(f"{CURRENT_FILE_PATH}/imaging_data/sim_dataset/labels.txt", "r") as f:

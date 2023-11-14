@@ -1,12 +1,11 @@
+import shutil
 import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.imaging_types import HWC, FullPrediction, Image, TargetDescription
-from uavf_2024.imaging.visualizations import visualize_predictions
 from uavf_2024.imaging import profiler
 import numpy as np
-import cv2 as cv
 import os
 from time import time
 from tqdm import tqdm
@@ -100,21 +99,21 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
     return (imgs, labels)
 
 class TestImagingFrontend(unittest.TestCase):
-    def setUp(self) -> None:
-        self.image_processor = ImageProcessor()
 
     def test_runs_without_crashing(self):
+        image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
-        res = self.image_processor.process_image(sample_input)
+        res = image_processor.process_image(sample_input)
 
     @profiler
     def test_benchmark_fullsize_images(self):
+        image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         times = []
         N_runs = 10
         for i in tqdm(range(N_runs)):
             start = time()
-            res = self.image_processor.process_image(sample_input)
+            res = image_processor.process_image(sample_input)
             elapsed = time()-start
             times.append(elapsed)
         print(f"Fullsize image benchmarks (average of {N_runs} runs):")
@@ -123,6 +122,10 @@ class TestImagingFrontend(unittest.TestCase):
         line_profiler.show_text(lstats.timings, lstats.unit)
 
     def test_metrics(self):
+        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
+        if os.path.exists(debug_output_folder):
+            shutil.rmtree(debug_output_folder)
+        image_processor = ImageProcessor(debug_output_folder)
         imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
         
         recalls = []
@@ -133,7 +136,7 @@ class TestImagingFrontend(unittest.TestCase):
         letter_color_top1s = []
 
         for img, ground_truth in zip(imgs, labels):
-            predictions = self.image_processor.process_image(img)
+            predictions = image_processor.process_image(img)
 
             (
                 recall,
