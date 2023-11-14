@@ -49,7 +49,7 @@ class TestPipeline(unittest.TestCase):
             (5312, 2988)
         )
         color_classifier = ColorClassifier()
-        image_processor = ImageProcessor(debug_path = f"/home/ws/uavf_2024/visualizations")
+        image_processor = ImageProcessor(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/integ_test")
         ground_truth: list[Target3D] = []
 
         with open(f"{CURRENT_FILE_PATH}/imaging_data/sim_dataset/labels.txt", "r") as f:

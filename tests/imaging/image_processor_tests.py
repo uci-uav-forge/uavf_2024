@@ -98,26 +98,27 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
     return (imgs, labels)
 
 class TestImagingFrontend(unittest.TestCase):
-    def setUp(self) -> None:
-        self.image_processor = ImageProcessor(debug_path=f"{CURRENT_FILE_PATH}/imaging_data/visualizations")
 
     def test_runs_without_crashing(self):
+        image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
-        res = self.image_processor.process_image(sample_input)
+        res = image_processor.process_image(sample_input)
 
     def test_benchmark_fullsize_images(self):
+        image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         times = []
         N_runs = 10
         for i in tqdm(range(N_runs)):
             start = time()
-            res = self.image_processor.process_image(sample_input)
+            res = image_processor.process_image(sample_input)
             elapsed = time()-start
             times.append(elapsed)
         print(f"Fullsize image benchmarks (average of {N_runs} runs):")
         print(f"Avg: {np.mean(times)}, StdDev: {np.std(times)}")
 
     def test_metrics(self):
+        image_processor = ImageProcessor(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics")
         imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
         
         recalls = []
@@ -128,7 +129,7 @@ class TestImagingFrontend(unittest.TestCase):
         letter_color_top1s = []
 
         for img, ground_truth in zip(imgs, labels):
-            predictions = self.image_processor.process_image(img)
+            predictions = image_processor.process_image(img)
 
             (
                 recall,

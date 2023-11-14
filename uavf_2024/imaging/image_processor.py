@@ -46,7 +46,7 @@ class ImageProcessor:
             if temp is not None: shape_results.extend(temp)
 
         total_results: list[FullPrediction] = []
-        if local_debug_path is not None:
+        if self.debug_path is not None:
             os.makedirs(f"{local_debug_path}/shape_detection", exist_ok=True)
             img_to_draw_on = img.get_array().copy()
             for res in shape_results:
@@ -58,9 +58,9 @@ class ImageProcessor:
         SHAPES_BATCH_SIZE = 5 # these are small images so we can do a lot at once
 
         # create debug directory for segmentation and classification
-        if local_debug_path is not None:
+        if self.debug_path is not None:
             os.makedirs(f"{local_debug_path}/segmentation", exist_ok=True)
-            os.makedirs(f"{local_debug_path}/color_classification", exist_ok=True)
+            os.makedirs(f"{local_debug_path}/letter_classification", exist_ok=True)
         for results in batched(shape_results, SHAPES_BATCH_SIZE):
             results: list[InstanceSegmentationResult] = results # type hinting
             zero_padded_letter_silhouttes = []
@@ -79,9 +79,9 @@ class ImageProcessor:
                 # Add the mask to a list for batch classification
                 zero_padded_letter_silhouttes.append(zero_padded_letter_silhoutte)
                 # Save the color segmentation results
-                if local_debug_path is not None:
-                    num_files = len(os.listdir(f"{local_debug_path}/color_classification"))
-                    cv.imwrite(f"{local_debug_path}/color_classification/{num_files}.png", zero_padded_letter_silhoutte*127)
+                if self.debug_path is not None:
+                    num_files = len(os.listdir(f"{local_debug_path}/letter_classification"))
+                    cv.imwrite(f"{local_debug_path}/letter_classification/{num_files}.png", zero_padded_letter_silhoutte*127)
                     cv.imwrite(f"{local_debug_path}/segmentation/{num_files}_input.png", img_black_bg.get_array())
                     cv.imwrite(f"{local_debug_path}/segmentation/{num_files}_output.png", color_seg_result.mask*127)
                 # Classify the colors
