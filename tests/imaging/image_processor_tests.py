@@ -1,11 +1,10 @@
+import shutil
 import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.imaging_types import HWC, FullPrediction, Image, TargetDescription
-from uavf_2024.imaging.visualizations import visualize_predictions
 import numpy as np
-import cv2 as cv
 import os
 from time import time
 from tqdm import tqdm
@@ -118,7 +117,10 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Avg: {np.mean(times)}, StdDev: {np.std(times)}")
 
     def test_metrics(self):
-        image_processor = ImageProcessor(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics")
+        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
+        if os.path.exists(debug_output_folder):
+            shutil.rmtree(debug_output_folder)
+        image_processor = ImageProcessor(debug_output_folder)
         imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
         
         recalls = []
