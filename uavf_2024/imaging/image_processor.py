@@ -40,19 +40,28 @@ class ImageProcessor:
 
         shape_results: list[InstanceSegmentationResult] = []
 
-        tiles_batch_size = 3
-        for tiles in batched(img.generate_tiles(self.tile_size), tiles_batch_size):
+        TILES_BATCH_SIZE = 3
+        for tiles in batched(img.generate_tiles(self.tile_size), TILES_BATCH_SIZE):
             temp = self.shape_detector.predict(tiles)
             if temp is not None: shape_results.extend(temp)
 
         total_results: list[FullPrediction] = []
+        if local_debug_path is not None:
+            os.makedirs(f"{local_debug_path}/shape_detection", exist_ok=True)
+            img_to_draw_on = img.get_array().copy()
+            for res in shape_results:
+                x,y,w,h = res.x, res.y, res.width, res.height
+                cv.rectangle(img_to_draw_on, (x,y), (x+w,y+h), (0,255,0), 2)
+            cv.imwrite(f"{local_debug_path}/shape_detection/bounding_boxes.png", img_to_draw_on)
 
-        shapes_batch_size = 5 # these are small images so we can do a lot at once
+
+        SHAPES_BATCH_SIZE = 5 # these are small images so we can do a lot at once
+
         # create debug directory for segmentation and classification
         if local_debug_path is not None:
             os.makedirs(f"{local_debug_path}/segmentation", exist_ok=True)
             os.makedirs(f"{local_debug_path}/color_classification", exist_ok=True)
-        for results in batched(shape_results, shapes_batch_size):
+        for results in batched(shape_results, SHAPES_BATCH_SIZE):
             results: list[InstanceSegmentationResult] = results # type hinting
             zero_padded_letter_silhouttes = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
