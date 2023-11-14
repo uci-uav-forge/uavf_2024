@@ -31,35 +31,39 @@ class ImageProcessor:
 
         shape_results: list[InstanceSegmentationResult] = []
 
-        batch_size = 3
-        for tiles in batched(img.generate_tiles(self.tile_size), batch_size):
+        tiles_batch_size = 3
+        for tiles in batched(img.generate_tiles(self.tile_size), tiles_batch_size):
             temp = self.shape_detector.predict(tiles)
             if temp is not None: shape_results.extend(temp)
 
         total_results: list[FullPrediction] = []
 
-        for res in shape_results:
-            shape_conf = res.confidences
-
-            img_black_bg = res.img * res.mask
-            color_seg_result = color_segmentation(img_black_bg)
-
-            only_letter_mask: np.ndarray = color_seg_result.mask * color_seg_result.mask==2
-            w,h = only_letter_mask.shape
-            zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
-            zero_padded_letter_silhoutte[:w, :h]  = only_letter_mask
-            # TODO: also do batch processing for letter classification
-            letter_conf = self.letter_classifier.predict(zero_padded_letter_silhoutte)
-
-            shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
-            letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
-
-            total_results.append(
+        shapes_batch_size = 5 # these are small images so we can do a lot at once
+        for results in batched(shape_results, shapes_batch_size):
+            zero_padded_letter_silhouttes = []
+            for shape_res in results: # These are all linear operations so not parallelized (yet)
+                # Color segmentations
+                shape_conf = shape_res.confidences
+                img_black_bg = shape_res.img * shape_res.mask
+                color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
+                # deteremine the letter mask
+                only_letter_mask: np.ndarray = color_seg_result.mask * color_seg_result.mask==2
+                w,h = only_letter_mask.shape
+                zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
+                zero_padded_letter_silhoutte[:w, :h]  = only_letter_mask
+                # Add the mask to a list for batch classification
+                zero_padded_letter_silhouttes.append(zero_padded_letter_silhoutte)
+                # Classify the colors
+                shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
+                letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
+                # add to total_results
+                letter_conf = None
+                total_results.append(
                 FullPrediction(
-                    res.x,
-                    res.y,
-                    res.width,
-                    res.height,
+                    shape_res.x,
+                    shape_res.y,
+                    shape_res.width,
+                    shape_res.height,
                     TargetDescription(
                         shape_conf,
                         letter_conf,
@@ -68,5 +72,10 @@ class ImageProcessor:
                     )
                 )
             )
+            letter_conf = self.letter_classifier.predict(zero_padded_letter_silhouttes)
+            # "index math hard for grug brain" - Eric
+            # Updates letter probs which were previously set to none just in the most recent batch
+            for result, conf in zip(total_results[-len(results):], letter_conf):
+                result.description.letter_probs = conf
 
         return total_results
