@@ -9,6 +9,7 @@ from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
+from . import profiler
 
 class ImageProcessor:
     def __init__(self, debug_path: str = None):
@@ -22,6 +23,7 @@ class ImageProcessor:
         self.color_classifier = ColorClassifier()
         self.debug_path = debug_path
 
+    @profiler
     def process_image(self, img: Image) -> list[FullPrediction]:
         '''
         img shape should be (height, width, channels)

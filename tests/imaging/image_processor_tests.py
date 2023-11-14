@@ -4,10 +4,12 @@ from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.imaging_types import HWC, FullPrediction, Image, TargetDescription
+from uavf_2024.imaging import profiler
 import numpy as np
 import os
 from time import time
 from tqdm import tqdm
+import line_profiler
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -103,6 +105,7 @@ class TestImagingFrontend(unittest.TestCase):
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         res = image_processor.process_image(sample_input)
 
+    @profiler
     def test_benchmark_fullsize_images(self):
         image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
@@ -115,6 +118,8 @@ class TestImagingFrontend(unittest.TestCase):
             times.append(elapsed)
         print(f"Fullsize image benchmarks (average of {N_runs} runs):")
         print(f"Avg: {np.mean(times)}, StdDev: {np.std(times)}")
+        lstats = profiler.get_stats()
+        line_profiler.show_text(lstats.timings, lstats.unit)
 
     def test_metrics(self):
         debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
