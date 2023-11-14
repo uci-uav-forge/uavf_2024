@@ -99,7 +99,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
 
 class TestImagingFrontend(unittest.TestCase):
     def setUp(self) -> None:
-        self.image_processor = ImageProcessor()
+        self.image_processor = ImageProcessor(debug_path=f"{CURRENT_FILE_PATH}/imaging_data/visualizations")
 
     def test_runs_without_crashing(self):
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
