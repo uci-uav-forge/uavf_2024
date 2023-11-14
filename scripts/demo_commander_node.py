@@ -1,62 +1,39 @@
 #!/usr/bin/env python3
 
 from libuavf_2024.gnc.commander_node import CommanderNode
-from libuavf_2024.gnc.util import read_gps
 import mavros_msgs.msg
 import mavros_msgs.srv
 import rclpy
 import rclpy.node
+import argparse
 from threading import Thread
 import sys
 
 
 
+# example usage: ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
+
 if __name__ == '__main__':
     rclpy.init()
-    node = CommanderNode()
+    
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('mission_file')
+    parser.add_argument('dropzone_file')
+    parser.add_argument('payload_shape_color_id', type = int)
+    parser.add_argument('payload_shape_id', type = int)
+    parser.add_argument('payload_letter_color_id', type = int)
+    parser.add_argument('payload_letter_id', type = int)
+    parser.add_argument('image_width_m', type = float)
+    parser.add_argument('image_height_m', type = float)
+    args = parser.parse_args()
+
+    node = CommanderNode(args)
 
     spinner = Thread(target = rclpy.spin, args = (node,))
-    
-
-    waypoints = read_gps(sys.argv[1])
-
-
     spinner.start()
-    
-    print('Pushing waypoints')
 
-    node.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0,
-        waypoints = 
-            [
-                mavros_msgs.msg.Waypoint(
-                    frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
-                    command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
-                    is_current = True,
-                    autocontinue = True,
-
-                    param1 = 0.0,
-                    param2 = 5.0,
-                    param3 = 0.0,
-                    param4 = float('NaN'),
-
-                    x_lat = wp[0],
-                    y_long = wp[1],
-                    z_alt = 20.0
-                )
-
-                for wp in waypoints
-            ]
-    ))
-
-    print("Sent waypoints, setting node")
-
-
-    node.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-        base_mode = 0,
-        custom_mode = 'AUTO'
-    ))
-
-    print('Set mode.')
+    node.do_mission_loop()
 
 
     node.destroy_node()

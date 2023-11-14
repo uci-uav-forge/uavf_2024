@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 
-# example usage: ros2 run uavf_2024 mock_imaging_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 35 26
+# example usage: ros2 run uavf_2024 mock_imaging_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
 
-# generates and mocks 5 unique, different targets
+# generates and mocks 5 unique targets
 
 # Checks if targets would be in FOV and then returns "perfect" results.
 
 # todo:
-# add some noise
-# make sure meter calcs are correct.
+# add some noise (error in position, error in class estimates, variable delay for results)
 
 import rclpy
 from rclpy.node import Node
@@ -31,7 +30,7 @@ def sample_point(dropzone_bounds):
     # sample a point uniformly at random.
 
     return dropzone_bounds[0] \
-        + random.random()*(dropzone_bounds[-2] - dropzone_bounds[0]) \
+        + random.random()*(dropzone_bounds[-1] - dropzone_bounds[0]) \
         + random.random()*(dropzone_bounds[1] - dropzone_bounds[0])
 
 def gen_fake_targets(dropzone_bounds):
@@ -75,7 +74,7 @@ class MockImagingNode(Node):
         #Todo this feels gross - there should be a cleaner way to get home-pos through MAVROS.
         if not self.got_global_pos:
             self.got_global_pos = True
-            self.first_global_pos = pos
+            self.home_global_pos = pos
             
             self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
             print("Dropzone bounds in local coords: ", self.dropzone_bounds_mlocal)
@@ -89,10 +88,9 @@ class MockImagingNode(Node):
             
         ]
 
-        cur_xy = np.array([self.cur_pose.pose.position.x,self.cur_pose.pose.position.y])
+        cur_xy = np.array([self.cur_pose.pose.position.x,-self.cur_pose.pose.position.y])
 
         for target in self.targets:
-            print(cur_xy)
             delta = target[1] - cur_xy
             heading = np.array([np.cos(self.cur_rot[-1]), np.sin(self.cur_rot[-1])])
 
@@ -100,9 +98,10 @@ class MockImagingNode(Node):
 
             amt_side = (np.linalg.norm(delta)**2 - amt_fwd**2)**0.5
 
-            print(delta, amt_fwd, amt_side)
+            print(cur_xy, target[1], delta, amt_fwd, amt_side)
 
             if abs(amt_fwd) < self.img_w_m/2 and abs(amt_side) < self.img_h_m/2:
+                print("target hit!")
                 response.detections.append(TargetDetection(
                     timestamp = int(1000*time.time()),
                     x = target[1][0],

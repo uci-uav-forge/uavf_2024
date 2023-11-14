@@ -12,6 +12,7 @@ setup(
         'matplotlib',
         'casadi',
         'ultralytics',
-        'coverage'
+        'coverage',
+        'geographiclib'
     ]
 )

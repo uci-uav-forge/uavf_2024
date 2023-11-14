@@ -12,3 +12,14 @@ def convert_delta_gps_to_local_m(gp1, gp2):
 
     return np.array([g1['s12'], g0['s12']])
 
+def convert_local_m_to_delta_gps(gp0, dm):
+    geod = Geodesic.WGS84
+
+    azi = np.degrees(np.arctan2(dm[0], -dm[1]))
+    len = np.linalg.norm(dm)
+
+    gr = geod.Direct(*gp0, azi, len)
+    print(azi, len)
+
+    return np.array([gr['lat2'], gr['lon2']])
+
