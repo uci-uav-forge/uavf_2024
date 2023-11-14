@@ -13,6 +13,7 @@ setup(
         'casadi',
         'ultralytics',
         'coverage',
-        'geographiclib'
+        'geographiclib',
+        'line_profiler'
     ]
 )

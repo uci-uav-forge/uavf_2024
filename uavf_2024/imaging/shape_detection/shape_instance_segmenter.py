@@ -4,6 +4,7 @@ from ultralytics.engine.results import Results, Boxes
 import numpy as np
 from ..imaging_types import Tile, InstanceSegmentationResult, img_coord_t
 import os
+from .. import profiler
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -14,18 +15,13 @@ class ShapeInstanceSegmenter:
         self.shape_model.predict(list(rand_input), verbose=False)
 
 
+    @profiler
     def predict(self, tiles: tuple[Tile]) -> list[InstanceSegmentationResult]:
-        '''
-        Currently assumes batch size is 1
-        TODO: refactor for batch processing
-        '''
         imgs_list = [tile.img.get_array() for tile in tiles if tile is not None]
         predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False)
-        prediction_tensors: list[Boxes] = [x.to('cpu') for x in predictions] # do i need this
+
         full_results = []
-        img_index = -1
-        for single_pred in predictions:
-            img_index+=1
+        for img_index, single_pred in enumerate(predictions):
             masks = single_pred.masks
             if masks is None:
                 warnings.warn("ShapeInstanceSegmenter.predict() could not extract masks from YOLO output")
