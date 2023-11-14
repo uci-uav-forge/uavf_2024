@@ -4,6 +4,7 @@ from ultralytics.engine.results import Results, Boxes
 import numpy as np
 from ..imaging_types import Tile, InstanceSegmentationResult, img_coord_t
 import os
+from .. import profiler
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -14,6 +15,7 @@ class ShapeInstanceSegmenter:
         self.shape_model.predict(list(rand_input), verbose=False)
 
 
+    @profiler
     def predict(self, tiles: tuple[Tile]) -> list[InstanceSegmentationResult]:
         '''
         Currently assumes batch size is 1
