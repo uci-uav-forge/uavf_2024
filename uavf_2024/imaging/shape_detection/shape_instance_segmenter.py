@@ -1,3 +1,4 @@
+from __future__ import annotations
 import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes

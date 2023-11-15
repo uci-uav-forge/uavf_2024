@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ultralytics import YOLO
 import numpy as np
 from ultralytics.engine.results import Results
