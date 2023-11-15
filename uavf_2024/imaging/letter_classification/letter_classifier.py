@@ -23,5 +23,5 @@ class LetterClassifier:
         '''
         imgs = [np.repeat(img[...,np.newaxis],3,axis=2) for img in imgs]
         raw_output: list[Results] = self.model.predict(imgs)
-        output = [data.probs.data.numpy() for data in raw_output]
+        output = [data.probs.data.cpu().numpy() for data in raw_output]
         return output

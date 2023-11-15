@@ -1,10 +1,18 @@
-from itertools import pairwise
 import unittest
+from itertools import tee
 import numpy as np
 import torch
 
 from uavf_2024.imaging.imaging_types import Image, ImageDimensionsOrder, HWC, CHW, CHANNELS, HEIGHT, WIDTH
 
+def pairwise(iterable):
+    '''
+    copy/pasted from itertools because this doesn't exist in python 3.8
+    pairwise('ABCDEFG') --> AB BC CD DE EF FG
+    '''
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 class ImageClassTest(unittest.TestCase):
     
