@@ -11,6 +11,49 @@ from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
 from . import profiler
 
+def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
+    #Given shape_results and some threshold iou, determines if there are intersecting bounding boxes that exceed the threshold iou and takes the
+    #box that has the maximum confidence
+    boxes = np.array([[shape.x, shape.y, shape.x + shape.width, shape.y + shape.height, max(shape.confidences)] for shape in shape_results])
+    if len(boxes) == 0:
+        return shape_results
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 2]
+    y2 = boxes[:, 3]
+    scores = boxes[:, 4]
+
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+
+    order = scores.argsort()[::-1] #sorts the scores and gives a sorted list of their respective indices 
+
+    keep = [] #empty array that will define what boundaries we choose to keep
+
+    while len(order) > 0:
+        idx = order[0]
+        keep.append(shape_results[idx])
+
+        xx1 = np.maximum(x1[idx], x1[order[1:]]) #finds the rightmost left edge between most confident and each of the remaining
+        yy1 = np.maximum(y1[idx], y1[order[1:]]) #finds the bottommost top edge between most confident and each of the remaining
+        xx2 = np.minimum(x2[idx], x2[order[1:]]) #finds the leftmost right edge between most confident and each of the remaining
+        yy2 = np.minimum(y2[idx], y2[order[1:]]) #finds the topmost bottom edge between most confident and each of the remaining
+
+        w = np.maximum(0.0, xx2 - xx1 + 1) #returns the overlap width
+        h = np.maximum(0.0, yy2 - yy1 + 1) #returns the overlap height
+
+        intersection = w * h #calculates overlap area for each of the boxes
+        rem_areas = areas[order[1:]] #areas of all of the blocks except for the one with the highest confidence interval
+        union = (rem_areas - intersection) + areas[idx] #calculates union area
+
+        iou = intersection / union #array of iou for all boxes
+
+        mask = iou < thresh_iou #forms an array of bool values depending on whether the particular bounding box exceeds threshold iou
+        order = order[1:][mask] #forms an array, excluding the boundary with highest confidence and boundaries that exceed threshold iou
+
+    return keep
+
+
+
 class ImageProcessor:
     def __init__(self, debug_path: str = None):
         '''
@@ -22,6 +65,7 @@ class ImageProcessor:
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
         self.debug_path = debug_path
+        self.thresh_iou = 0.5
 
     @profiler
     def process_image(self, img: Image) -> list[FullPrediction]:
@@ -46,6 +90,8 @@ class ImageProcessor:
         for tiles in batched(img.generate_tiles(self.tile_size), TILES_BATCH_SIZE):
             temp = self.shape_detector.predict(tiles)
             if temp is not None: shape_results.extend(temp)
+        
+        shape_results = nms_process(shape_results, self.thresh_iou)
 
         total_results: list[FullPrediction] = []
         if self.debug_path is not None:
