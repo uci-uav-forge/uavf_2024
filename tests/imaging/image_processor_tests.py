@@ -120,6 +120,14 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Avg: {np.mean(times)}, StdDev: {np.std(times)}")
         lstats = profiler.get_stats()
         line_profiler.show_text(lstats.timings, lstats.unit)
+    
+    def test_no_duplicates(self):
+        # Given 5 identified bounding boxes, removes duplicate bounding box using nms such that there are 4 bounding boxes left
+        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
+        image_processor = ImageProcessor(debug_output_folder)
+        res = image_processor.process_image(sample_input)
+        assert len(res)==4
 
     def test_metrics(self):
         debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
