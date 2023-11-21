@@ -121,6 +121,11 @@ class ImageProcessor:
                 # deteremine the letter mask
                 only_letter_mask: np.ndarray = color_seg_result.mask * (color_seg_result.mask==2)
                 w,h = only_letter_mask.shape
+                if w>self.letter_size or h>self.letter_size:
+                    w = min(w, self.letter_size)
+                    h = min(h, self.letter_size)
+                    only_letter_mask = cv.resize(only_letter_mask.astype(np.uint8), (h,w))
+
                 zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
                 zero_padded_letter_silhoutte[:w, :h] = only_letter_mask
 
