@@ -10,6 +10,7 @@ import os
 from time import time
 from tqdm import tqdm
 import line_profiler
+from memory_profiler import profile as mem_profile
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -100,6 +101,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
 
 class TestImagingFrontend(unittest.TestCase):
 
+    @mem_profile
     def test_runs_without_crashing(self):
         image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
@@ -168,3 +170,6 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Letter top 1 acc: {np.mean(letter_top1s)}")
         print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
         print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
+
+if __name__ == "__main__":
+    unittest.main()

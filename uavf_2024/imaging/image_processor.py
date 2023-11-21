@@ -56,7 +56,6 @@ def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
 
 
 class ImageProcessor:
-    @mem_profile
     def __init__(self, debug_path: str = None):
         '''
         Initialize all models here 
@@ -69,7 +68,6 @@ class ImageProcessor:
         self.debug_path = debug_path
         self.thresh_iou = 0.5
 
-    @mem_profile
     def process_image(self, img: Image) -> list[FullPrediction]:
         '''
         img shape should be (height, width, channels)
