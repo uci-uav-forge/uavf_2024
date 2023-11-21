@@ -123,7 +123,7 @@ class TestImagingFrontend(unittest.TestCase):
     
     def test_no_duplicates(self):
         # Given 5 identified bounding boxes, removes duplicate bounding box using nms such that there are 4 bounding boxes left
-        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
+        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_duplicates"
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         image_processor = ImageProcessor(debug_output_folder)
         res = image_processor.process_image(sample_input)
