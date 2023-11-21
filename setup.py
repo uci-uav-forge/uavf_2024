@@ -13,6 +13,7 @@ setup(
         'casadi',
         'ultralytics',
         'coverage',
-        'line_profiler'
+        'line_profiler',
+        'memory_profiler'
     ]
 )

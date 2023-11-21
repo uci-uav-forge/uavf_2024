@@ -10,6 +10,7 @@ from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
 from . import profiler
+from memory_profiler import profile as mem_profile
 
 def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
     #Given shape_results and some threshold iou, determines if there are intersecting bounding boxes that exceed the threshold iou and takes the
@@ -55,6 +56,7 @@ def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
 
 
 class ImageProcessor:
+    @mem_profile
     def __init__(self, debug_path: str = None):
         '''
         Initialize all models here 
@@ -67,7 +69,7 @@ class ImageProcessor:
         self.debug_path = debug_path
         self.thresh_iou = 0.5
 
-    @profiler
+    @mem_profile
     def process_image(self, img: Image) -> list[FullPrediction]:
         '''
         img shape should be (height, width, channels)
