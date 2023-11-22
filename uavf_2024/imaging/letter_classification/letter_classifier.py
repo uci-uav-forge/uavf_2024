@@ -13,7 +13,7 @@ class LetterClassifier:
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.model.predict(list(rand_input), verbose=False)
     
-    def predict(self, imgs : list[np.ndarray]) -> list[np.ndarray]:
+    def predict(self, imgs):
         '''
         Returns MxN array of class probabilities
         M: number of images
