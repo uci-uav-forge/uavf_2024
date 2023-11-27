@@ -30,8 +30,10 @@ def calc_match_score(a: TargetDescription, b: TargetDescription):
         return shape_score * letter_score * shape_color_score * letter_color_score
     
 
-def sort_payload(a: list, confusion_matrice: dict, method = 1):
-    '''b: dictionary of np.ndarray for readability purposes
+def sort_payload(a: list,  method = 1):
+    '''
+    confusion_matrice: dict,
+    b: dictionary of np.ndarray for readability purposes
     'shape_m' 'letter_m' 'shape_clr_m' 'letter_clr_m
     List(np.ndarray) = [ shape, letter, shape color, letter color] <- order of confusion matrix
     confusion matrix has rows as the truth and the columns are predictions
@@ -48,14 +50,42 @@ def sort_payload(a: list, confusion_matrice: dict, method = 1):
     #return the same list but ordered
 
     sorted_search_targets = []
+    attribute_names = ['shape_probs', 'letter_probs', 'shape_col_probs', 'letter_col_probs']
+
+
+    for attr_name in attribute_names:
+         attr_values = {}
+         
+         unique_attr_values =  set([np.where( getattr(search_target, attr_name) == 1 )[0][0] for search_target in a ])
+         
+         for search_index, search_target in enumerate(a):
+              
+
+         #for search_index, search_targ in enumerate(a):
+              
+         #     attribute_value = getattr(search_target, attr_name) # attribute_value is the numpy array
+         #     print(f"{attr_name}: {attribute_value}")
+         #     attr_values[search_index]
+        
+         
+
+
+
+    #for each_target in a:
+    #     each_target.
+    '''
 
     if method == 1:
         alpha = 1 # weight of the sum of the truth_row[other_targets_traits]
         beta = 0 # weight of the sum of the predict_col[other_targets_traits]
-        search_descr = np.array([[search_target.shape_probs, search_target.letter_probs, \
-                                  search_target.shape_col_probs, search_target.letter_col_probs] for search_target in a])
-        
-        non_zero_indices = np.argwhere(search_descr == 1)
+        search_descr = [[search_target.shape_probs.tolist(), search_target.letter_probs.tolist(), \
+                                  search_target.shape_col_probs.tolist(), search_target.letter_col_probs.tolist()] for search_target in a]
+        print(search_descr)
+        non_zero_indices = [ [i for i, value in enumerate(row) if value != 0] for row in search_descr]
+        #non_zero_indices = [np.nonzero(row)[0] for row in search_descr]
+        #non_zero_indices = np.argwhere(search_descr == 1)
+        print(non_zero_indices) '''
+    '''
         list_instances = [] #store the search_target description with the result value as a tuple
         for target_index, search_target in enumerate(a):
             transpose_descrp = non_zero_indices.T  #rows are the trait category and the column are the corresponding target trait
@@ -94,30 +124,31 @@ def sort_payload(a: list, confusion_matrice: dict, method = 1):
             # map t he ending value to the target: then later sort it
                          
 
-        if method == 2:
-            ''' method 2 will be an attempt to use the L2 score to sort the targets. this would take into consideration the
+        if method == 2: '''
+    ''' method 2 will be an attempt to use the L2 score to sort the targets. this would take into consideration the
             false positives and false negatives because there is not a max 5 targets on the field and really don't want to load a bottle that
             has a high risk of dropping on the wrong one that's not even on the list,
             this is only to be implemented after method 1 is completed and tested'''
-            sorted_search_targets = 0
-        print(" shape of indices ", non_zero_indices)
+        #sorted_search_targets = 0
+        #print(" shape of indices ", non_zero_indices)
         #imagine [ [1,2,3,4] [ 5,4,3,2] etc ] <- column 1 shape, column 2 letter, etc
 
 
          
+    attribute_list = []
 
-
-    '''
+    
     for search_target in a: 
          assert(isinstance(search_target, TargetDescription))
-         the attribute to search for is the index that has the value 1 as its probability
+         #the attribute to search for is the index that has the value 1 as its probability
          shape_trait = np.where(search_target.shape_probs == 1)
-         letter_trait = np.where(search_target.letter_probs == 1)
+         print(shape_trait)
+       #  letter_trait = np.where(search_target.letter_probs == 1)
 
-         shape_col_trait = np.where(search_target.shape_col_probs == 1)
-         letter_col_trait = np.where(search_target.letter_col_probs == 1)
+       #  shape_col_trait = np.where(search_target.shape_col_probs == 1)
+       #  letter_col_trait = np.where(search_target.letter_col_probs == 1)
 
-         access diagonal values
+    ''' access diagonal values
          shape_confidence = b[0][shape_trait][shape_trait]
          letter_confidence = b[1][letter_trait][letter_trait]
          shape_col_confidence = b[2][shape_col_trait][shape_col_trait]
@@ -126,7 +157,7 @@ def sort_payload(a: list, confusion_matrice: dict, method = 1):
          shape_trust = shape_confidence - (1- shape_confidence)**2
          letter_trust = letter_trait - (1- letter_confidence)**2
          shape_col_trust = shape_col_confidence - (1- shape_col_confidence)**2
-         letter_col_trust = letter_col_confidence - (1- letter_col_confidence)**2
+         letter_col_trust = letter_col_confidence - (1- letter_col_confidence)**2 ''
          '''
     
 
