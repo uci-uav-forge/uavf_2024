@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
 
+from libuavf_2024.gnc.util import read_gps
+from libuavf_2024.gnc.dropzone_planner import DropzonePlanner
 from libuavf_2024.gnc.commander_node import CommanderNode
-import mavros_msgs.msg
-import mavros_msgs.srv
-import rclpy
-import rclpy.node
-import argparse
 from threading import Thread
-import sys
+import rclpy
+import argparse
 
 
-
-# example usage: ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
+# example: ros2 run uavf_2024 demo_dropzone_planner.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
 
 if __name__ == '__main__':
     rclpy.init()
-    
-
     parser = argparse.ArgumentParser()
     parser.add_argument('mission_file')
     parser.add_argument('dropzone_file')
@@ -30,11 +25,11 @@ if __name__ == '__main__':
 
     node = CommanderNode(args)
 
+
     spinner = Thread(target = rclpy.spin, args = (node,))
     spinner.start()
 
-    node.do_mission_loop()
-
+    node.dropzone_planner.conduct_air_drop()
 
     node.destroy_node()
     rclpy.shutdown()
