@@ -1,5 +1,3 @@
-from .imaging_types import TargetDescription
-
 from typing import Generator
 
 import numpy as np
