@@ -30,146 +30,58 @@ def calc_match_score(a: TargetDescription, b: TargetDescription):
         return shape_score * letter_score * shape_color_score * letter_color_score
     
 
-def sort_payload(a: list,  method = 1):
-    '''
-    confusion_matrice: dict,
-    b: dictionary of np.ndarray for readability purposes
-    'shape_m' 'letter_m' 'shape_clr_m' 'letter_clr_m
-    List(np.ndarray) = [ shape, letter, shape color, letter color] <- order of confusion matrix
-    confusion matrix has rows as the truth and the columns are predictions
-
-    Given a list of the five search target descriptions and a list of confusion matrice given as a 2D numpy array,
-    use the 4 description attributes from each target to locate the confidence in each confusion matrix,
-
-    Proposed methods: 
-    1) use the confidence defined by the diagonal values of the confusion matrix and subtract a nonlinear penalty 
-       determined by false positives
-
-    '''
-    #parameters: given a list of target descriptions , given a list of confusion matrixes
-    #return the same list but ordered
-
-    sorted_search_targets = []
+def sort_payload(a: list, b: dict, method = 2):
+    """
+    Given a list of TargetDescription instances (a) and a dictionary of three model's confusion matrices (b),
+    along with the chosen method, this function returns an ordered version of 'a' based on confidence
+    calculated using the specified method.
+    """
+    diag_search_targets = {}
+    penalized_search_targets = {}
     attribute_names = ['shape_probs', 'letter_probs', 'shape_col_probs', 'letter_col_probs']
+    conf_matrix = ['shape', 'letter', 'shape_col', 'letter_col']
 
+    for attribute_name, confusion_matrix_key in zip(attribute_names, conf_matrix):
+         for target_index, search_target in enumerate(a):
+            # Determine the index where the current attribute is true in the target description
+            search_targ_attr_value = np.where( getattr(search_target, attribute_name) == 1 )[0][0]
 
-    for attr_name in attribute_names:
-         attr_values = {}
-         
-         unique_attr_values =  set([np.where( getattr(search_target, attr_name) == 1 )[0][0] for search_target in a ])
-         
-         for search_index, search_target in enumerate(a):
-              
+            # Use the determined index to look up the corresponding truth row in the confusion matrix
+            conf_truth_row = b[confusion_matrix_key][search_targ_attr_value]
 
-         #for search_index, search_targ in enumerate(a):
-              
-         #     attribute_value = getattr(search_target, attr_name) # attribute_value is the numpy array
-         #     print(f"{attr_name}: {attribute_value}")
-         #     attr_values[search_index]
-        
-         
+            # Calculate diagonal confidence and individual penalties for each class error
+            diag_confid = conf_truth_row[ search_targ_attr_value]
+            error_values = conf_truth_row[conf_truth_row != conf_truth_row[search_targ_attr_value]]
+            nonlinear_penalty = error_values**2
+            attr_rank = diag_confid - (np.sum(nonlinear_penalty))
 
+            # Ensure non-negative rank, if considering small diagonal confidence values
+            attr_rank = max(attr_rank, 0.00001) 
+            
+            #Store results in dictionary
+            if target_index in penalized_search_targets.keys():
+                penalized_search_targets[target_index].append(attr_rank)
+                diag_search_targets[target_index].append( diag_confid )
+            else:
+                penalized_search_targets[target_index] = [attr_rank]
+                diag_search_targets[target_index] = [diag_confid]
 
+    # Calculate total confidence by taking the product across different attributes' ranks
+    diag_prod_search_target = {x: np.prod(rank_list) for x,rank_list in diag_search_targets.items()}
+    penalized_prod_search_targets = {x: np.prod(rank_list) for x,rank_list in penalized_search_targets.items()}
 
-    #for each_target in a:
-    #     each_target.
-    '''
+    #Sort from greatest to least
+    sort_diag_search_target =  dict(sorted(diag_search_targets.items(), key=lambda item: item[1], reverse=True))
+    sort_penalized_search_target =  dict(sorted(penalized_prod_search_targets.items(), key=lambda item: item[1], reverse=True))
+    
+    # Return the ordered list for the payload based on the specified method:
+    # 1) Confidence determined by diagonal values or positive probabilities
+    # 2) Penalized confidence
 
     if method == 1:
-        alpha = 1 # weight of the sum of the truth_row[other_targets_traits]
-        beta = 0 # weight of the sum of the predict_col[other_targets_traits]
-        search_descr = [[search_target.shape_probs.tolist(), search_target.letter_probs.tolist(), \
-                                  search_target.shape_col_probs.tolist(), search_target.letter_col_probs.tolist()] for search_target in a]
-        print(search_descr)
-        non_zero_indices = [ [i for i, value in enumerate(row) if value != 0] for row in search_descr]
-        #non_zero_indices = [np.nonzero(row)[0] for row in search_descr]
-        #non_zero_indices = np.argwhere(search_descr == 1)
-        print(non_zero_indices) '''
-    '''
-        list_instances = [] #store the search_target description with the result value as a tuple
-        for target_index, search_target in enumerate(a):
-            transpose_descrp = non_zero_indices.T  #rows are the trait category and the column are the corresponding target trait
-            #shape
-            #for characteristic in range(0,4):
-                # later replace characteristic at 0
-            no_repeat_list = transpose_descrp[0][transpose_descrp[target_index] != transpose_descrp[0, target_index]]
-            sum_search_confusion = np.sum( np.array(( [confusion_matrice['shape_m'][transpose_descrp[0,target_index], other_target] for other_target in no_repeat_list])) )
-            shape_result = confusion_matrice['shape_m'][transpose_descrp[0,target_index], transpose_descrp[0,target_index]] \
-                            - alpha * (sum_search_confusion **2 )
-            #letter
-
-            #no_repeat_list = transpose_descrp[1][transpose_descrp[1] != transpose_descrp[1, target_index]]
-            #sum_search_confusion = np.sum( np.array(( [confusion_matrice['letter_m'][transpose_descrp[1,target_index], other_target] for other_target in no_repeat_list])) )
-            #letter_result = confusion_matrice['letter_m'][transpose_descrp[1,target_index], transpose_descrp[1,target_index]] - alpha * (sum_search_confusion **2) 
-            
-            no_repeat_list = transpose_descrp[1][transpose_descrp[1] != transpose_descrp[1, target_index]]
-            sum_search_confusion = np.sum( np.array(( [confusion_matrice['letter_m'][transpose_descrp[1,target_index], other_target] for other_target in no_repeat_list])) )
-            letter_result = confusion_matrice['letter_m'][transpose_descrp[1,target_index], transpose_descrp[1,target_index]] - alpha * (sum_search_confusion **2 )
-
-            no_repeat_list = transpose_descrp[2][transpose_descrp[2] != transpose_descrp[2, target_index]]
-            sum_search_confusion = np.sum( np.array(( [confusion_matrice['shape_clr_m'][transpose_descrp[2,target_index], other_target] for other_target in no_repeat_list])) )
-            shape_clr_result = confusion_matrice['shape_clr_m'][transpose_descrp[2,target_index], transpose_descrp[1,target_index]] - alpha * (sum_search_confusion**2 )
-
-
-            no_repeat_list = transpose_descrp[1][transpose_descrp[3] != transpose_descrp[3, target_index]]
-            sum_search_confusion = np.sum( np.array( [confusion_matrice['letter_clr_m'][transpose_descrp[3,target_index], other_target] for other_target in no_repeat_list] ) )
-            letter_clr_result = confusion_matrice['letter_clr_m'][transpose_descrp[3,target_index], transpose_descrp[3,target_index]] - alpha * (sum_search_confusion**2 )
-
-            target_rank = shape_result * letter_result * shape_clr_result * letter_clr_result
-            #sc etc etc
-            list_instances.append(tuple(search_target, target_rank))
-
-        sorted_instances = sorted(list_instances, key=lambda x: x[1])
-            #lc
-            # map t he ending value to the target: then later sort it
-                         
-
-        if method == 2: '''
-    ''' method 2 will be an attempt to use the L2 score to sort the targets. this would take into consideration the
-            false positives and false negatives because there is not a max 5 targets on the field and really don't want to load a bottle that
-            has a high risk of dropping on the wrong one that's not even on the list,
-            this is only to be implemented after method 1 is completed and tested'''
-        #sorted_search_targets = 0
-        #print(" shape of indices ", non_zero_indices)
-        #imagine [ [1,2,3,4] [ 5,4,3,2] etc ] <- column 1 shape, column 2 letter, etc
-
-
-         
-    attribute_list = []
-
-    
-    for search_target in a: 
-         assert(isinstance(search_target, TargetDescription))
-         #the attribute to search for is the index that has the value 1 as its probability
-         shape_trait = np.where(search_target.shape_probs == 1)
-         print(shape_trait)
-       #  letter_trait = np.where(search_target.letter_probs == 1)
-
-       #  shape_col_trait = np.where(search_target.shape_col_probs == 1)
-       #  letter_col_trait = np.where(search_target.letter_col_probs == 1)
-
-    ''' access diagonal values
-         shape_confidence = b[0][shape_trait][shape_trait]
-         letter_confidence = b[1][letter_trait][letter_trait]
-         shape_col_confidence = b[2][shape_col_trait][shape_col_trait]
-         letter_col_confidence = b[3][letter_col_trait][letter_col_trait]
-
-         shape_trust = shape_confidence - (1- shape_confidence)**2
-         letter_trust = letter_trait - (1- letter_confidence)**2
-         shape_col_trust = shape_col_confidence - (1- shape_col_confidence)**2
-         letter_col_trust = letter_col_confidence - (1- letter_col_confidence)**2 ''
-         '''
-    
-
-
-
-
-
-
-
-
-
-
+        sorted_search_targets = [a[ordered_index] for ordered_index in sort_diag_search_target.keys()]
+    if method == 2:
+        sorted_search_targets = [a[ordered_index] for ordered_index in sort_penalized_search_target.keys()]
 
 
     return sorted_search_targets #return the list of target descriptions but reordered
@@ -189,6 +101,8 @@ def batched(iterable, n):
 
 if __name__ == "__main__":
     '''Testing initial payload'''
+    np.random.seed(42)
+
     test_search_list = [
             TargetDescription(
                 np.eye(13)[1],
@@ -209,5 +123,20 @@ if __name__ == "__main__":
                 np.eye(8)[1],
             )
     ]
-    sort_payload(a = test_search_list)
-    #test_confus_matrix = []
+
+    # Generate a test confusion matrix for each target attribute, with rows and columns normalized to sum to 1    
+    color_confusion_matrix = np.random.dirichlet(np.ones(8), size=8).T
+    test_conf_matrice = { 'shape': np.random.dirichlet(np.ones(13), size=13).T,\
+                          'letter': np.random.dirichlet(np.ones(35), size=35).T,\
+                          'shape_col': color_confusion_matrix, \
+                          'letter_col': color_confusion_matrix }
+    
+    # Normalizing the test confusion matrix by each column and then each row, 
+    # making sure that each truth row sums up to 1 and each predicted column sums close to 1 with little deviation
+    for every_key in test_conf_matrice.keys():
+        test_conf_matrice[every_key] /= test_conf_matrice[every_key].sum(axis=1, keepdims=True)
+        test_conf_matrice[every_key] /= test_conf_matrice[every_key].sum(axis=0, keepdims=True)
+    
+        
+    ordered_test_payload = sort_payload(a = test_search_list, b = test_conf_matrice)
+
