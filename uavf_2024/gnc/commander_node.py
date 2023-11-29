@@ -7,7 +7,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 import sensor_msgs.msg
 import geometry_msgs.msg 
 import uavf_2024.srv
-from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps
+from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg
 from libuavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 
@@ -76,6 +76,8 @@ class CommanderNode(rclpy.node.Node):
 
         self.call_imaging_at_wps = False
         self.imaging_futures = []
+
+        self.turn_angle_limit = 170
     
     def log(self, *args, **kwargs):
         print(*args, **kwargs)
@@ -129,6 +131,24 @@ class CommanderNode(rclpy.node.Node):
                 [
                     mavros_msgs.msg.Waypoint(
                         frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
+                        command = mavros_msgs.msg.CommandCode.NAV_SPLINE_WAYPOINT,
+                        is_current = True,
+                        autocontinue = True,
+                        param1 = 0.0,
+                        x_lat = wp[0],
+                        y_long = wp[1],
+                        z_alt = 0.0)
+
+                    for wp in waypoints
+                ]
+        ))
+
+        '''
+        resp = self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0,
+            waypoints = 
+                [
+                    mavros_msgs.msg.Waypoint(
+                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
                         command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
                         is_current = True,
                         autocontinue = True,
@@ -146,6 +166,7 @@ class CommanderNode(rclpy.node.Node):
                     for wp,yaw in zip(waypoints,yaws)
                 ]
         ))
+        '''
 
         self.log("Pushed waypoints, setting mode.")
 
@@ -166,6 +187,55 @@ class CommanderNode(rclpy.node.Node):
         while self.last_wp_seq != len(waypoints)-1:
             pass
     
+    def generate_waypoint_msgs(self, start_pos, end_pos, waypoints, yaws):
+        if len(waypoints) == 1:
+            return [mavros_msgs.msg.Waypoint(
+                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
+                        command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
+                        is_current = True,
+                        autocontinue = True,
+
+                        param1 = 0.0,
+                        param2 = 5.0,
+                        param3 = 0.0,
+                        param4 = yaws[0],
+
+                        x_lat = waypoints[0][0],
+                        y_long = waypoints[0][1],
+                        z_alt = 0.0)]
+
+        waypoint_msgs = []
+        turn_angles = calculate_turn_angles_deg([start_pos] + waypoints + [end_pos])
+        
+        for i in range(len(waypoints)):
+            if turn_angles[i] >= self.turn_angle_limit:
+                waypoint_msgs.append(mavros_msgs.msg.Waypoint(
+                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
+                        command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
+                        is_current = True,
+                        autocontinue = True,
+
+                        param1 = 0.0,
+                        param2 = 5.0,
+                        param3 = 0.0,
+                        param4 = yaws[0],
+
+                        x_lat = waypoints[i][0],
+                        y_long = waypoints[i][1],
+                        z_alt = 0.0))
+            else:
+                waypoint_msgs.append(mavros_msgs.msg.Waypoint(
+                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
+                        command = mavros_msgs.msg.CommandCode.NAV_SPLINE_WAYPOINT,
+                        is_current = True,
+                        autocontinue = True,
+                        param1 = 0.0,
+                        x_lat = waypoints[i][0],
+                        y_long = waypoints[i][1],
+                        z_alt = 0.0))
+        
+        return waypoint_msgs
+
     def release_payload(self):
         # mocked out for now.
         self.log("WOULD RELEASE PAYLOAD")
