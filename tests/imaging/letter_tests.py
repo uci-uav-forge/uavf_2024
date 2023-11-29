@@ -20,7 +20,7 @@ class TestLetterClassification(unittest.TestCase):
         for img_file_name in os.listdir(imgs_path):
             img = cv.imread(f"{imgs_path}/{img_file_name}")
             raw_output = self.letter_classifier.model.predict(img)
-            pred = np.argmax(raw_output[0].probs.data.numpy())
+            pred = np.argmax(raw_output[0].probs.data.cpu().numpy())
             with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
                 truth = int(f.read(2))
             if truth == pred:
