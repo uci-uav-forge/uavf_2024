@@ -1,3 +1,4 @@
+from __future__ import annotations
 import shutil
 import torch
 from torchvision.ops import box_iou
