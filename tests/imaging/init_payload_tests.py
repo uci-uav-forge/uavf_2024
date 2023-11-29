@@ -39,8 +39,9 @@ class TestCameraCalibration(unittest.TestCase):
                                             color_confusion= color_confusion_matrix)
         
     def test_absolute_targets(self):
-        '''color confusion matrix has more confusion between red and orange ( 0 and 1) than every other color to each other
-        target 1's descriptions contains high confidence in the confusion matrix while target 2's descriptions have higher negative truths'''
+        '''"The color confusion matrix exhibits heightened confusion between red (class 0) and orange (class 1) compared to other color pairs. 
+        The descriptions for target 1 exhibit significant confidence in the confusion matrix, whereas target 2's descriptions show elevated 
+        negative truth values."'''
         np.random.seed(42)
         target_1 = TargetDescription(
                     np.eye(13)[1],
