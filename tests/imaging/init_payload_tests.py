@@ -54,23 +54,21 @@ class TestCameraCalibration(unittest.TestCase):
                     np.eye(8)[0],
                     np.eye(8)[1])
         
-        payload_list = [target_1, target_2]
+        payload_list = [target_2, target_1]
 
-        # Generate a random confusion matrix with increased confusion between classes 0 and 1.
-        color_confusion_matrix = np.ones((8,8)) + np.array([ [50, 20, 2, 0, 1, 0, 1, 1],   
-                                                           [10, 40, 5, 2, 1, 1, 0, 1],  
-                                                           [3, 5, 30, 1, 2, 0, 0, 1],   
-                                                           [0, 1, 2, 30, 2, 1, 0, 1],   
-                                                           [2, 1, 3, 2, 30, 1, 0, 1],  
-                                                           [0, 2, 1, 1, 1, 30, 0, 1],   
-                                                           [1, 0, 0, 0, 0, 0, 30, 0],   
-                                                           [1, 1, 1, 1, 1, 1, 1, 30] ]) 
+        color_confusion_matrix = np.array([ [50, 20, 2, 0, 1, 0, 1, 1],   
+                                            [10, 40, 5, 2, 1, 1, 0, 1],  
+                                            [3, 5, 30, 1, 2, 0, 0, 1],   
+                                            [0, 1, 2, 30, 2, 1, 0, 1],   
+                                            [2, 1, 3, 2, 30, 1, 0, 1],  
+                                            [0, 2, 1, 1, 1, 30, 0, 1],   
+                                            [1, 0, 0, 0, 0, 0, 30, 0],   
+                                            [1, 1, 1, 1, 1, 1, 1, 30] ]) 
         shape_confusion_matrix = np.round(np.eye(13) )
         letter_confusion_matrix = np.round(np.eye(35))
 
         confusion_matrices = [shape_confusion_matrix, letter_confusion_matrix, color_confusion_matrix]
-        # Normalize all matrices along their columns then rows
-        confusion_matrices = [np.round(matrix / matrix.sum(axis=0, keepdims=True), decimals= 4) for matrix in confusion_matrices]
+        # Normalize all matrices with respects to their columns
         confusion_matrices = [np.round(matrix / matrix.sum(axis=1, keepdims=True), decimals = 4) for matrix in confusion_matrices]
 
         ordered_test_payload = sort_payload(list_payload_targets= payload_list, 
@@ -78,7 +76,7 @@ class TestCameraCalibration(unittest.TestCase):
                                                     letter_confusion= confusion_matrices[1],
                                                     color_confusion= confusion_matrices[2])
         
-        assert( ordered_test_payload == payload_list)
+        assert( ordered_test_payload == [target_1, target_2])
 
 
 
