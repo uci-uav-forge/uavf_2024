@@ -6,7 +6,7 @@ from typing import Callable, Any
 class Localizer:
     def __init__(self, 
                  camera_hfov: float,
-                 camera_resolution: tuple[int,int]
+                 camera_resolution
                  ):
         '''
         `camera_fov` is the horizontal FOV, in degrees

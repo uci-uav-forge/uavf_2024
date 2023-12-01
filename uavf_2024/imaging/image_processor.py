@@ -68,7 +68,7 @@ class ImageProcessor:
         self.thresh_iou = 0.5
 
     @profiler
-    def process_image(self, img: Image) -> list[FullPrediction]:
+    def process_image(self, img: Image):
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
@@ -156,5 +156,5 @@ class ImageProcessor:
             # Updates letter probs which were previously set to none just in the most recent batch
             for result, conf in zip(total_results[-len(results):], letter_conf):
                 result.description.letter_probs = conf
-
+            print(letter_conf)
         return total_results
