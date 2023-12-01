@@ -39,9 +39,8 @@ class TestCameraCalibration(unittest.TestCase):
                                             color_confusion= color_confusion_matrix)
         
     def test_absolute_targets(self):
-        '''"The color confusion matrix exhibits heightened confusion between red (class 0) and orange (class 1) compared to other color pairs. 
-        The descriptions for target 1 exhibit significant confidence in the confusion matrix, whereas target 2's descriptions show elevated 
-        negative truth values."'''
+        '''Checks if the algorithm will first select target_1 with a higher color confidence score over target_2.
+        '''
         np.random.seed(42)
         target_1 = TargetDescription(
                     np.eye(13)[1],
@@ -56,14 +55,14 @@ class TestCameraCalibration(unittest.TestCase):
         
         payload_list = [target_2, target_1]
 
-        color_confusion_matrix = np.array([ [50, 20, 2, 0, 1, 0, 1, 1],   
-                                            [10, 40, 5, 2, 1, 1, 0, 1],  
+        color_confusion_matrix = np.array([ [29, 20, 2, 0, 1, 0, 1, 1],   
+                                            [10, 28, 5, 2, 1, 1, 0, 1],  
                                             [3, 5, 30, 1, 2, 0, 0, 1],   
-                                            [0, 1, 2, 30, 2, 1, 0, 1],   
-                                            [2, 1, 3, 2, 30, 1, 0, 1],  
-                                            [0, 2, 1, 1, 1, 30, 0, 1],   
-                                            [1, 0, 0, 0, 0, 0, 30, 0],   
-                                            [1, 1, 1, 1, 1, 1, 1, 30] ]) 
+                                            [0, 1, 2, 31, 2, 1, 0, 1],   
+                                            [2, 1, 3, 2, 32, 1, 0, 1],  
+                                            [0, 2, 1, 1, 1, 33, 0, 1],   
+                                            [1, 0, 0, 0, 0, 0, 34, 0],   
+                                            [1, 1, 1, 1, 1, 1, 1, 35] ]) 
         shape_confusion_matrix = np.round(np.eye(13) )
         letter_confusion_matrix = np.round(np.eye(35))
 
