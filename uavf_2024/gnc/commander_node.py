@@ -112,7 +112,7 @@ class CommanderNode(rclpy.node.Node):
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
-    def do_waypoints(self, waypoints, yaws = None):
+    def do_waypoints(self, waypoints, yaws = None, use_spline = False):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
@@ -126,9 +126,44 @@ class CommanderNode(rclpy.node.Node):
         waypoints = [(0.0,0.0)] + waypoints
         yaws = [float('NaN')] + yaws
 
-        resp = self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0,
-            waypoints = 
-                [
+        waypoint_msgs = []
+        
+        if use_spline:
+            start_pos = (self.home_global_pos.latitude, self.home_global_pos.longitude)
+            end_pos = self.dropzone_bounds[0]
+            turn_angles = calculate_turn_angles_deg([start_pos] + waypoints[1:] + [end_pos])
+            self.log("Calculated turn angles: ", turn_angles)
+
+            # Add turn angle for home
+            turn_angles = [0] + turn_angles
+            for i in range(len(waypoints)):
+                if turn_angles[i] >= self.turn_angle_limit:
+                    waypoint_msgs.append(mavros_msgs.msg.Waypoint(
+                            frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
+                            command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
+                            is_current = True,
+                            autocontinue = True,
+
+                            param1 = 0.0,
+                            param2 = 5.0,
+                            param3 = 0.0,
+                            param4 = yaws[0],
+
+                            x_lat = waypoints[i][0],
+                            y_long = waypoints[i][1],
+                            z_alt = 0.0))
+                else:
+                    waypoint_msgs.append(mavros_msgs.msg.Waypoint(
+                            frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
+                            command = mavros_msgs.msg.CommandCode.NAV_SPLINE_WAYPOINT,
+                            is_current = True,
+                            autocontinue = True,
+                            param1 = 0.0,
+                            x_lat = waypoints[i][0],
+                            y_long = waypoints[i][1],
+                            z_alt = 0.0))
+        else:
+            waypoint_msgs = [
                     mavros_msgs.msg.Waypoint(
                         frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
                         command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
@@ -142,12 +177,11 @@ class CommanderNode(rclpy.node.Node):
 
                         x_lat = wp[0],
                         y_long = wp[1],
-                        z_alt = 0.0
-                    )
+                        z_alt = 0.0)
 
-                    for wp,yaw in zip(waypoints,yaws)
-                ]
-        ))
+                    for wp,yaw in zip(waypoints,yaws)]
+
+        resp = self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
 
         self.log("Pushed waypoints, setting mode.")
 
@@ -168,86 +202,6 @@ class CommanderNode(rclpy.node.Node):
         while self.last_wp_seq != len(waypoints)-1:
             pass
     
-    def fly_waypoint_lap(self, start_pos, end_pos, waypoints, yaws = None):
-        if yaws is None:
-            yaws = [float('NaN')] * len(waypoints)
-
-        self.last_wp_seq = None
-
-        self.log("Flying waypoint lap")
-
-        self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
-
-        waypoint_msgs = [mavros_msgs.msg.Waypoint(
-                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
-                        command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
-                        is_current = True,
-                        autocontinue = True,
-
-                        param1 = 0.0,
-                        param2 = 5.0,
-                        param3 = 0.0,
-                        param4 = yaws[0],
-
-                        x_lat = 0.0,
-                        y_long = 0.0,
-                        z_alt = 0.0)]
-        
-        turn_angles = calculate_turn_angles_deg([start_pos] + waypoints + [end_pos])
-        self.log("Calculated turn angles: ", turn_angles)
-
-        yaws = [float('NaN')] + yaws
-
-        for i in range(len(waypoints)):
-            if turn_angles[i] >= self.turn_angle_limit:
-                waypoint_msgs.append(mavros_msgs.msg.Waypoint(
-                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
-                        command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
-                        is_current = True,
-                        autocontinue = True,
-
-                        param1 = 0.0,
-                        param2 = 5.0,
-                        param3 = 0.0,
-                        param4 = yaws[0],
-
-                        x_lat = waypoints[i][0],
-                        y_long = waypoints[i][1],
-                        z_alt = 0.0))
-            else:
-                waypoint_msgs.append(mavros_msgs.msg.Waypoint(
-                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
-                        command = mavros_msgs.msg.CommandCode.NAV_SPLINE_WAYPOINT,
-                        is_current = True,
-                        autocontinue = True,
-                        param1 = 0.0,
-                        x_lat = waypoints[i][0],
-                        y_long = waypoints[i][1],
-                        z_alt = 0.0))
-        
-        resp = self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0,
-            waypoints = waypoint_msgs
-        ))
-
-        self.log("Pushed waypoints, setting mode.")
-
-        #kludgy but works
-
-        self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-            base_mode = 0,
-            custom_mode = 'GUIDED'
-        ))
-
-        self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-            base_mode = 0,
-            custom_mode = 'AUTO'
-        ))
-
-        self.log("Waiting for mission to finish.")
-
-        while self.last_wp_seq != len(waypoints):
-            pass
-
     def release_payload(self):
         # mocked out for now.
         self.log("WOULD RELEASE PAYLOAD")
@@ -265,7 +219,7 @@ class CommanderNode(rclpy.node.Node):
         while not self.got_global_pos:
             pass
 
-        self.fly_waypoint_lap((self.home_global_pos.latitude,self.home_global_pos.longitude), self.dropzone_bounds[0], self.mission_wps)
+        self.do_waypoints(self.mission_wps, use_spline=True)
         
         self.dropzone_planner.conduct_air_drop()
 
