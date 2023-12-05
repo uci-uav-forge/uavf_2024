@@ -14,6 +14,7 @@ setup(
         'ultralytics',
         'coverage',
         'line_profiler',
-        'memory_profiler'
+        'memory_profiler',
+        'geographiclib'
     ]
 )

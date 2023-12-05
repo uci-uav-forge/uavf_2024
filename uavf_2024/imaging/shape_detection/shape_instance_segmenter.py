@@ -1,3 +1,4 @@
+from __future__ import annotations
 import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
@@ -45,7 +46,7 @@ class ShapeInstanceSegmenter:
                         width=img_coord_t(w.item()),
                         height=img_coord_t(h.item()),
                         confidences = confidences,
-                        mask = mask[y:y+h, x:x+w].unsqueeze(2).numpy(),
+                        mask = mask[y:y+h, x:x+w].unsqueeze(2).cpu().numpy(),
                         img = tiles[img_index].img.make_sub_image(x, y, w, h)
                     )
                 )

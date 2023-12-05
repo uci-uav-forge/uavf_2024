@@ -1,3 +1,4 @@
+from __future__ import annotations
 from .imaging_types import FullPrediction, Target3D, TargetDescription
 import numpy as np
 from typing import Callable, Any
