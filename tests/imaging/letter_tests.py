@@ -21,7 +21,7 @@ class TestLetterClassification(unittest.TestCase):
         for img_file_name in os.listdir(imgs_path):
             img = cv.imread(f"{imgs_path}/{img_file_name}")
             raw_output = self.letter_classifier.model.predict(img)
-            pred = np.argsort(raw_output[0].probs.data.numpy())[-5:]
+            pred = np.argsort(raw_output[0].probs.data.cpu().numpy())[-5:]
             pred1 = []
             for p in pred:
                 pred1.append(int(raw_output[0].names[p]))
