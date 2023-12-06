@@ -137,31 +137,20 @@ class CommanderNode(rclpy.node.Node):
             # Add turn angle for home
             turn_angles = [0] + turn_angles
             for i in range(len(waypoints)):
-                if turn_angles[i] >= self.turn_angle_limit:
-                    waypoint_msgs.append(mavros_msgs.msg.Waypoint(
-                            frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
-                            command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
-                            is_current = True,
-                            autocontinue = True,
+                waypoint_msgs.append(mavros_msgs.msg.Waypoint(
+                        frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
+                        command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT if turn_angles[i] >= self.turn_angle_limit else mavros_msgs.msg.CommandCode.NAV_SPLINE_WAYPOINT,
+                        is_current = True,
+                        autocontinue = True,
 
-                            param1 = 0.0,
-                            param2 = 5.0,
-                            param3 = 0.0,
-                            param4 = yaws[0],
+                        param1 = 0.0,
+                        param2 = 5.0,
+                        param3 = 0.0,
+                        param4 = yaws[0] if turn_angles[i] >= self.turn_angle_limit else 0.0,
 
-                            x_lat = waypoints[i][0],
-                            y_long = waypoints[i][1],
-                            z_alt = 0.0))
-                else:
-                    waypoint_msgs.append(mavros_msgs.msg.Waypoint(
-                            frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
-                            command = mavros_msgs.msg.CommandCode.NAV_SPLINE_WAYPOINT,
-                            is_current = True,
-                            autocontinue = True,
-                            param1 = 0.0,
-                            x_lat = waypoints[i][0],
-                            y_long = waypoints[i][1],
-                            z_alt = 0.0))
+                        x_lat = waypoints[i][0],
+                        y_long = waypoints[i][1],
+                        z_alt = 0.0))
         else:
             waypoint_msgs = [
                     mavros_msgs.msg.Waypoint(
