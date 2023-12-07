@@ -13,8 +13,8 @@ class TestLetterClassification(unittest.TestCase):
         self.letter_classifier = LetterClassifier(self.letter_size)
 
     def test_letter_classification(self):
-        imgs_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/images"
-        labels_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/labels"
+        imgs_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/12.06.23/images"
+        labels_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/12.06.23/labels"
         total = 0
         top_1 = 0
         top_5 = 0
