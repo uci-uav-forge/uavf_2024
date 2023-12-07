@@ -11,19 +11,19 @@ class TestCameraCalibration(unittest.TestCase):
         test_search_list = [
                 TargetDescription(
                     np.eye(13)[1],
-                    np.eye(35)[2],
+                    np.eye(36)[2],
                     np.eye(8)[3],
                     np.eye(8)[4],
                 ),
                 TargetDescription(
                     np.eye(13)[8],
-                    np.eye(35)[7],
+                    np.eye(36)[7],
                     np.eye(8)[6],
                     np.eye(8)[5],
                 ),
                 TargetDescription(
                     np.eye(13)[4],
-                    np.eye(35)[3],
+                    np.eye(36)[3],
                     np.eye(8)[2],
                     np.eye(8)[1],
                 )
@@ -31,7 +31,7 @@ class TestCameraCalibration(unittest.TestCase):
 
         color_confusion_matrix = np.random.dirichlet(np.ones(8), size=8).T
         shape_confusion_matrix = np.random.dirichlet(np.ones(13), size=13).T
-        letter_confusion_matrix = np.random.dirichlet(np.ones(35), size=35).T
+        letter_confusion_matrix = np.random.dirichlet(np.ones(36), size=36).T
             
         ordered_test_payload = sort_payload(list_payload_targets= test_search_list, 
                                             shape_confusion= shape_confusion_matrix,
@@ -44,12 +44,12 @@ class TestCameraCalibration(unittest.TestCase):
         np.random.seed(42)
         target_1 = TargetDescription(
                     np.eye(13)[1],
-                    np.eye(35)[2],
+                    np.eye(36)[2],
                     np.eye(8)[5],
                     np.eye(8)[6])
         target_2 = TargetDescription(
                     np.eye(13)[8],
-                    np.eye(35)[7],
+                    np.eye(36)[7],
                     np.eye(8)[0],
                     np.eye(8)[1])
         
@@ -64,7 +64,7 @@ class TestCameraCalibration(unittest.TestCase):
                                             [1, 0, 0, 0, 0, 0, 34, 0],   
                                             [1, 1, 1, 1, 1, 1, 1, 35] ]) 
         shape_confusion_matrix = np.round(np.eye(13) )
-        letter_confusion_matrix = np.round(np.eye(35))
+        letter_confusion_matrix = np.round(np.eye(36))
 
         confusion_matrices = [shape_confusion_matrix, letter_confusion_matrix, color_confusion_matrix]
         # Normalize all matrices with respects to their columns

@@ -7,21 +7,21 @@ class TestTargetTracker(unittest.TestCase):
     def test_with_certain_match(self):
         desc1 = TargetDescription(
                 np.eye(13)[1],
-                np.eye(35)[3],
+                np.eye(36)[3],
                 np.eye(8)[3],
                 np.eye(8)[7],
             )
 
         desc2 = TargetDescription(
                 np.eye(13)[2],
-                np.eye(35)[2],
+                np.eye(36)[2],
                 np.eye(8)[2],
                 np.eye(8)[2],
             )
 
         target_desc = TargetDescription(
                     np.eye(13)[1],
-                    np.eye(35)[3],
+                    np.eye(36)[3],
                     np.eye(8)[3],
                     np.eye(8)[7],
                 )
@@ -31,21 +31,21 @@ class TestTargetTracker(unittest.TestCase):
     def test_with_near_match(self):
         desc1 = TargetDescription(
                 np.eye(13)[1],
-                np.eye(35)[3],
+                np.eye(36)[3],
                 np.eye(8)[3],
                 np.eye(8)[7],
             )
 
         desc2 = TargetDescription(
                 np.eye(13)[2],
-                np.eye(35)[2],
+                np.eye(36)[2],
                 np.eye(8)[2],
                 np.eye(8)[2],
             )
 
         target_desc = TargetDescription(
                     np.eye(13)[2],
-                    np.eye(35)[2],
+                    np.eye(36)[2],
                     np.eye(8)[2],
                     np.eye(8)[7],
                 )
