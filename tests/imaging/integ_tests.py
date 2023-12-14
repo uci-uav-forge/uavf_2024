@@ -25,7 +25,7 @@ def csv_to_np(csv_str: str, delim: str = ","):
         ]
     )
 
-class TestPipeline():
+class TestPipeline(unittest.TestCase):
     def test_with_sim_dataset(self, verbose: bool = False):
         # VFOV = 67.6 degrees
         # HFOV = 2*arctan(16/9*tan(67.6/2)) = 99.9 degrees
