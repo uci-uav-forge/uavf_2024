@@ -1,7 +1,7 @@
 import unittest
 from uavf_2024.imaging.localizer import Localizer
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.color_classification import ColorClassifier
+from uavf_2024.imaging.color_classification import ColorClassifier, COLORS_TO_RGB
 from uavf_2024.imaging.imaging_types import HWC, Image, TargetDescription, Target3D
 from uavf_2024.imaging.utils import calc_match_score
 import os
@@ -29,6 +29,11 @@ SHAPES = [
 
 # LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
 LETTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+COLORS = list(COLORS_TO_RGB.keys())
+
+def stringify_target_description(desc: TargetDescription):
+    return f"{COLORS[np.argmax(desc.shape_col_probs)]} {SHAPES[np.argmax(desc.shape_probs)]}, {COLORS[np.argmax(desc.letter_col_probs)]} {LETTERS[np.argmax(desc.letter_probs)]}"
 
 def csv_to_np(csv_str: str, delim: str = ","):
     '''
@@ -97,6 +102,8 @@ class TestPipeline(unittest.TestCase):
         EPSILON = 1 
         scores = []
         for gt_target in ground_truth:
+            physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
+            print(f"Closest Match for {stringify_target_description(gt_target.description)}: {np.linalg.norm(physically_closest_match.position-gt_target.position)}")
             closest_match = min(predictions_3d, key=lambda pred: calc_match_score(pred.description, gt_target.description))
             if np.allclose(closest_match.position,gt_target.position,EPSILON):
                 scores.append(1)

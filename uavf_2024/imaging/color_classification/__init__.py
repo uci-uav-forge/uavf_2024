@@ -1,1 +1,1 @@
-from .color_classify import ColorClassifier
+from .color_classify import ColorClassifier, COLORS_TO_RGB
