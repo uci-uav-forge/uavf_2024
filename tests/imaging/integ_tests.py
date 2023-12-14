@@ -27,7 +27,8 @@ SHAPES = [
  "person"
 ]
 
-LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
+# LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
+LETTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 def csv_to_np(csv_str: str, delim: str = ","):
     '''
@@ -62,7 +63,7 @@ class TestPipeline(unittest.TestCase):
 
                 shape_name, alphanumeric, shape_col_rgb, letter_col_rgb = label.split(",")
                 shape_probs = np.eye(13)[SHAPES.index(shape_name)]
-                letter_probs = np.eye(35)[LETTERS.index(alphanumeric)]
+                letter_probs = np.eye(36)[LETTERS.index(alphanumeric)]
 
                 shape_col_rgb = csv_to_np(shape_col_rgb, ":")
                 letter_col_rgb = csv_to_np(letter_col_rgb, ":")
