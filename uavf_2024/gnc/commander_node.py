@@ -112,7 +112,7 @@ class CommanderNode(rclpy.node.Node):
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
-    def do_waypoints(self, waypoints, yaws = None, use_spline = False):
+    def execute_waypoints(self, waypoints, yaws = None, use_spline = False):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
@@ -208,9 +208,9 @@ class CommanderNode(rclpy.node.Node):
         while not self.got_global_pos:
             pass
 
-        self.do_waypoints(self.mission_wps, use_spline=True)
+        self.execute_waypoints(self.mission_wps, use_spline=True)
         
         self.dropzone_planner.conduct_air_drop()
 
-        self.do_waypoints([(self.home_global_pos.latitude,self.home_global_pos.longitude)])
+        self.execute_waypoints([(self.home_global_pos.latitude,self.home_global_pos.longitude)])
     
