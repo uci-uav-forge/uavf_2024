@@ -21,7 +21,7 @@ class DropzonePlanner:
         Generates dropzone plan with yaws included, in meters.
         '''
 
-        # Step 1: find closest corner of dropzone.
+        # Step 1: Find closest corner of dropzone.
         # Set up some helpers to reorient relative to that.
         while not self.commander.got_global_pos or not self.commander.got_pose:
             pass
@@ -106,7 +106,6 @@ class DropzonePlanner:
     
     def match_score(self, detection):
         p = self.commander.payloads[self.current_payload_index]
-        
 
         return detection.letter_conf[p.letter_id] \
             + detection.shape_conf[p.shape_id] \
