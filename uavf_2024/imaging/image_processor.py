@@ -113,9 +113,12 @@ class ImageProcessor:
         for results in batched(shape_results, SHAPES_BATCH_SIZE):
             results: list[InstanceSegmentationResult] = results # type hinting
             zero_padded_letter_silhouttes = []
+            letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
                 # Color segmentations
                 shape_conf = shape_res.confidences
+                letter_img = cv.resize(shape_res.img.get_array().astype(np.float32), (128,128))
+                letter_imgs.append(letter_img)
                 img_black_bg = shape_res.img * shape_res.mask
                 color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
 
@@ -135,7 +138,7 @@ class ImageProcessor:
                 # Save the color segmentation results
                 if self.debug_path is not None:
                     num_files = len(os.listdir(f"{local_debug_path}/letter_classification"))
-                    cv.imwrite(f"{local_debug_path}/letter_classification/{num_files}.png", zero_padded_letter_silhoutte*127)
+                    cv.imwrite(f"{local_debug_path}/letter_classification/{num_files}.png", letter_img)
                     cv.imwrite(f"{local_debug_path}/segmentation/{num_files}_input.png", img_black_bg.get_array())
                     cv.imwrite(f"{local_debug_path}/segmentation/{num_files}_output.png", color_seg_result.mask*127)
                 # Classify the colors
@@ -157,7 +160,7 @@ class ImageProcessor:
                     )
                 )
             )
-            letter_conf = self.letter_classifier.predict(zero_padded_letter_silhouttes)
+            letter_conf = self.letter_classifier.predict(letter_imgs)
             # "index math hard for grug brain" - Eric
             # Updates letter probs which were previously set to none just in the most recent batch
             for result, conf in zip(total_results[-len(results):], letter_conf):

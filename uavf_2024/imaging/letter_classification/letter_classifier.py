@@ -21,7 +21,10 @@ class LetterClassifier:
         N: number of classes
         For example you can process 3 images at once and get back a 3x26 array where each image has its own array of class probabilities
         '''
-        imgs = [np.repeat(img[...,np.newaxis],3,axis=2) for img in imgs]
+        # if imgs are black and white, change img.shape from (128,128) to (128,128,3)
+        if len(imgs[0].shape) == 2:
+            print(imgs[0].shape)
+            imgs = [np.repeat(img[...,np.newaxis],3,axis=2) for img in imgs]
         raw_output: list[Results] = self.model.predict(imgs)
         output = [data.probs.data.cpu().numpy() for data in raw_output]
         return output
