@@ -1,8 +1,8 @@
 import unittest
 from uavf_2024.imaging.localizer import Localizer
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.color_classification import ColorClassifier, COLORS_TO_RGB
-from uavf_2024.imaging.imaging_types import HWC, Image, TargetDescription, Target3D
+from uavf_2024.imaging.color_classification import ColorClassifier
+from uavf_2024.imaging.imaging_types import HWC, Image, TargetDescription, Target3D, COLORS, SHAPES, LETTERS
 from uavf_2024.imaging.utils import calc_match_score
 import os
 import numpy as np
@@ -10,27 +10,6 @@ import shutil
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-SHAPES = [
- "circle",
- "cross",
- "heptagon",
- "hexagon",
- "octagon",
- "pentagon",
- "quartercircle",
- "rectangle",
- "semicircle",
- "square",
- "star",
- "trapezoid",
- "triangle",
- "person"
-]
-
-# LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
-LETTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-COLORS = list(COLORS_TO_RGB.keys())
 
 def stringify_target_description(desc: TargetDescription):
     return f"{COLORS[np.argmax(desc.shape_col_probs)]} {SHAPES[np.argmax(desc.shape_probs)]}, {COLORS[np.argmax(desc.letter_col_probs)]} {LETTERS[np.argmax(desc.letter_probs)]}"
@@ -47,7 +26,7 @@ def csv_to_np(csv_str: str, delim: str = ","):
     )
 
 class TestPipeline(unittest.TestCase):
-    def test_with_sim_dataset(self):
+    def test_with_sim_dataset(self, verbose: bool = False):
         # VFOV = 67.6 degrees
         # HFOV = 2*arctan(16/9*tan(67.6/2)) = 99.9 degrees
         target_localizer = Localizer(
@@ -103,17 +82,21 @@ class TestPipeline(unittest.TestCase):
         scores = []
         for gt_target in ground_truth:
             physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
-            print(f"Closest Match for {stringify_target_description(gt_target.description)}: {np.linalg.norm(physically_closest_match.position-gt_target.position)}")
-            closest_match = min(predictions_3d, key=lambda pred: calc_match_score(pred.description, gt_target.description))
-            if np.allclose(closest_match.position,gt_target.position,EPSILON):
-                scores.append(1)
-            else:
-                scores.append(0)
+            closest_match = max(predictions_3d, key=lambda pred: calc_match_score(pred.description, gt_target.description))
+            is_close_enough = np.linalg.norm(closest_match.position-gt_target.position) < EPSILON
+            if verbose:
+                print(f"Closest Match for {stringify_target_description(gt_target.description)}:")
+                print(f"\tClosest detection distance: {np.linalg.norm(physically_closest_match.position-gt_target.position)}")
+                print(f"\tClosest detection descriptor score: {calc_match_score(physically_closest_match.description, gt_target.description)}")
+                print(f"\tClosest detection descriptor: {physically_closest_match.description}")
+                print(f"\tHighest descriptor score: {calc_match_score(closest_match.description, gt_target.description)}")
+                print(f"\tHighest match descriptor: {closest_match.description}")
+                print(f"\tHigh score match distance: {np.linalg.norm(closest_match.position-gt_target.position)}")
+                print(f"\tClose enough? {is_close_enough}")
+            scores.append(int(is_close_enough))
 
-        print(f"Imaging Sim Score: {np.mean(scores)}") 
+        print(f"Imaging Sim Score: {np.sum(scores)}/{len(scores)}") 
 
-
-
-
-
-
+if __name__ == "__main__":
+    tests = TestPipeline()
+    tests.test_with_sim_dataset()
