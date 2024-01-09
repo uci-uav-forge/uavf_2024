@@ -37,7 +37,7 @@ def roc_auc(pred, truth):
     axes = skplt.metrics.plot_roc(truth, pred)
     legend = axes.get_legend().get_texts()              # list[Text('sample')]
     auc_strs = [clas.get_text() for clas in legend]     # Ex: 'ROC curve of class 2 (area = 0.97)', 'micro-average ROC curve (area = 0.49)'
-    axes.get_legend().remove()
+    # axes.get_legend().remove()
 
     # populate output array
     out = np.zeros(n+2)
@@ -51,18 +51,19 @@ def roc_auc(pred, truth):
 
     return out, axes
 
-def run_letter_classification():
+def run_letter_classification(imgs_path, labels_path, model):
     # from letter_tests.py
     # but adjusted to output prob distribution for each image
 
-    imgs_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/images"
-    labels_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/labels"
+
+    # imgs_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/images"
+    # labels_path = CURRENT_FILE_PATH + "/imaging_data/letter_dataset/labels"
 
     y_probasA = []
     y_trueA = []
     for img_file_name in os.listdir(imgs_path):
         img = cv.imread(f"{imgs_path}/{img_file_name}")
-        raw_output = letter_classifier.model.predict(img)
+        raw_output = model.model.predict(img)
         pred = raw_output[0].probs.data.numpy()
         with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
             truth = int(f.read(2))

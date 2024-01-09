@@ -11,7 +11,7 @@ class ColorSegmentationResult:
     shape_color: np.ndarray
     letter_color: np.ndarray
 
-def color_segmentation(image: Image, rgb_mask_save_path = None):
+def color_segmentation(image: Image, rgb_mask_save_path: str | None = None):
     """
     Segments the image with k=3 k-means clustering, and returns the mask and the centroids.
     The mask is a numpy array of shape (w,h) where each pixel is an integer in [0,1,2]. 0=background, 1=shape, 2=image

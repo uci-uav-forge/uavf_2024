@@ -13,7 +13,7 @@ import line_profiler
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-def calc_metrics(predictions, ground_truth):
+def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction]):
     true_positives = 0 # how many predictions were on top of a ground-truth box
     targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
     shape_top_1_accuracies = []
@@ -68,7 +68,7 @@ def calc_metrics(predictions, ground_truth):
         letter_color_top1
     )
 
-def parse_dataset(imgs_path, labels_path):
+def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPrediction]]]:
     '''
     ret_value[i] is the list of predictions for the ith image
     ret_value[i][j] is the jth prediction for the ith image

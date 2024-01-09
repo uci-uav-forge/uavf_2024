@@ -133,10 +133,10 @@ class ImageClassTest(unittest.TestCase):
 
             diffs_x = set()
             diffs_y = set()
-            for x1, x2 in zip(sorted(x_coords)):
+            for x1, x2 in pairwise(sorted(x_coords)):
                 diffs_x.add(x2-x1)
 
-            for y1, y2 in zip(sorted(y_coords)):
+            for y1, y2 in pairwise(sorted(y_coords)):
                 diffs_y.add(y2-y1)
             
             self.assertLessEqual(len(diffs_x), 2)

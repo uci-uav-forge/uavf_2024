@@ -16,7 +16,7 @@ class ShapeInstanceSegmenter:
 
 
     @profiler
-    def predict(self, tiles):
+    def predict(self, tiles: tuple[Tile]) -> list[InstanceSegmentationResult]:
         imgs_list = [tile.img.get_array() for tile in tiles if tile is not None]
         predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False)
 
