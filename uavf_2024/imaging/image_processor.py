@@ -156,4 +156,5 @@ class ImageProcessor:
             # Updates letter probs which were previously set to none just in the most recent batch
             for result, conf in zip(total_results[-len(results):], letter_conf):
                 result.description.letter_probs = conf
+                
         return total_results
