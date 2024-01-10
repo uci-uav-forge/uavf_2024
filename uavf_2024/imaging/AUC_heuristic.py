@@ -2,7 +2,6 @@ import os
 import numpy as np
 import cv2 as cv
 from ultralytics import YOLO
-import numpy as np
 from ultralytics.engine.results import Results
 import torch
 
