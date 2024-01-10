@@ -1,3 +1,4 @@
+from __future__ import annotations
 import shutil
 import torch
 from torchvision.ops import box_iou
@@ -10,6 +11,7 @@ import os
 from time import time
 from tqdm import tqdm
 import line_profiler
+from memory_profiler import profile as mem_profile
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -100,6 +102,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
 
 class TestImagingFrontend(unittest.TestCase):
 
+    @mem_profile
     def test_runs_without_crashing(self):
         image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
@@ -123,7 +126,7 @@ class TestImagingFrontend(unittest.TestCase):
     
     def test_no_duplicates(self):
         # Given 5 identified bounding boxes, removes duplicate bounding box using nms such that there are 4 bounding boxes left
-        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
+        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_duplicates"
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
         image_processor = ImageProcessor(debug_output_folder)
         res = image_processor.process_image(sample_input)
@@ -168,3 +171,6 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Letter top 1 acc: {np.mean(letter_top1s)}")
         print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
         print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
+
+if __name__ == "__main__":
+    unittest.main()

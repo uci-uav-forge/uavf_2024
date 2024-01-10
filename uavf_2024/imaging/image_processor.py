@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy as np
 import os
 import cv2 as cv
@@ -10,6 +11,7 @@ from .shape_detection import ShapeInstanceSegmenter
 from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
 from . import profiler
+from memory_profiler import profile as mem_profile
 
 def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
     #Given shape_results and some threshold iou, determines if there are intersecting bounding boxes that exceed the threshold iou and takes the
@@ -67,7 +69,6 @@ class ImageProcessor:
         self.debug_path = debug_path
         self.thresh_iou = 0.5
 
-    @profiler
     def process_image(self, img: Image) -> list[FullPrediction]:
         '''
         img shape should be (height, width, channels)
@@ -121,6 +122,11 @@ class ImageProcessor:
                 # deteremine the letter mask
                 only_letter_mask: np.ndarray = color_seg_result.mask * (color_seg_result.mask==2)
                 w,h = only_letter_mask.shape
+                if w>self.letter_size or h>self.letter_size:
+                    w = min(w, self.letter_size)
+                    h = min(h, self.letter_size)
+                    only_letter_mask = cv.resize(only_letter_mask.astype(np.uint8), (h,w))
+
                 zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
                 zero_padded_letter_silhoutte[:w, :h] = only_letter_mask
 
@@ -156,5 +162,5 @@ class ImageProcessor:
             # Updates letter probs which were previously set to none just in the most recent batch
             for result, conf in zip(total_results[-len(results):], letter_conf):
                 result.description.letter_probs = conf
-                
+                       
         return total_results

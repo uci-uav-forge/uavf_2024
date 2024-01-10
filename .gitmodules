@@ -1,3 +1,6 @@
 [submodule "imaging_training_2024"]
 	path = imaging_training_2024
 	url = https://github.com/uci-uav-forge/imaging_training_2024.git
+[submodule "siyi_sdk"]
+	path = siyi_sdk
+	url = https://github.com/uci-uav-forge/siyi_sdk.git
