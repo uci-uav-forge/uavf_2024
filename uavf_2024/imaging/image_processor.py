@@ -112,7 +112,6 @@ class ImageProcessor:
             os.makedirs(f"{local_debug_path}/letter_classification", exist_ok=True)
         for results in batched(shape_results, SHAPES_BATCH_SIZE):
             results: list[InstanceSegmentationResult] = results # type hinting
-            zero_padded_letter_silhouttes = []
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
                 # Color segmentations
@@ -122,19 +121,6 @@ class ImageProcessor:
                 img_black_bg = shape_res.img * shape_res.mask
                 color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
 
-                # deteremine the letter mask
-                only_letter_mask: np.ndarray = color_seg_result.mask * (color_seg_result.mask==2)
-                w,h = only_letter_mask.shape
-                if w>self.letter_size or h>self.letter_size:
-                    w = min(w, self.letter_size)
-                    h = min(h, self.letter_size)
-                    only_letter_mask = cv.resize(only_letter_mask.astype(np.uint8), (h,w))
-
-                zero_padded_letter_silhoutte = np.zeros((self.letter_size, self.letter_size))
-                zero_padded_letter_silhoutte[:w, :h] = only_letter_mask
-
-                # Add the mask to a list for batch classification
-                zero_padded_letter_silhouttes.append(zero_padded_letter_silhoutte)
                 # Save the color segmentation results
                 if self.debug_path is not None:
                     num_files = len(os.listdir(f"{local_debug_path}/letter_classification"))
