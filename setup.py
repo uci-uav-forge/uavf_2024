@@ -15,6 +15,7 @@ setup(
         'coverage',
         'line_profiler',
         'memory_profiler',
+        'scikit-plot',
         'geographiclib'
     ]
 )
