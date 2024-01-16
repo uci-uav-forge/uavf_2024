@@ -103,6 +103,7 @@ class CommanderNode(rclpy.node.Node):
         #Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
         if not self.got_global_pos:
             self.home_global_pos = pos
+            print(self.home_global_pos)
             
             self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
             self.log("Dropzone bounds in local coords: ", self.dropzone_bounds_mlocal)
@@ -123,8 +124,8 @@ class CommanderNode(rclpy.node.Node):
         self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
 
         # coordinate zero is reserved for home? todo fix, this is hacky
-        waypoints = [(0.0,0.0)] + waypoints
-        yaws = [float('NaN')] + yaws
+        waypoints = waypoints
+        yaws = yaws
 
         waypoint_msgs = []
         
@@ -134,12 +135,14 @@ class CommanderNode(rclpy.node.Node):
             turn_angles = calculate_turn_angles_deg([start_pos] + waypoints[1:] + [end_pos])
             self.log("Calculated turn angles: ", turn_angles)
 
+            print(waypoints)
+
             # Add turn angle for home
             turn_angles = [0] + turn_angles
             for i in range(len(waypoints)):
                 waypoint_msgs.append(mavros_msgs.msg.Waypoint(
                         frame = mavros_msgs.msg.Waypoint.FRAME_GLOBAL_REL_ALT,
-                        command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT if turn_angles[i] >= self.turn_angle_limit else mavros_msgs.msg.CommandCode.NAV_SPLINE_WAYPOINT,
+                        command = mavros_msgs.msg.CommandCode.NAV_WAYPOINT,
                         is_current = True,
                         autocontinue = True,
 
@@ -170,21 +173,20 @@ class CommanderNode(rclpy.node.Node):
 
                     for wp,yaw in zip(waypoints,yaws)]
 
+        self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+            base_mode = 0,
+            custom_mode = 'MISSION'
+        ))
+
         resp = self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
 
         self.log("Pushed waypoints, setting mode.")
 
+        print(resp)
+
         #kludgy but works
 
-        self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-            base_mode = 0,
-            custom_mode = 'GUIDED'
-        ))
-
-        self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-            base_mode = 0,
-            custom_mode = 'AUTO'
-        ))
+        
 
         self.log("Waiting for mission to finish.")
 

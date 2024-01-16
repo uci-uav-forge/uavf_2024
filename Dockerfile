@@ -120,7 +120,7 @@ ENV BUILDLOGS=/tmp/buildlogs
 
 ENV TZ=UTC
 
-#-------------------------------------
+#-------------------------------------p
 # EVERYTHING BELOW THIS LINE IS EDITABLE
 #-------------------------------------
 RUN apt update
@@ -143,9 +143,21 @@ WORKDIR "/"
 RUN git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 RUN bash ./PX4-Autopilot/Tools/setup/ubuntu.sh
 
+
+
+RUN apt-get remove modemmanager -y
+RUN apt install gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl -y
+RUN apt install libqt5gui5 -y
+RUN apt install libfuse2 -y
+RUN apt install libpulse-mainloop-glib0 -y
+RUN wget "https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl.AppImage"
+RUN chmod a+x /QGroundControl.AppImage
+RUN useradd qgc
+RUN usermod -a -G dialout qgc
+
 # Sourcing script at runtime
 COPY .devcontainer/bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
 RUN chmod 777 /usr/local/bin/bashrc_setup.sh
-#CMD ["/usr/local/bin/bashrc_setup.sh"]
+RUN /usr/local/bin/bashrc_setup.sh
 
 CMD ["/bin/bash"]
