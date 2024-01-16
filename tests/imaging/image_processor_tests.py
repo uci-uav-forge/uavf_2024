@@ -23,6 +23,15 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     shape_color_top_1_accuracies = []
     letter_color_top_1_accuracies = []
 
+    # letter_dict is from the letter model's raw_output[0].names
+    # it is basically 0-25 in alphabetical order and maps the predicton results from the model to 
+    # the new letter labels indicies
+    letter_dict = {0: '0', 1: '1', 2: '10', 3: '11', 4: '12', 5: '13', 6: '14', 7: '15', 8: '16', 9: '17', 10: '18', 11: '19', 12: '2', 13: '20', 14: '21', 15: '22', 16: '23', 17: '24', 18: '25', 19: '26', 20: '27', 21: '28', 22: '29', 23: '3', 24: '30', 25: '31', 26: '32', 27: '33', 28: '34', 29: '35', 30: '4', 31: '5', 32: '6', 33: '7', 34: '8', 35: '9'}
+    # old letter labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
+    # new letter labels = "0123456789ABCDEFGHIKLMNOPQRSTUVWXYZ"
+    # old to new:
+    #   A - Z (0-25): + 10
+    #   1 - 9 (26-34): -25
 
     for truth in ground_truth:
         x,y = truth.x, truth.y
@@ -33,6 +42,11 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
 
         shape = np.argmax(truth.description.shape_probs)
         letter = np.argmax(truth.description.letter_probs)
+        # convert from old letter labels to new letter labels
+        if letter <= 25:
+            letter += 10
+        else:
+            letter -= 25
         shape_col = np.argmax(truth.description.shape_col_probs)
         letter_col = np.argmax(truth.description.letter_col_probs)
 
@@ -47,7 +61,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 true_positives+=1
                 this_target_was_detected = True
                 shape_top_1_accuracies.append(int(shape == np.argmax(pred.description.shape_probs)))
-                letter_top_1_accuracies.append(int(letter == np.argmax(pred.description.letter_probs)))
+                letter_top_1_accuracies.append(int(letter == int(letter_dict[np.argmax(pred.description.letter_probs)])))
                 shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.description.shape_col_probs)))
                 letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.description.letter_col_probs)))
 
