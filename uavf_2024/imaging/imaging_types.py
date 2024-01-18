@@ -7,6 +7,39 @@ from enum import Enum
 
 import torch
 
+COLORS_TO_RGB = {
+    'red': (255, 0, 0),
+    'green': (0, 255, 0),
+    'blue': (0, 0, 255),
+    'orange': (255, 165, 0),
+    'purple': (200, 0, 200),
+    'white': (255, 255, 255),
+    'black': (0, 0, 0),
+    'brown': (165, 42, 42),
+}
+
+SHAPES = [
+ "circle",
+ "cross",
+ "heptagon",
+ "hexagon",
+ "octagon",
+ "pentagon",
+ "quartercircle",
+ "rectangle",
+ "semicircle",
+ "square",
+ "star",
+ "trapezoid",
+ "triangle",
+ "person"
+]
+
+# LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
+LETTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+COLORS = list(COLORS_TO_RGB.keys())
+
 # TODO: Limit these to the types we actually use
 integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]
 real = Union[float, np.float16, np.float32, np.float64, np.float128]
@@ -15,12 +48,27 @@ number = Union[integer, real]
 # Can't use np.uint16 because torch doesn't support it. We're good as long as we don't have a gigapixel camera.
 img_coord_t = np.int16
 
+NEWLINE = '\n' + ' '*16 # For use in f-strings because apparently you can't use escape characters in them
+
 @dataclass
 class TargetDescription:
     shape_probs: np.ndarray
     letter_probs: np.ndarray
     shape_col_probs: np.ndarray
     letter_col_probs: np.ndarray
+    def __repr__(self):
+        return f'''
+        TargetDescription(
+            Shapes:
+                {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}g}" for i in range(len(self.shape_probs))])}
+            Letters:
+                {NEWLINE.join([f"{LETTERS[i]}: {self.letter_probs[i]:.{3}g}" for i in range(len(self.letter_probs))])}
+            Shape Colors:
+                {NEWLINE.join([f"{COLORS[i]}: {self.shape_col_probs[i]:.{3}g}" for i in range(len(self.shape_col_probs))])}
+            Letter Colors:
+                {NEWLINE.join([f"{COLORS[i]}: {self.letter_col_probs[i]:.{3}g}" for i in range(len(self.letter_col_probs))])}
+        )
+        '''
 
 @dataclass
 class Tile:

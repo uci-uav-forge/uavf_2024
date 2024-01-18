@@ -1,15 +1,6 @@
 import numpy as np
+from uavf_2024.imaging.imaging_types import COLORS_TO_RGB
 
-COLORS_TO_RGB = {
-    'red': (255, 0, 0),
-    'green': (0, 255, 0),
-    'blue': (0, 0, 255),
-    'orange': (255, 165, 0),
-    'purple': (200, 0, 200),
-    'white': (255, 255, 255),
-    'black': (0, 0, 0),
-    'brown': (165, 42, 42),
-}
 
 class ColorClassifier:
     def __init__(self):
