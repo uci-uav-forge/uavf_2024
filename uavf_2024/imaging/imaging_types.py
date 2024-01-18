@@ -70,6 +70,22 @@ class TargetDescription:
         )
         '''
 
+    def __add__(self, other):
+        return TargetDescription(
+            self.shape_probs + other.shape_probs,
+            self.letter_probs + other.letter_probs,
+            self.shape_col_probs + other.shape_col_probs,
+            self.letter_col_probs + other.letter_col_probs
+        )
+
+    def __truediv__(self, scalar):
+        return TargetDescription(
+            self.shape_probs / scalar,
+            self.letter_probs / scalar,
+            self.shape_col_probs / scalar,
+            self.letter_col_probs / scalar
+        )
+
 @dataclass
 class Tile:
     img: 'Image'
