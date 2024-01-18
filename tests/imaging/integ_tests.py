@@ -34,9 +34,12 @@ class TestPipeline(unittest.TestCase):
             (5312, 2988)
         )
         color_classifier = ColorClassifier()
-        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/integ_test"
-        if os.path.exists(debug_output_folder):
-            shutil.rmtree(debug_output_folder)
+        if verbose:
+            debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/integ_test"
+            if os.path.exists(debug_output_folder):
+                shutil.rmtree(debug_output_folder)
+        else:
+            debug_output_folder = None
         image_processor = ImageProcessor(debug_output_folder)
         ground_truth: list[Target3D] = []
 
@@ -86,12 +89,12 @@ class TestPipeline(unittest.TestCase):
             is_close_enough = np.linalg.norm(closest_match.position-gt_target.position) < EPSILON
             if verbose:
                 print(f"Closest Match for {stringify_target_description(gt_target.description)}:")
-                print(f"\tClosest detection distance: {np.linalg.norm(physically_closest_match.position-gt_target.position)}")
-                print(f"\tClosest detection descriptor score: {calc_match_score(physically_closest_match.description, gt_target.description)}")
-                print(f"\tClosest detection descriptor: {physically_closest_match.description}")
-                print(f"\tHighest descriptor score: {calc_match_score(closest_match.description, gt_target.description)}")
-                print(f"\tHighest match descriptor: {closest_match.description}")
-                print(f"\tHigh score match distance: {np.linalg.norm(closest_match.position-gt_target.position)}")
+                print(f"\tPhysically closest detection distance: {np.linalg.norm(physically_closest_match.position-gt_target.position):.3f}")
+                print(f"\tPhysically closest detection descriptor score: {calc_match_score(physically_closest_match.description, gt_target.description)}")
+                print(f"\tPhysically closest detection id: {physically_closest_match.id}")
+                print(f"\tHighest descriptor match score: {calc_match_score(closest_match.description, gt_target.description)}")
+                print(f"\tHighest descriptor match id: {closest_match.id}")
+                print(f"\tHigh descriptor match distance: {np.linalg.norm(closest_match.position-gt_target.position):.3f}")
                 print(f"\tClose enough? {is_close_enough}")
             scores.append(int(is_close_enough))
 
