@@ -9,9 +9,7 @@ import argparse
 from threading import Thread
 import sys
 
-
-
-# example usage: ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
+# Command to run: ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 
 if __name__ == '__main__':
     rclpy.init()
@@ -20,10 +18,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('mission_file')
     parser.add_argument('dropzone_file')
-    parser.add_argument('payload_shape_color_id', type = int)
-    parser.add_argument('payload_shape_id', type = int)
-    parser.add_argument('payload_letter_color_id', type = int)
-    parser.add_argument('payload_letter_id', type = int)
+    parser.add_argument('payload_list')
     parser.add_argument('image_width_m', type = float)
     parser.add_argument('image_height_m', type = float)
     args = parser.parse_args()
@@ -33,7 +28,7 @@ if __name__ == '__main__':
     spinner = Thread(target = rclpy.spin, args = (node,))
     spinner.start()
 
-    node.do_mission_loop()
+    node.execute_mission_loop()
 
 
     node.destroy_node()
