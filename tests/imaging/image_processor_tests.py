@@ -98,7 +98,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
             for line in f.readlines():
                 label = line.split(' ')
                 shape, letter, shape_col, letter_col = map(int, label[:4])
-                box = np.array([float(v) for v in label[4:]])
+                box = np.array([float(v) for v in label[4:] if v != ""])
                 box[[0,2]]*=img.shape[1]
                 box[[1,3]]*=img.shape[0]
                 box[[0,1]] -= box[[2,3]]/2 # adjust xy to be top-left
@@ -107,7 +107,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
                 ground_truth.append(FullPrediction(
                     x,y,w,h,
                     TargetDescription(
-                        np.eye(13)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
+                        np.eye(9)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
                     )
                 ))
         imgs.append(img)
@@ -151,6 +151,7 @@ class TestImagingFrontend(unittest.TestCase):
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)
+        #change the tile_dataset
         imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
         
         recalls = []
