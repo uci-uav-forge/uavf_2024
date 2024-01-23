@@ -24,7 +24,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     letter_color_top_1_accuracies = []
 
     # letter_dict is from the letter model's raw_output[0].names
-    # it is basically 0-25 in alphabetical order and maps the predicton results from the model to 
+    # it is basically 0-35 in alphabetical order and maps the predicton results from the model to 
     # the new letter labels indicies
     letter_dict = {0: '0', 1: '1', 2: '10', 3: '11', 4: '12', 5: '13', 6: '14', 7: '15', 8: '16', 9: '17', 10: '18', 11: '19', 12: '2', 13: '20', 14: '21', 15: '22', 16: '23', 17: '24', 18: '25', 19: '26', 20: '27', 21: '28', 22: '29', 23: '3', 24: '30', 25: '31', 26: '32', 27: '33', 28: '34', 29: '35', 30: '4', 31: '5', 32: '6', 33: '7', 34: '8', 35: '9'}
     # old letter labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
