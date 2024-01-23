@@ -1,20 +1,5 @@
 # Instructions for testing using SITL
 
-(We recommend using `tmux` in the dev-container - you'll be running a lot of programs at once!)
-
-## Set up params
-```
-sim_vehicle.py -w -v ArduCopter --console -DG --enable-dds
-```
-This command builds the SITL for arducopter and wipes existing params.
-
-Once it's started, type the following command and then control-c:
-```
-param set DDS_ENABLE 1
-```
-
-You should only need to do this once.
-
 ## Launch SITL
 
 ## Simple SITL
@@ -22,23 +7,16 @@ You should only need to do this once.
 Run the following to start a simple SITL
 
 ```
-ros2 launch ardupilot_sitl sitl_dds_udp.launch.py transport:=udp4 refs:=$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/dds_xrce_profile.xml synthetic_clock:=True wipe:=False model:=quad speedup:=1 slave:=0 instance:=0 defaults:=$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/default_params/copter.parm,$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/default_params/dds_udp.parm sim_address:=127.0.0.1 master:=tcp:127.0.0.1:5760 sitl:=127.0.0.1:5501 home:=38.31633,-76.55578,142,0
+ros2 launch ardupilot_sitl sitl_dds_udp.launch.py transport:=udp4 refs:=$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/dds_xrce_profile.xml synthetic_clock:=True wipe:=False model:=quad speedup:=1 slave:=0 instance:=0 defaults:=$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/default_params/copter.parm,$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/default_params/dds_udp.parm,/home/ws/uavf_2024/config/sitl.parm sim_address:=127.0.0.1 master:=tcp:127.0.0.1:5760 sitl:=127.0.0.1:5501 home:=38.31633,-76.55578,142,0
 ```
 
-After starting the SITL one options is connecting to it and sending commands directly with MAVProxy.
+After starting the SITL, launch MAVProxy to visualize the drone position and send commands.
 
 ```
 mavproxy.py --console --map --aircraft test --master=:14550
 ```
 
 Follow https://ardupilot.org/dev/docs/copter-sitl-mavproxy-tutorial.html for instructions on using MAVProxy to control the sim.
-
-
-### Launch Gazebo
-```
-ros2 launch ardupilot_gz_bringup iris_runway.launch.py
-```
-Gazebo is another option, but I found it very slow through the layer of virtualization on my machine, and harder to set up. 
 
 
 ## Start offboard control.
@@ -62,10 +40,22 @@ arm throttle # might need to wait a bit for the sim to "heat up"
 takeoff 20
 ```
 
-Launch the demo commander node. For now it just pushes a set of waypoints and switches the drone to AUTO to start it.
+Launch the mock imaging node:
 ```
-ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION
+ros2 run uavf_2024 mock_imaging_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
 ```
 
+Launch the demo commander node:
+```
+ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+```
+
+This will execute one lap of the mission in SITL.
 
 
+
+### Other options: Gazebo
+```
+ros2 launch ardupilot_gz_bringup iris_runway.launch.py
+```
+Gazebo is another option for running SITL - so far we haven't worked the setup for this out.

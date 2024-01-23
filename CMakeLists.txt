@@ -42,7 +42,8 @@ set(msg_files
 set(srv_files
   "srv/TakePicture.srv"
 )
-rosidl_generate_interfaces(${PROJECT_NAME}
+
+rosidl_generate_interfaces(uavf_2024
   ${msg_files}
   ${srv_files}
 )
@@ -51,10 +52,17 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 install(PROGRAMS
   scripts/commander_node.py
   scripts/demo_commander_node.py
+  scripts/demo_dropzone_planner.py
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
   scripts/imaging_node.py
+  scripts/mock_imaging_node.py
   DESTINATION lib/${PROJECT_NAME}
+)
+install(DIRECTORY
+  uavf_2024/gnc
+  uavf_2024/imaging
+  DESTINATION lib/uavf_2024/libuavf_2024
 )
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION include/${PROJECT_NAME}

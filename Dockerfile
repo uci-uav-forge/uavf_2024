@@ -64,7 +64,7 @@ RUN set -eux; \
 	\
 	pip --version
 
-RUN python -m pip install --no-cache-dir -U future lxml pexpect flake8 empy pyelftools tabulate pymavlink pre-commit
+RUN python -m pip install --no-cache-dir -U future lxml pexpect flake8 pyelftools tabulate pymavlink pre-commit
 
 FROM eclipse-temurin:19-jdk-jammy as dds-gen-builder
 
