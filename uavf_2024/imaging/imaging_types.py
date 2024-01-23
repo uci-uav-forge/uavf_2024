@@ -35,8 +35,12 @@ SHAPES = [
  "person"
 ]
 
-# LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
-LETTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+# LETTERS_OLD = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
+# LETTERS_NEW = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+# LETTERS is based on the letter order in letter model's raw_output[0].names
+# it is basically LETTER_NEW in alphabetical order (0-35)
+LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
 
 COLORS = list(COLORS_TO_RGB.keys())
 
@@ -69,6 +73,22 @@ class TargetDescription:
                 {NEWLINE.join([f"{COLORS[i]}: {self.letter_col_probs[i]:.{3}f}" for i in range(len(self.letter_col_probs))])}
         )
         '''
+
+    def __add__(self, other):
+        return TargetDescription(
+            self.shape_probs + other.shape_probs,
+            self.letter_probs + other.letter_probs,
+            self.shape_col_probs + other.shape_col_probs,
+            self.letter_col_probs + other.letter_col_probs
+        )
+
+    def __truediv__(self, scalar):
+        return TargetDescription(
+            self.shape_probs / scalar,
+            self.letter_probs / scalar,
+            self.shape_col_probs / scalar,
+            self.letter_col_probs / scalar
+        )
 
 @dataclass
 class Tile:

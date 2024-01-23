@@ -7,20 +7,22 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 import sensor_msgs.msg
 import geometry_msgs.msg 
 import uavf_2024.srv
-from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg
+from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg, read_payload_list
 from libuavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 
 class CommanderNode(rclpy.node.Node):
-    # Manages subscriptions to ROS topics and services necessary for the main GNC node. 
+    '''
+    Manages subscriptions to ROS2 topics and services necessary for the main GNC node. 
+    '''
+
     def __init__(self, args):
         super().__init__('uavf_commander_node')
 
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
-            depth = 1
-        )
+            depth = 1)
 
         # for now this is broken - some problem with the docker image or ardupilot setup...
         # todo, fix
@@ -65,11 +67,11 @@ class CommanderNode(rclpy.node.Node):
         
         self.imaging_client = self.create_client(
             uavf_2024.srv.TakePicture,
-            '/imaging_service'
-        )
+            '/imaging_service')
         
         self.mission_wps = read_gps(args.mission_file)
         self.dropzone_bounds = read_gps(args.dropzone_file)
+        self.payloads = read_payload_list(args.payload_list)
 
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
         self.args = args
@@ -82,13 +84,12 @@ class CommanderNode(rclpy.node.Node):
     def log(self, *args, **kwargs):
         print(*args, **kwargs)
     
-    
     def global_pos_cb(self, global_pos):
         self.got_pos = True
         self.last_pos = global_pos
     
     def reached_cb(self, reached):
-        self.log("Reached waypoint ", reached.wp_seq)
+        self.log("Reached waypoint", reached.wp_seq)
         self.last_wp_seq = reached.wp_seq
 
         if self.call_imaging_at_wps:
@@ -100,19 +101,19 @@ class CommanderNode(rclpy.node.Node):
         self.got_pose = True
 
     def got_global_pos_cb(self, pos):
-        #Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
+        # Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
         if not self.got_global_pos:
             self.home_global_pos = pos
             
             self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
-            self.log("Dropzone bounds in local coords: ", self.dropzone_bounds_mlocal)
+            self.log("Dropzone bounds in local coords:", self.dropzone_bounds_mlocal)
 
             self.got_global_pos = True
     
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
-    def do_waypoints(self, waypoints, yaws = None, use_spline = False):
+    def execute_waypoints(self, waypoints, yaws = None, use_spline = False):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
@@ -132,7 +133,7 @@ class CommanderNode(rclpy.node.Node):
             start_pos = (self.home_global_pos.latitude, self.home_global_pos.longitude)
             end_pos = self.dropzone_bounds[0]
             turn_angles = calculate_turn_angles_deg([start_pos] + waypoints[1:] + [end_pos])
-            self.log("Calculated turn angles: ", turn_angles)
+            self.log("Calculated turn angles:", turn_angles)
 
             # Add turn angle for home
             turn_angles = [0] + turn_angles
@@ -174,17 +175,15 @@ class CommanderNode(rclpy.node.Node):
 
         self.log("Pushed waypoints, setting mode.")
 
-        #kludgy but works
+        # kludgy but works
 
         self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
             base_mode = 0,
-            custom_mode = 'GUIDED'
-        ))
+            custom_mode = 'GUIDED'))
 
         self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
             base_mode = 0,
-            custom_mode = 'AUTO'
-        ))
+            custom_mode = 'AUTO'))
 
         self.log("Waiting for mission to finish.")
 
@@ -204,13 +203,28 @@ class CommanderNode(rclpy.node.Node):
         self.imaging_futures = []
         return detections
     
-    def do_mission_loop(self):
+    def wait_for_takeoff(self):
+        '''
+        Will be executed before the start of each lap. Will wait for a signal
+        indicating that the drone has taken off and is ready to fly the next lap.
+        '''
+        self.log('Waiting for takeoff')
+
+    def execute_mission_loop(self):
         while not self.got_global_pos:
             pass
 
-        self.do_waypoints(self.mission_wps, use_spline=True)
-        
-        self.dropzone_planner.conduct_air_drop()
+        for lap in range(len(self.payloads)):
+            self.log('Lap', lap)
 
-        self.do_waypoints([(self.home_global_pos.latitude,self.home_global_pos.longitude)])
-    
+            # Wait for takeoff
+            self.wait_for_takeoff()
+
+            # Fly waypoint lap
+            self.execute_waypoints(self.mission_wps, use_spline=True)
+
+            # Fly to drop zone and release current payload
+            self.dropzone_planner.conduct_air_drop()
+
+            # Fly back to home position
+            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude)])
