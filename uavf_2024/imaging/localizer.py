@@ -55,4 +55,4 @@ class Localizer:
         target_position = camera_position + t*rotated_vector
         assert abs(target_position[1])<1e-3
 
-        return Target3D(target_position, pred.description)
+        return Target3D(target_position, pred.description, id=f"img_{pred.img_id}/det_{pred.det_id}")

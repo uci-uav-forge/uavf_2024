@@ -14,6 +14,7 @@ class ShapeInstanceSegmenter:
         self.shape_model = YOLO(f"{CURRENT_FILE_PATH}/weights/seg-v8n.pt")
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.shape_model.predict(list(rand_input), verbose=False)
+        self.num_processed = 0
 
 
     @profiler
@@ -47,7 +48,9 @@ class ShapeInstanceSegmenter:
                         height=img_coord_t(h.item()),
                         confidences = confidences,
                         mask = mask[y:y+h, x:x+w].unsqueeze(2).cpu().numpy(),
-                        img = tiles[img_index].img.make_sub_image(x, y, w, h)
+                        img = tiles[img_index].img.make_sub_image(x, y, w, h),
+                        id = self.num_processed
                     )
                 )
+                self.num_processed += 1
             return full_results

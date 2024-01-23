@@ -64,15 +64,31 @@ class TargetDescription:
         return f'''
         TargetDescription(
             Shapes:
-                {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}g}" for i in range(len(self.shape_probs))])}
+                {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}f}" for i in range(len(self.shape_probs))])}
             Letters:
-                {NEWLINE.join([f"{LETTERS[i]}: {self.letter_probs[i]:.{3}g}" for i in range(len(self.letter_probs))])}
+                {NEWLINE.join([f"{LETTERS[i]}: {self.letter_probs[i]:.{3}f}" for i in range(len(self.letter_probs))])}
             Shape Colors:
-                {NEWLINE.join([f"{COLORS[i]}: {self.shape_col_probs[i]:.{3}g}" for i in range(len(self.shape_col_probs))])}
+                {NEWLINE.join([f"{COLORS[i]}: {self.shape_col_probs[i]:.{3}f}" for i in range(len(self.shape_col_probs))])}
             Letter Colors:
-                {NEWLINE.join([f"{COLORS[i]}: {self.letter_col_probs[i]:.{3}g}" for i in range(len(self.letter_col_probs))])}
+                {NEWLINE.join([f"{COLORS[i]}: {self.letter_col_probs[i]:.{3}f}" for i in range(len(self.letter_col_probs))])}
         )
         '''
+
+    def __add__(self, other):
+        return TargetDescription(
+            self.shape_probs + other.shape_probs,
+            self.letter_probs + other.letter_probs,
+            self.shape_col_probs + other.shape_col_probs,
+            self.letter_col_probs + other.letter_col_probs
+        )
+
+    def __truediv__(self, scalar):
+        return TargetDescription(
+            self.shape_probs / scalar,
+            self.letter_probs / scalar,
+            self.shape_col_probs / scalar,
+            self.letter_col_probs / scalar
+        )
 
 @dataclass
 class Tile:
@@ -90,6 +106,12 @@ class FullPrediction:
     We can worry about typechecking these later, but the gist is that they're probability distributions over the possible classes.
     '''
     description: TargetDescription
+    '''
+    The id is a unique identifier for debugging purposes. All the debugging images will be saved with this id.
+    The format is `{run_id}_{image_id}_{prediction_index}`
+    '''
+    img_id: int = None
+    det_id: int = None
 
 @dataclass
 class InstanceSegmentationResult:
@@ -103,6 +125,7 @@ class InstanceSegmentationResult:
     confidences: np.ndarray
     mask: np.ndarray
     img: 'Image'
+    id : int
 
 @dataclass
 class Target3D:
@@ -111,6 +134,7 @@ class Target3D:
     '''
     position: np.ndarray # (x,y,z) in local frame
     description: TargetDescription
+    id: str = None
 
 class ImageDimension(Enum):
     HEIGHT = 'h'
