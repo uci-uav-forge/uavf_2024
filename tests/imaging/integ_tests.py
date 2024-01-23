@@ -1,5 +1,6 @@
 import unittest
 from uavf_2024.imaging.localizer import Localizer
+from uavf_2024.imaging.area_coverage import AreaCoverageTracker
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.color_classification import ColorClassifier
 from uavf_2024.imaging.imaging_types import HWC, Image, TargetDescription, Target3D, COLORS, SHAPES, LETTERS
@@ -30,6 +31,10 @@ class TestPipeline(unittest.TestCase):
         # VFOV = 67.6 degrees
         # HFOV = 2*arctan(16/9*tan(67.6/2)) = 99.9 degrees
         target_localizer = Localizer(
+            99.9,
+            (5312, 2988)
+        )
+        area_tracker = AreaCoverageTracker(
             99.9,
             (5312, 2988)
         )
@@ -75,6 +80,7 @@ class TestPipeline(unittest.TestCase):
             cam_angles = csv_to_np(pose_strs[1])
 
             predictions = image_processor.process_image(img)
+            area_tracker.update(np.concatenate([cam_position, cam_angles]), label=file_name.split("_")[0])
             for pred in predictions:
                predictions_3d.append(target_localizer.prediction_to_coords(pred, np.concatenate([cam_position, cam_angles])))
         
@@ -96,6 +102,8 @@ class TestPipeline(unittest.TestCase):
             scores.append(int(is_close_enough))
 
         print(f"Imaging Sim Score: {np.sum(scores)}/{len(scores)}") 
+        area_tracker.visualize(f"{debug_output_folder}/coverage.png", 5000)
+
 
 if __name__ == "__main__":
     tests = TestPipeline()
