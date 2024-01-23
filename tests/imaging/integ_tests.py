@@ -100,6 +100,7 @@ class TestPipeline(unittest.TestCase):
             is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < EPSILON
             scores.append(int(is_close_enough))
             if verbose:
+                print(f"Closest Match for {stringify_target_description(gt_target.description)}:")
                 physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
                 closest_match = max(predictions_3d, key=lambda pred: calc_match_score(pred.description, gt_target.description))
                 print(stringify_target_description(gt_target.description))
