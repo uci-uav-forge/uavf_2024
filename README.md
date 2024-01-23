@@ -1,5 +1,16 @@
 # UAV Forge's ROS2 package for GN&C and Aerial Imagery Object Detection.
 
+## Running tests
+### Running all tests
+1. Be in the root of the repo
+2. `./imaging_tests.sh`
+
+### Running a specific test
+1. Be in the root of the repo
+2. `python3 -m unittest tests/path-to-test/thingy_test.py`
+
+	e.g. `python3 -m unittest tests/imgaging/integ_tests.py`
+
 ## Dev Container Setup (one time setup)
 1. Ensure you have Docker and X-11 forwarding installed on your device. (google this)
 2. Clone the repo and edit devcontainer.json accordingly for your X-11 setup. If you're on an non-linux OS you can also just comment out the lines for mounting the X socket and uncomment the lines for the "desktop-lite" below. Then by going to `localhost:6080` and entering the password `vscode` you should be able to access a desktop environment through your browser if necessary. 
