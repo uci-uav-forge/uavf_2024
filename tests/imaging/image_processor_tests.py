@@ -107,7 +107,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
                 ground_truth.append(FullPrediction(
                     x,y,w,h,
                     TargetDescription(
-                        np.eye(13)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
+                        np.eye(9)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
                     )
                 ))
         imgs.append(img)
@@ -151,7 +151,8 @@ class TestImagingFrontend(unittest.TestCase):
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
+        #replacing tile_dataset with test
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/test_one/images", f"{CURRENT_FILE_PATH}/imaging_data/test_one/labels")
         
         recalls = []
         precisions = []
