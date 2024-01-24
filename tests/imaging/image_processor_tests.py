@@ -152,7 +152,7 @@ class TestImagingFrontend(unittest.TestCase):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)
         #replacing tile_dataset with test
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/test_one/images", f"{CURRENT_FILE_PATH}/imaging_data/test_one/labels")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_data/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_data/labels")
         
         recalls = []
         precisions = []

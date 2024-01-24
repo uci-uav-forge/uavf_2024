@@ -20,20 +20,16 @@ COLORS_TO_RGB = {
 
 SHAPES = [
  "circle",
- "cross",
- "heptagon",
- "hexagon",
- "octagon",
- "pentagon",
- "quartercircle",
- "rectangle",
  "semicircle",
- "square",
- "star",
- "trapezoid",
+ "quartercircle",
  "triangle",
+ "rectangle",
+ "pentagon",
+ "star",
+ "cross",
  "person"
 ]
+
 
 # LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
 LETTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
