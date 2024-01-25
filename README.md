@@ -38,6 +38,23 @@
 	pip install -e .
 	```
 
+3. cd into the `siyi_sdk` submodule and `pip install -e .`. If the folder is empty, do `git submodule init && git submodule update`
+
+### Nvidia Jetson Setup
+
+Do this AFTER doing `pip install -e .` If you do that after, it'll overwrite the jetson-specific packages.
+
+1. Download the torch 2.1.0 wheel from here https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048 and pip install it (e.g. `pip install torch-2.1..0-cp<blahblah>.whl`)
+
+2. Build torchvision from source.
+```
+sudo apt-get install libjpeg-dev zlib1g-dev libpython3-dev libopenblas-dev libavcodec-dev libavformat-dev libswscale-dev
+git clone --branch v0.16.1 https://github.com/pytorch/vision torchvision
+cd torchvision
+export BUILD_VERSION = 0.16.1
+python3 setup.py install --user
+```
+
 
 ### Dev container
 
