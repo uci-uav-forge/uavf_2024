@@ -1,6 +1,7 @@
 import numpy as np
 from time import sleep
 from siyi_sdk import SIYISTREAM,SIYISDK
+from uavf_2024.imaging.imaging_types import Image, HWC
 import matplotlib.image 
 
 class Camera:
@@ -11,12 +12,12 @@ class Camera:
         self.cam.connect()
 
         
-    def take_picture(self) -> np.ndarray:
+    def take_picture(self) -> Image:
         '''
-        Returns picture as ndarray with shape (3, width, height)
+        Returns picture as ndarray with shape (height,width,3)
         '''
         pic = self.stream.get_frame()
-        return pic
+        return Image(pic, HWC)
         # return np.random.rand(3, 3840, 2160)
     
     def disconnect(self):
@@ -26,5 +27,5 @@ class Camera:
 if __name__ == "__main__":
     cam = Camera()
     out = cam.take_picture()
-    matplotlib.image.imsave("sample_frame.png",out)
+    matplotlib.image.imsave("sample_frame.png",out.get_array().transpose(2,1,0))
     cam.disconnect()
