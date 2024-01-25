@@ -2,8 +2,8 @@
 
 import rclpy
 from rclpy.node import Node
-from uavf_2024.msg import TargetDetection
-from uavf_2024.srv import TakePicture
+from libuavf_2024.msg import TargetDetection
+from libuavf_2024.srv import TakePicture
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 import numpy as np
 from time import strftime, time
