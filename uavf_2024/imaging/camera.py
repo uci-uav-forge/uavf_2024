@@ -19,6 +19,15 @@ class Camera:
         pic = self.stream.get_frame()
         return Image(pic, HWC)
         # return np.random.rand(3, 3840, 2160)
+
+    def request_center(self):
+        return self.cam.requestAbsolutePosition(0, 0)
+    
+    def request_autofocus(self):
+        return self.cam.requestAutoFocus()
+    
+    def setAbsoluteZoom(self, zoom_level: float):
+        return self.cam.setAbsoluteZoom(1)
     
     def disconnect(self):
         self.stream.disconnect()
