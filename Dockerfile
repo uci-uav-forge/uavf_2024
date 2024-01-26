@@ -152,7 +152,8 @@ RUN apt install libfuse2 -y
 RUN apt install libpulse-mainloop-glib0 -y
 RUN wget "https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl.AppImage"
 RUN chmod a+x /QGroundControl.AppImage
-RUN useradd qgc
+RUN apt install fuse3 -y
+RUN useradd qgc -m -d /home/qgc
 RUN usermod -a -G dialout qgc
 
 # Sourcing script at runtime

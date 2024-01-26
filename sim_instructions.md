@@ -49,10 +49,3 @@ ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/
 
 This will execute one lap of the mission in SITL.
 
-
-
-### Other options: Gazebo
-```
-ros2 launch ardupilot_gz_bringup iris_runway.launch.py
-```
-Gazebo is another option for running SITL - so far we haven't worked the setup for this out.
