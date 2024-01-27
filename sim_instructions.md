@@ -8,7 +8,7 @@ Run the following to start a simple SITL
 
 ```
 cd /PX4-Autopilot
-PX4_HOME_LAT=38.31633 PX4_HOME_LON=-76.55578 PX4_HOME_ALT=142 make px4_sitl jmavsim
+PX4_SIM_SPEED=2 PX4_HOME_LAT=38.31633 PX4_HOME_LON=-76.55578 PX4_HOME_ALT=142 make px4_sitl jmavsim
 ```
 
 After starting the SITL, launch QGC.

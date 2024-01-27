@@ -94,6 +94,7 @@ class CommanderNode(rclpy.node.Node):
 
     def got_global_pos_cb(self, pos):
         #Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
+        self.last_global_pos = pos
         if not self.got_global_pos:
             self.home_global_pos = pos
             print(self.home_global_pos)
@@ -107,15 +108,14 @@ class CommanderNode(rclpy.node.Node):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
     def do_waypoints(self, waypoints, yaws = None, use_spline = False):
-        self.last_wp_seq = None
+        self.last_wp_seq = -1
 
         self.log("Pushing waypoints")
 
         
-
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude)] +  waypoints
         print(waypoints)
-        waypoints = [(self.cur_pose.)] + waypoints
-        yaws = yaws
+        
 
         waypoint_msgs = [
                 mavros_msgs.msg.Waypoint(
@@ -137,16 +137,15 @@ class CommanderNode(rclpy.node.Node):
 
         
         resp = self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
-        print(resp)
         
         resp = self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
-        print(resp)
+        for _ in range(1000): # THIS IS REALLY BAD!
+            resp = self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+                base_mode = 0,
+                custom_mode = 'AUTO.MISSION'
+            ))
 
-        resp = self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-            base_mode = 0,
-            custom_mode = 'AUTO.MISSION'
-        ))
-        print(resp)
+
 
         self.log("Pushed waypoints, setting mode.")
 
@@ -179,6 +178,7 @@ class CommanderNode(rclpy.node.Node):
     def do_mission_loop(self):
         while not self.got_global_pos:
             pass
+
 
         self.do_waypoints(self.mission_wps, use_spline=True)
         
