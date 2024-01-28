@@ -159,7 +159,7 @@ class CommanderNode(rclpy.node.Node):
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
         # mavros/px4 doesn't consistently set the mode the first time this function is called...
-        # retry up to 200 times or fail the script.
+        # retry or fail the script.
         for _ in range(1000):
             self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
                 base_mode = 0,
@@ -167,10 +167,10 @@ class CommanderNode(rclpy.node.Node):
             ))
             time.sleep(0.2)
             if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
-                self.log("Success!")
+                self.log("Success setting mode")
                 break
         else:
-            self.log("Failure")
+            self.log("Failure setting mode, quitting.")
             quit()
 
 
@@ -210,7 +210,7 @@ class CommanderNode(rclpy.node.Node):
             self.wait_for_takeoff()
 
             # Fly waypoint lap
-            self.execute_waypoints(self.mission_wps, use_spline=True)
+            self.execute_waypoints(self.mission_wps)
 
             # Fly to drop zone and release current payload
             self.dropzone_planner.conduct_air_drop()
