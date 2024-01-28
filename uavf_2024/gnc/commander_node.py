@@ -10,6 +10,7 @@ import uavf_2024.srv
 from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg
 from libuavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
+import time
 
 class CommanderNode(rclpy.node.Node):
     # Manages subscriptions to ROS topics and services necessary for the main GNC node. 
@@ -32,7 +33,13 @@ class CommanderNode(rclpy.node.Node):
         self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
         self.clear_mission_client = self.create_client(mavros_msgs.srv.WaypointClear, 'mavros/mission/clear')
 
-        self.take_picture_client = self.create_client(uavf_2024.srv.TakePicture, 'uavf_2024/take_picture')
+
+        self.cur_state = None
+        self.state_sub = self.create_subscription(
+            mavros_msgs.msg.State,
+            'mavros/state',
+            self.got_state_cb,
+            qos_profile)
 
         self.got_pose = False
         self.world_position_sub = self.create_subscription(
@@ -79,6 +86,9 @@ class CommanderNode(rclpy.node.Node):
         self.got_pos = True
         self.last_pos = global_pos
     
+    def got_state_cb(self, state):
+        self.cur_state = state
+    
     def reached_cb(self, reached):
         if reached.wp_seq > self.last_wp_seq:
             self.log("Reached waypoint ", reached.wp_seq)
@@ -107,14 +117,18 @@ class CommanderNode(rclpy.node.Node):
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
-    def do_waypoints(self, waypoints, yaws = None, use_spline = False):
+    def do_waypoints(self, waypoints, yaws = None):
         self.last_wp_seq = -1
 
         self.log("Pushing waypoints")
 
         
         waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude)] +  waypoints
-        print(waypoints)
+        if yaws == None:
+            yaws = [float('NaN')] * len(waypoints)
+        else:
+            yaws = [float('NaN')] + yaws
+        self.log(waypoints, yaws)
         
 
         waypoint_msgs = [
@@ -127,35 +141,36 @@ class CommanderNode(rclpy.node.Node):
                     param1 = 0.0,
                     param2 = 5.0,
                     param3 = 0.0,
-                    param4 = float('NaN'),
+                    param4 = yaw,
 
                     x_lat = wp[0],
                     y_long = wp[1],
                     z_alt = 20.0)
 
-                for wp in waypoints]
+                for wp,yaw in zip(waypoints, yaws)]
 
         
-        resp = self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
-        
-        resp = self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
-        for _ in range(1000): # THIS IS REALLY BAD!
-            resp = self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-                base_mode = 0,
-                custom_mode = 'AUTO.MISSION'
-            ))
-
-
+        self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
 
         self.log("Pushed waypoints, setting mode.")
 
         
+        self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
+        # mavros/px4 doesn't consistently set the mode the first time this function is called...
+        # retry up to 200 times or fail the script.
+        for _ in range(1000):
+            self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+                base_mode = 0,
+                custom_mode = 'AUTO.MISSION'
+            ))
+            time.sleep(0.2)
+            if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
+                self.log("Success!")
+                break
+        else:
+            self.log("Failure")
+            quit()
 
-        
-
-        #kludgy but works
-
-        
 
         self.log("Waiting for mission to finish.")
 
@@ -180,7 +195,7 @@ class CommanderNode(rclpy.node.Node):
             pass
 
 
-        self.do_waypoints(self.mission_wps, use_spline=True)
+        self.do_waypoints(self.mission_wps)
         
         self.dropzone_planner.conduct_air_drop()
 
