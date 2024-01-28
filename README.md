@@ -1,5 +1,16 @@
 # UAV Forge's ROS2 package for GN&C and Aerial Imagery Object Detection.
 
+## Running tests
+### Running all tests
+1. Be in the root of the repo
+2. `./imaging_tests.sh`
+
+### Running a specific test
+1. Be in the root of the repo
+2. `python3 -m unittest tests/path-to-test/thingy_test.py`
+
+	e.g. `python3 -m unittest tests/imgaging/integ_tests.py`
+
 ## Dev Container Setup (one time setup)
 1. Ensure you have Docker and X-11 forwarding installed on your device. (google this)
 2. Clone the repo and edit devcontainer.json accordingly for your X-11 setup. If you're on an non-linux OS you can also just comment out the lines for mounting the X socket and uncomment the lines for the "desktop-lite" below. Then by going to `localhost:6080` and entering the password `vscode` you should be able to access a desktop environment through your browser if necessary. 
@@ -26,6 +37,23 @@
 	```
 	pip install -e .
 	```
+
+3. cd into the `siyi_sdk` submodule and `pip install -e .`. If the folder is empty, do `git submodule init && git submodule update`
+
+### Nvidia Jetson Setup
+
+Do this AFTER doing `pip install -e .` If you do that after, it'll overwrite the jetson-specific packages.
+
+1. Download the torch 2.1.0 wheel from here https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048 and pip install it (e.g. `pip install torch-2.1..0-cp<blahblah>.whl`)
+
+2. Build torchvision from source.
+```
+sudo apt-get install libjpeg-dev zlib1g-dev libpython3-dev libopenblas-dev libavcodec-dev libavformat-dev libswscale-dev
+git clone --branch v0.16.1 https://github.com/pytorch/vision torchvision
+cd torchvision
+export BUILD_VERSION = 0.16.1
+python3 setup.py install --user
+```
 
 
 ### Dev container
@@ -55,3 +83,7 @@ I copied a lot of the config from this tutorial: https://docs.ros.org/en/foxy/Ho
 3. `colcon build --merge-install`
 4. `ros2 run uavf_2024 imaging_node.py` (this starts the service)
 5. from another terminal, run `ros2 service call /imaging_service uavf_2024/srv/TakePicture`
+
+### Jetson Installation
+pytorch: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
+as of jan 23, the jetson is on Jetpack 6

@@ -4,16 +4,24 @@ import numpy as np
 import math
 
 class DropzonePlanner:
-    # Handles all logic related to controlling drone motion during the payload drop.
+    '''
+    Handles all logic related to controlling drone motion during the payload drop.
+    '''
+
     def __init__(self, commander, image_width_m: float, image_height_m: float):
         self.commander = commander
         self.image_width_m = image_width_m
         self.image_height_m = image_height_m
+        self.detections = []
+        self.current_payload_index = 0
+        self.has_scanned_dropzone = False
     
     def gen_dropzone_plan(self):
-        # Generates dropzone plan with yaws included, in meters.
+        '''
+        Generates dropzone plan with yaws included, in meters.
+        '''
 
-        # Step 1: find closest corner of dropzone.
+        # Step 1: Find closest corner of dropzone.
         # Set up some helpers to reorient relative to that.
         while not self.commander.got_global_pos or not self.commander.got_pose:
             pass
@@ -48,7 +56,6 @@ class DropzonePlanner:
         fwd_yaw += 90
         fwd_yaw %= 360
         
-
         # Step 2: Generate a "zigzag" pattern to sweep the entire dropzone.
         result_wps = []
         for col in range(math.ceil(drop_w/self.image_width_m)):
@@ -67,31 +74,42 @@ class DropzonePlanner:
 
         return result_wps
 
-    def conduct_air_drop(self):
-        # Called when a waypoint lap has been finished.
-        # Expects that the drone is in the air.
-        # Moves to drop zone from current position,
-        # scans drop zone,
-        # navigates to the target best matching the current payload,
-        # and releases it.
-
+    def scan_dropzone(self):
+        '''
+        Will be executed after the drone completes the first waypoint lap. 
+        Drone will move to drop zone from its current position and scan the
+        entire drop zone.
+        '''
         dropzone_plan = self.gen_dropzone_plan()
-        self.commander.log("planned wps", [self.commander.local_to_gps(wp) for wp, _ in dropzone_plan])
+        self.commander.log("Planned waypoints", [self.commander.local_to_gps(wp) for wp, _ in dropzone_plan])
         self.commander.call_imaging_at_wps = True
-        self.commander.do_waypoints([self.commander.local_to_gps(wp) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
+        self.commander.execute_waypoints([self.commander.local_to_gps(wp) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
         self.commander.call_imaging_at_wps = False
-        detections = self.commander.gather_imaging_detections()
+        self.detections = self.commander.gather_imaging_detections()
 
-        self.commander.log(detections)
+        self.commander.log("Imaging detections", self.detections)
 
-        best_match = max(detections, key = self.match_score)
-        self.commander.do_waypoints([self.commander.local_to_gps((best_match.x, best_match.y))])
-        self.commander.release_payload()
+    def conduct_air_drop(self):
+        '''
+        Will be executed each time the drone completes a waypoint lap.
+        Drone will navigate to the target that best matches its current 
+        payload and will release the payload.
+        '''
+
+        if self.has_scanned_dropzone == False:
+            self.scan_dropzone()
+            self.has_scanned_dropzone = True
         
+        best_match = max(self.detections, key = self.match_score)
+        self.commander.execute_waypoints([self.commander.local_to_gps((best_match.x, best_match.y))])
+        self.commander.release_payload()
+        self.commander.payloads[self.current_payload_index].display()
+        self.current_payload_index += 1
     
     def match_score(self, detection):
-        return detection.letter_conf[self.commander.args.payload_letter_id] \
-            + detection.shape_conf[self.commander.args.payload_shape_id] \
-            + detection.letter_color_conf[self.commander.args.payload_letter_color_id] \
-            + detection.shape_color_conf[self.commander.args.payload_shape_color_id]
+        p = self.commander.payloads[self.current_payload_index]
 
+        return detection.letter_conf[p.letter_id] \
+            + detection.shape_conf[p.shape_id] \
+            + detection.letter_color_conf[p.letter_color_id] \
+            + detection.shape_color_conf[p.shape_color_id]

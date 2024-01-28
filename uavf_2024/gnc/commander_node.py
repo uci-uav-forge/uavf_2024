@@ -7,13 +7,16 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 import sensor_msgs.msg
 import geometry_msgs.msg 
 import uavf_2024.srv
-from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg
+from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg, read_payload_list
 from libuavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
 
 class CommanderNode(rclpy.node.Node):
-    # Manages subscriptions to ROS topics and services necessary for the main GNC node. 
+    '''
+    Manages subscriptions to ROS2 topics and services necessary for the main GNC node. 
+    '''
+
     def __init__(self, args):
         super().__init__('uavf_commander_node')
 
@@ -64,11 +67,11 @@ class CommanderNode(rclpy.node.Node):
         
         self.imaging_client = self.create_client(
             uavf_2024.srv.TakePicture,
-            '/imaging_service'
-        )
+            '/imaging_service')
         
         self.mission_wps = read_gps(args.mission_file)
         self.dropzone_bounds = read_gps(args.dropzone_file)
+        self.payloads = read_payload_list(args.payload_list)
 
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
         self.args = args
@@ -80,7 +83,6 @@ class CommanderNode(rclpy.node.Node):
     
     def log(self, *args, **kwargs):
         print(*args, **kwargs)
-    
     
     def global_pos_cb(self, global_pos):
         self.got_pos = True
@@ -110,24 +112,24 @@ class CommanderNode(rclpy.node.Node):
             print(self.home_global_pos)
             
             self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
-            self.log("Dropzone bounds in local coords: ", self.dropzone_bounds_mlocal)
+            self.log("Dropzone bounds in local coords:", self.dropzone_bounds_mlocal)
 
             self.got_global_pos = True
     
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
-    def do_waypoints(self, waypoints, yaws = None):
+    def execute_waypoints(self, waypoints, yaws = None):
+        if yaws is None:
+            yaws = [float('NaN')] * len(waypoints)
+
         self.last_wp_seq = -1
 
         self.log("Pushing waypoints")
 
         
         waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude)] +  waypoints
-        if yaws == None:
-            yaws = [float('NaN')] * len(waypoints)
-        else:
-            yaws = [float('NaN')] + yaws
+        yaws = [float('NaN')] + yaws
         self.log(waypoints, yaws)
         
 
@@ -190,14 +192,28 @@ class CommanderNode(rclpy.node.Node):
         self.imaging_futures = []
         return detections
     
-    def do_mission_loop(self):
+    def wait_for_takeoff(self):
+        '''
+        Will be executed before the start of each lap. Will wait for a signal
+        indicating that the drone has taken off and is ready to fly the next lap.
+        '''
+        self.log('Waiting for takeoff')
+
+    def execute_mission_loop(self):
         while not self.got_global_pos:
             pass
 
+        for lap in range(len(self.payloads)):
+            self.log('Lap', lap)
 
-        self.do_waypoints(self.mission_wps)
-        
-        self.dropzone_planner.conduct_air_drop()
+            # Wait for takeoff
+            self.wait_for_takeoff()
 
-        self.do_waypoints([(self.home_global_pos.latitude,self.home_global_pos.longitude)])
-    
+            # Fly waypoint lap
+            self.execute_waypoints(self.mission_wps, use_spline=True)
+
+            # Fly to drop zone and release current payload
+            self.dropzone_planner.conduct_air_drop()
+
+            # Fly back to home position
+            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude)])
