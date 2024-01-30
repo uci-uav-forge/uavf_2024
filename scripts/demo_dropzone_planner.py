@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from libuavf_2024.gnc.util import read_gps
-from libuavf_2024.gnc.dropzone_planner import DropzonePlanner
-from libuavf_2024.gnc.commander_node import CommanderNode
+from uavf_2024.gnc.util import read_gps
+from uavf_2024.gnc.dropzone_planner import DropzonePlanner
+from uavf_2024.gnc.commander_node import CommanderNode
 from threading import Thread
 import rclpy
 import argparse

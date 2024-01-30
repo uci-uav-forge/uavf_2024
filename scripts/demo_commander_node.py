@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from libuavf_2024.gnc.commander_node import CommanderNode
+from uavf_2024.gnc.commander_node import CommanderNode
 import mavros_msgs.msg
 import mavros_msgs.srv
 import rclpy
