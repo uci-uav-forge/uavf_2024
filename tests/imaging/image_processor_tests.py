@@ -20,6 +20,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
     shape_top_1_accuracies = []
     letter_top_1_accuracies = []
+    letter_top_5_accuracies = []
     shape_color_top_1_accuracies = []
     letter_color_top_1_accuracies = []
 
@@ -61,7 +62,12 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 true_positives+=1
                 this_target_was_detected = True
                 shape_top_1_accuracies.append(int(shape == np.argmax(pred.description.shape_probs)))
-                letter_top_1_accuracies.append(int(letter == int(letter_dict[np.argmax(pred.description.letter_probs)])))
+                
+                letter_top5_probs = np.argsort(pred.description.letter_probs)[-5:] # [top5, top4, top3, top2, top1]
+                letter_top5_probs = [int(letter_dict[i]) for i in letter_top5_probs]  # get letter prob names
+                letter_top_5_accuracies.append(int(letter in letter_top5_probs))
+                
+                letter_top_1_accuracies.append(int(letter == int(letter_top5_probs[4])))                
                 shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.description.shape_col_probs)))
                 letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.description.letter_col_probs)))
 
@@ -72,6 +78,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     precision = true_positives / len(predictions) if len(predictions)>0 else None
     shape_top1 = np.mean(shape_top_1_accuracies) if len(shape_top_1_accuracies)>0 else None
     letter_top1 = np.mean(letter_top_1_accuracies) if len(letter_top_1_accuracies)>0 else None
+    letter_top5 = np.mean(letter_top_5_accuracies) if len(letter_top_5_accuracies)>0 else None
     shape_color_top1 = np.mean(shape_color_top_1_accuracies) if len(shape_color_top_1_accuracies)>0 else None
     letter_color_top1 = np.mean(letter_color_top_1_accuracies) if len(letter_color_top_1_accuracies)>0 else None
 
@@ -80,6 +87,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         precision,
         shape_top1,
         letter_top1,
+        letter_top5,
         shape_color_top1,
         letter_color_top1
     )
@@ -157,6 +165,7 @@ class TestImagingFrontend(unittest.TestCase):
         precisions = []
         shape_top1s = []
         letter_top1s = []
+        letter_top5s = []
         shape_color_top1s = []
         letter_color_top1s = []
 
@@ -168,13 +177,14 @@ class TestImagingFrontend(unittest.TestCase):
                 precision,
                 shape_top1,
                 letter_top1,
+                letter_top5,
                 shape_color_top1,
                 letter_color_top1
             ) = calc_metrics(predictions, ground_truth) 
             
             for metric, aggregate in zip(
-                [recall, precision, shape_top1, letter_top1, shape_color_top1, letter_color_top1],
-                [recalls, precisions, shape_top1s, letter_top1s, shape_color_top1s, letter_color_top1s]
+                [recall, precision, shape_top1, letter_top1, letter_top5, shape_color_top1, letter_color_top1],
+                [recalls, precisions, shape_top1s, letter_top1s, letter_top5s, shape_color_top1s, letter_color_top1s]
             ):
                 if not metric is None:
                     aggregate.append(metric)
@@ -183,6 +193,7 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Precision: {np.mean(precisions)}")
         print(f"Shape top 1 acc: {np.mean(shape_top1s)}")
         print(f"Letter top 1 acc: {np.mean(letter_top1s)}")
+        print(f"Letter top 5 acc: {np.mean(letter_top5s)}")
         print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
         print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
 
