@@ -8,7 +8,7 @@ import rclpy
 import argparse
 
 
-# example: ros2 run uavf_2024 demo_dropzone_planner.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
+# example: ros2 run libuavf_2024 demo_dropzone_planner.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
 
 if __name__ == '__main__':
     rclpy.init()

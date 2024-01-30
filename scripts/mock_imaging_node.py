@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# example usage: ros2 run uavf_2024 mock_imaging_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
+# example usage: ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
 
 # generates and mocks 5 unique targets
 
