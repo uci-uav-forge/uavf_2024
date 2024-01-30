@@ -16,7 +16,7 @@ class ImagingNode(Node):
         self.camera.setAbsoluteZoom(1)
         self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}')
         self.localizer = Localizer(30, (1920, 1080))
-        print("Finished initializing imaging node")
+        self.get_logger().info("Finished initializing imaging node")
 
     def imaging_callback(self, request, response: list[TargetDetection]):
         self.get_logger().info("Received Request")
@@ -37,10 +37,6 @@ class ImagingNode(Node):
         self.get_logger().info("Localization finished")
 
         response.detections = []
-
-        def fml(x):
-            self.get_logger().info(str(x))
-            return x
 
         for i, p in enumerate(preds_3d):
             t = TargetDetection(
