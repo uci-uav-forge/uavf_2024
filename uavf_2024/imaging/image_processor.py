@@ -129,8 +129,7 @@ class ImageProcessor:
                     cv.imwrite(f"{instance_debug_path}/black_bg.png", img_black_bg.get_array())
                     cv.imwrite(f"{instance_debug_path}/color_seg.png", color_seg_result.mask*127)
                 # Classify the colors
-                shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
-                letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
+                shape_color_conf, letter_color_conf = self.color_classifier.predict(letter_img)
                 # add to total_results
                 letter_conf = None
                 total_results.append(
