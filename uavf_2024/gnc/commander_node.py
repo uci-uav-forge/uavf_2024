@@ -140,7 +140,7 @@ class CommanderNode(rclpy.node.Node):
                     is_current = False,
                     autocontinue = True,
 
-                    param1 = 0.0,
+                    param1 = 5.0,
                     param2 = 5.0,
                     param3 = 0.0,
                     param4 = yaw,
