@@ -10,6 +10,7 @@ class Camera:
         self.stream = SIYISTREAM(server_ip = "192.168.144.25", port = 8554,debug=False)
         self.stream.connect()
         self.cam.connect()
+        #self.cam.requestLockMode()
 
         
     def take_picture(self) -> Image:
