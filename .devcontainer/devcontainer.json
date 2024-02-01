@@ -34,7 +34,6 @@
     "forwardPorts": [
         6080
     ],
-    "postCreateCommand": "/usr/local/bin/bashrc_setup.sh",
     "customizations": {
         "vscode": {
             "extensions": [
