@@ -159,8 +159,10 @@ RUN usermod -a -G dialout qgc
 # Sourcing script at runtime
 COPY .devcontainer/bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
 RUN chmod 777 /usr/local/bin/bashrc_setup.sh
-#CMD ["/usr/local/bin/bashrc_setup.sh"]
+RUN /usr/local/bin/bashrc_setup.sh
 # TOTAL HACK, just doing this to avoid an entire Docker rebuild
-RUN mv /home/ws/uavf_2024 /home/ws/libuavf_2024 
+RUN mv /home/ws/uavf_2024 /home/ws/libuavf_2024
+WORKDIR /home/ws/libuavf_2024
+RUN python -m pip install -e .
 
 CMD ["/bin/bash"]

@@ -66,7 +66,7 @@ class CommanderNode(rclpy.node.Node):
             qos_profile)
         
         self.imaging_client = self.create_client(
-            uavf_2024.srv.TakePicture,
+            libuavf_2024.srv.TakePicture,
             '/imaging_service')
         
         self.mission_wps = read_gps(args.mission_file)
@@ -97,7 +97,7 @@ class CommanderNode(rclpy.node.Node):
             self.last_wp_seq = reached.wp_seq
 
             if self.call_imaging_at_wps:
-                self.imaging_futures.append(self.imaging_client.call_async(uavf_2024.srv.TakePicture.Request()))
+                self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
     
     def got_pose_cb(self, pose):
         self.cur_pose = pose
