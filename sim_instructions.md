@@ -7,37 +7,34 @@
 Run the following to start a simple SITL
 
 ```
-ros2 launch ardupilot_sitl sitl_dds_udp.launch.py transport:=udp4 refs:=$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/dds_xrce_profile.xml synthetic_clock:=True wipe:=False model:=quad speedup:=1 slave:=0 instance:=0 defaults:=$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/default_params/copter.parm,$(ros2 pkg prefix ardupilot_sitl)/share/ardupilot_sitl/config/default_params/dds_udp.parm,/home/ws/uavf_2024/config/sitl.parm sim_address:=127.0.0.1 master:=tcp:127.0.0.1:5760 sitl:=127.0.0.1:5501 home:=38.31633,-76.55578,142,0
+cd /PX4-Autopilot
+PX4_SIM_SPEED=2 PX4_HOME_LAT=38.31633 PX4_HOME_LON=-76.55578 PX4_HOME_ALT=142 make px4_sitl jmavsim
 ```
 
-After starting the SITL, launch MAVProxy to visualize the drone position and send commands.
+After starting the SITL, launch QGC.
 
 ```
-mavproxy.py --console --map --aircraft test --master=:14550
+sudo -H -u qgc /QGroundControl.AppImage
 ```
 
-Follow https://ardupilot.org/dev/docs/copter-sitl-mavproxy-tutorial.html for instructions on using MAVProxy to control the sim.
+Ask QGC to takeoff using the UI.
+
 
 
 ## Start offboard control.
 
 Launch MAVROS. (It converts ROS messages sent to it into commands sent to the flight control software.)
 
+On this iteration of the SITL you might notice that it complains just a little bit about some ROS stuff. The important stuff works; we can probably ignore it!
+
 ```
-ros2 launch mavros apm.launch fcu_url:=udp://:14551@
+ros2 launch mavros apm.launch fcu_url:=udp://:14540@
 ```
 
 Build uavf_2024.
 
 ```
 cd /home/ws && colcon build --merge-install && source install/setup.bash
-```
-
-In the GCS (the window where you have `mavproxy` open), manually make the drone takeoff:
-```
-mode guided
-arm throttle # might need to wait a bit for the sim to "heat up"
-takeoff 20
 ```
 
 Launch the mock imaging node:
@@ -52,10 +49,3 @@ ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/
 
 This will execute one lap of the mission in SITL.
 
-
-
-### Other options: Gazebo
-```
-ros2 launch ardupilot_gz_bringup iris_runway.launch.py
-```
-Gazebo is another option for running SITL - so far we haven't worked the setup for this out.

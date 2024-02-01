@@ -14,7 +14,7 @@ class ColorClassificationTest(unittest.TestCase):
         blue_index = list(COLORS_TO_RGB.keys()).index('blue')
         scores = classifier.predict(np.array(test_color))
 
-        self.assertEquals(np.argmax(scores), blue_index) 
+        self.assertEqual(np.argmax(scores), blue_index) 
 
 
 

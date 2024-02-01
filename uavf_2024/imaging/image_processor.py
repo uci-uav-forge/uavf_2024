@@ -68,6 +68,7 @@ class ImageProcessor:
         self.color_classifier = ColorClassifier()
         self.debug_path = debug_path
         self.thresh_iou = 0.5
+        self.num_processed = 0
 
     def process_image(self, img: Image) -> list[FullPrediction]:
         '''
@@ -80,11 +81,6 @@ class ImageProcessor:
         if not img.dim_order == HWC:
             raise ValueError("img must be in HWC order")
 
-        if self.debug_path is not None:
-            local_debug_path = f"{self.debug_path}/{time.strftime(r'%m-%d-%H-%M-%S')}"
-            os.makedirs(local_debug_path, exist_ok=True)
-            cv.imwrite(f"{local_debug_path}/original.png", img.get_array())
-
         shape_results: list[InstanceSegmentationResult] = []
 
         TILES_BATCH_SIZE = 3
@@ -94,26 +90,28 @@ class ImageProcessor:
         
         shape_results = nms_process(shape_results, self.thresh_iou)
 
-        total_results: list[FullPrediction] = []
         if self.debug_path is not None:
-            os.makedirs(f"{local_debug_path}/shape_detection", exist_ok=True)
+            local_debug_path = f"{self.debug_path}/img_{self.num_processed}"
+            os.makedirs(local_debug_path, exist_ok=True)
             img_to_draw_on = img.get_array().copy()
             for res in shape_results:
                 x,y,w,h = res.x, res.y, res.width, res.height
                 cv.rectangle(img_to_draw_on, (x,y), (x+w,y+h), (0,255,0), 2)
-            cv.imwrite(f"{local_debug_path}/shape_detection/bounding_boxes.png", img_to_draw_on)
+                cv.putText(img_to_draw_on, str(res.id), (x,y), cv.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+            cv.imwrite(f"{local_debug_path}/bounding_boxes.png", img_to_draw_on)
 
+        self.num_processed += 1
 
         SHAPES_BATCH_SIZE = 5 # these are small images so we can do a lot at once
 
+        total_results: list[FullPrediction] = []
         # create debug directory for segmentation and classification
-        if self.debug_path is not None:
-            os.makedirs(f"{local_debug_path}/segmentation", exist_ok=True)
-            os.makedirs(f"{local_debug_path}/letter_classification", exist_ok=True)
         for results in batched(shape_results, SHAPES_BATCH_SIZE):
             results: list[InstanceSegmentationResult] = results # type hinting
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
+
+
                 # Color segmentations
                 shape_conf = shape_res.confidences
                 letter_img = cv.resize(shape_res.img.get_array().astype(np.float32), (128,128))
@@ -121,12 +119,12 @@ class ImageProcessor:
                 img_black_bg = shape_res.img * shape_res.mask
                 color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
 
-                # Save the color segmentation results
                 if self.debug_path is not None:
-                    num_files = len(os.listdir(f"{local_debug_path}/letter_classification"))
-                    cv.imwrite(f"{local_debug_path}/letter_classification/{num_files}.png", letter_img)
-                    cv.imwrite(f"{local_debug_path}/segmentation/{num_files}_input.png", img_black_bg.get_array())
-                    cv.imwrite(f"{local_debug_path}/segmentation/{num_files}_output.png", color_seg_result.mask*127)
+                    instance_debug_path = f"{local_debug_path}/det_{shape_res.id}"
+                    os.makedirs(instance_debug_path, exist_ok=True)
+                    cv.imwrite(f"{instance_debug_path}/input.png", shape_res.img.get_array())
+                    cv.imwrite(f"{instance_debug_path}/black_bg.png", img_black_bg.get_array())
+                    cv.imwrite(f"{instance_debug_path}/color_seg.png", color_seg_result.mask*127)
                 # Classify the colors
                 shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
                 letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
@@ -143,7 +141,9 @@ class ImageProcessor:
                         letter_conf,
                         shape_color_conf,
                         letter_color_conf
-                    )
+                    ),
+                    img_id = self.num_processed-1, # at this point it will have been incremented already
+                    det_id = shape_res.id
                 )
             )
             letter_conf = self.letter_classifier.predict(letter_imgs)
@@ -151,5 +151,13 @@ class ImageProcessor:
             # Updates letter probs which were previously set to none just in the most recent batch
             for result, conf in zip(total_results[-len(results):], letter_conf):
                 result.description.letter_probs = conf
+            
+        if self.debug_path is not None:
+            for result in total_results:
+                pred_descriptor_string = str(result.description)
+                with open(f"{local_debug_path}/det_{result.det_id}/descriptor.txt", "w") as f:
+                    f.write(pred_descriptor_string)
+
+            
 
         return total_results
