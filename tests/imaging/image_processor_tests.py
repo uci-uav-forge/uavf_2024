@@ -132,8 +132,11 @@ class TestImagingFrontend(unittest.TestCase):
 
     @profiler
     def test_benchmark_fullsize_images(self):
-        image_processor = ImageProcessor()
-        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/image0.png")
+        image_processor = ImageProcessor(
+            shape_batch_size=20,
+            letter_batch_size=30
+        )
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/5k.png")
         times = []
         N_runs = 10
         for i in tqdm(range(N_runs)):
@@ -143,8 +146,8 @@ class TestImagingFrontend(unittest.TestCase):
             times.append(elapsed)
         print(f"Fullsize image benchmarks (average of {N_runs} runs):")
         print(f"Avg: {np.mean(times)}, StdDev: {np.std(times)}")
-        lstats = profiler.get_stats()
-        line_profiler.show_text(lstats.timings, lstats.unit)
+        # lstats = profiler.get_stats()
+        # line_profiler.show_text(lstats.timings, lstats.unit)
     
     def test_no_duplicates(self):
         # Given 5 identified bounding boxes, removes duplicate bounding box using nms such that there are 4 bounding boxes left

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-from libuavf_2024.gnc.util import read_gps
-from libuavf_2024.gnc.dropzone_planner import DropzonePlanner
-from libuavf_2024.gnc.commander_node import CommanderNode
+from uavf_2024.gnc.util import read_gps
+from uavf_2024.gnc.dropzone_planner import DropzonePlanner
+from uavf_2024.gnc.commander_node import CommanderNode
 from threading import Thread
 import rclpy
 import argparse
 
 
-# example: ros2 run uavf_2024 demo_dropzone_planner.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
+# example: ros2 run libuavf_2024 demo_dropzone_planner.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 0 0 0 0 12 9
 
 if __name__ == '__main__':
     rclpy.init()

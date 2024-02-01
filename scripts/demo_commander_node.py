@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from libuavf_2024.gnc.commander_node import CommanderNode
+from uavf_2024.gnc.commander_node import CommanderNode
 import mavros_msgs.msg
 import mavros_msgs.srv
 import rclpy
@@ -9,7 +9,7 @@ import argparse
 from threading import Thread
 import sys
 
-# Command to run: ros2 run uavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+# Command to run: ros2 run libuavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 
 if __name__ == '__main__':
     rclpy.init()

@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from libuavf_2024.gnc.util import convert_local_m_to_delta_gps
+from uavf_2024.gnc.util import convert_local_m_to_delta_gps
 import numpy as np
 import math
 
