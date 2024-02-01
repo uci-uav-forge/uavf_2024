@@ -7,7 +7,7 @@ import unittest
 class TargetTrackerTests(unittest.TestCase):
     def test_puts_identical_targets_same_track(self):
         bogus_descriptor = TargetDescription(
-                np.eye(13)[0],
+                np.eye(9)[0],
                 np.eye(36)[0],
                 np.eye(8)[0],
                 np.eye(8)[0],

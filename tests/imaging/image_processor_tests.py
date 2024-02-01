@@ -4,7 +4,7 @@ import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import HWC, FullPrediction, Image, TargetDescription
+from uavf_2024.imaging.imaging_types import HWC, FullPrediction, Image, TargetDescription, LETTERS
 from uavf_2024.imaging import profiler
 import numpy as np
 import os
@@ -12,8 +12,11 @@ from time import time
 from tqdm import tqdm
 import line_profiler
 from memory_profiler import profile as mem_profile
+import pandas as pd
+import sys
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
+
 
 def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction]):
     true_positives = 0 # how many predictions were on top of a ground-truth box
@@ -26,27 +29,21 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     # letter_dict is from the letter model's raw_output[0].names
     # it is basically 0-35 in alphabetical order and maps the predicton results from the model to 
     # the new letter labels indicies
-    letter_dict = {0: '0', 1: '1', 2: '10', 3: '11', 4: '12', 5: '13', 6: '14', 7: '15', 8: '16', 9: '17', 10: '18', 11: '19', 12: '2', 13: '20', 14: '21', 15: '22', 16: '23', 17: '24', 18: '25', 19: '26', 20: '27', 21: '28', 22: '29', 23: '3', 24: '30', 25: '31', 26: '32', 27: '33', 28: '34', 29: '35', 30: '4', 31: '5', 32: '6', 33: '7', 34: '8', 35: '9'}
-    # old letter labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
-    # new letter labels = "0123456789ABCDEFGHIKLMNOPQRSTUVWXYZ"
+    letter_dict = {0: '0', 1: '1', 10: '2', 11: '3', 12: '4', 13: '5', 14: '6', 15: '7', 16: '8', 17: '9', 18: '10', 19: '11', 2: '12', 20: '13', 21: '14', 22: '15', 23: '16', 24: '17', 25: '18', 26: '19', 27: '20', 28: '21', 29: '22', 3: '23', 30: '24', 31: '25', 32: '26', 33: '27', 34: '28', 35: '29', 4: '30', 5: '31', 6: '32', 7: '33', 8: '34', 9: '35'}
+    # old truth letter labels = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    # new letter labels = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
     # old to new:
     #   A - Z (0-25): + 10
     #   1 - 9 (26-34): -25
-
+    
     for truth in ground_truth:
         x,y = truth.x, truth.y
         w,h = truth.width, truth.height 
         true_box = np.array([[
             x,y,x+w,y+h
         ]])
-
         shape = np.argmax(truth.description.shape_probs)
         letter = np.argmax(truth.description.letter_probs)
-        # convert from old letter labels to new letter labels
-        if letter <= 25:
-            letter += 10
-        else:
-            letter -= 25
         shape_col = np.argmax(truth.description.shape_col_probs)
         letter_col = np.argmax(truth.description.letter_col_probs)
 
@@ -61,7 +58,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 true_positives+=1
                 this_target_was_detected = True
                 shape_top_1_accuracies.append(int(shape == np.argmax(pred.description.shape_probs)))
-                letter_top_1_accuracies.append(int(letter == int(letter_dict[np.argmax(pred.description.letter_probs)])))
+                letter_top_1_accuracies.append(int(letter == np.argmax(pred.description.letter_probs)))
                 shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.description.shape_col_probs)))
                 letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.description.letter_col_probs)))
 
@@ -89,6 +86,8 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
     ret_value[i] is the list of predictions for the ith image
     ret_value[i][j] is the jth prediction for the ith image
     '''
+    letter_dict = {0: '0', 1: '1', 10: '2', 11: '3', 12: '4', 13: '5', 14: '6', 15: '7', 16: '8', 17: '9', 18: '10', 19: '11', 2: '12', 20: '13', 21: '14', 22: '15', 23: '16', 24: '17', 25: '18', 26: '19', 27: '20', 28: '21', 29: '22', 3: '23', 30: '24', 31: '25', 32: '26', 33: '27', 34: '28', 35: '29', 4: '30', 5: '31', 6: '32', 7: '33', 8: '34', 9: '35'}
+
     imgs: list[Image] = []
     labels = []
     for img_file_name in os.listdir(imgs_path):
@@ -98,6 +97,9 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
             for line in f.readlines():
                 label = line.split(' ')
                 shape, letter, shape_col, letter_col = map(int, label[:4])
+                #the conversion from old letter to new letter is made                
+                letter = int(letter_dict[letter])
+
                 box = np.array([float(v) for v in label[4:]])
                 box[[0,2]]*=img.shape[1]
                 box[[1,3]]*=img.shape[0]
@@ -107,12 +109,43 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
                 ground_truth.append(FullPrediction(
                     x,y,w,h,
                     TargetDescription(
-                        np.eye(13)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
+                        np.eye(9)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
                     )
                 ))
         imgs.append(img)
         labels.append(ground_truth)
     return (imgs, labels)
+
+
+def generate_letter_confusion_matrix( unit_test_letter_truth, unit_test_letter_pred):
+    letter_labels = list(LETTERS)
+    letter_truth = []
+    letter_pred = []
+    #parse over each image from the unit test data
+    for img_truth, img_pred in zip(unit_test_letter_truth, unit_test_letter_pred):
+        #parse over each truth object within the image 
+        for truth_val in img_truth:
+            letter_truth.append(np.argmax(truth_val.description.letter_probs))
+            x,y = truth_val.x, truth_val.y
+            w,h = truth_val.width, truth_val.height 
+            true_box = np.array([[x,y,x+w,y+h]])
+            #compare each truth to every possible predition
+            for pred in img_pred:
+                pred_box = np.array([[
+                pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
+                ]])
+                iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
+                if iou>0.1:
+                    letter_pred.append(int(np.argmax(pred.description.letter_probs)))
+                    break
+                
+    letter_confusion_matrix = np.zeros((36,36))
+
+    for actual, predict in zip (letter_truth, letter_pred):
+        letter_confusion_matrix[actual, predict]+= 1
+
+    conf_matrix_df = pd.DataFrame(letter_confusion_matrix, index=letter_labels, columns=letter_labels)
+    conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics/letter_confusion_matrix.csv")
 
 class TestImagingFrontend(unittest.TestCase):
 
@@ -146,12 +179,13 @@ class TestImagingFrontend(unittest.TestCase):
         res = image_processor.process_image(sample_input)
         assert len(res)==4
 
-    def test_metrics(self):
+    def test_metrics(self, debug_letter_confusion = False):
+
         debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/unit_test_run_data/images", f"{CURRENT_FILE_PATH}/imaging_data/unit_test_run_data/labels")
         
         recalls = []
         precisions = []
@@ -159,10 +193,15 @@ class TestImagingFrontend(unittest.TestCase):
         letter_top1s = []
         shape_color_top1s = []
         letter_color_top1s = []
+        #Storing the predictions from pipeline for the confusion matrix evaluation
+        if debug_letter_confusion:
+            prediction_list = []
 
         for img, ground_truth in zip(imgs, labels):
             predictions = image_processor.process_image(img)
 
+            if debug_letter_confusion:
+                prediction_list.append(predictions)
             (
                 recall,
                 precision,
@@ -179,12 +218,16 @@ class TestImagingFrontend(unittest.TestCase):
                 if not metric is None:
                     aggregate.append(metric)
 
+        if debug_letter_confusion:
+            generate_letter_confusion_matrix(unit_test_letter_pred= prediction_list, unit_test_letter_truth= labels)
+
         print(f"Recall: {np.mean(recalls)}")
         print(f"Precision: {np.mean(precisions)}")
         print(f"Shape top 1 acc: {np.mean(shape_top1s)}")
         print(f"Letter top 1 acc: {np.mean(letter_top1s)}")
         print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
         print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
+
 
 if __name__ == "__main__":
     unittest.main()
