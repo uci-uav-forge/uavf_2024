@@ -57,9 +57,12 @@ def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
 
 
 class ImageProcessor:
-    def __init__(self, debug_path: str = None):
+    def __init__(self, debug_path: str = None, shape_batch_size = 3, letter_batch_size = 5):
         '''
         Initialize all models here 
+
+        `shape_batch_size` is how many tiles we batch up for shape detection inference
+        `letter_batch_size` is how many bounding box crops we batch up for letter classification
         '''
         self.tile_size = 640
         self.letter_size = 128
@@ -69,6 +72,8 @@ class ImageProcessor:
         self.debug_path = debug_path
         self.thresh_iou = 0.5
         self.num_processed = 0
+        self.shape_batch_size = shape_batch_size
+        self.letter_batch_size = letter_batch_size
 
     def process_image(self, img: Image) -> list[FullPrediction]:
         '''
@@ -83,9 +88,9 @@ class ImageProcessor:
 
         shape_results: list[InstanceSegmentationResult] = []
 
-        TILES_BATCH_SIZE = 3
-        for tiles in batched(img.generate_tiles(self.tile_size), TILES_BATCH_SIZE):
-            temp = self.shape_detector.predict(tiles)
+        all_tiles = img.generate_tiles(self.tile_size)
+        for tiles_batch in batched(all_tiles, self.shape_batch_size):
+            temp = self.shape_detector.predict(tiles_batch)
             if temp is not None: shape_results.extend(temp)
         
         shape_results = nms_process(shape_results, self.thresh_iou)
@@ -102,11 +107,9 @@ class ImageProcessor:
 
         self.num_processed += 1
 
-        SHAPES_BATCH_SIZE = 5 # these are small images so we can do a lot at once
-
         total_results: list[FullPrediction] = []
         # create debug directory for segmentation and classification
-        for results in batched(shape_results, SHAPES_BATCH_SIZE):
+        for results in batched(shape_results, self.letter_batch_size):
             results: list[InstanceSegmentationResult] = results # type hinting
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
