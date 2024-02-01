@@ -51,7 +51,7 @@ Do this AFTER doing `pip install -e .` If you do that after, it'll overwrite the
 sudo apt-get install libjpeg-dev zlib1g-dev libpython3-dev libopenblas-dev libavcodec-dev libavformat-dev libswscale-dev
 git clone --branch v0.16.1 https://github.com/pytorch/vision torchvision
 cd torchvision
-export BUILD_VERSION = 0.16.1
+export BUILD_VERSION=0.16.1
 python3 setup.py install --user
 ```
 
