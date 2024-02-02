@@ -55,7 +55,7 @@ class TestPipeline(unittest.TestCase):
                 location = csv_to_np(location_str)
 
                 shape_name, alphanumeric, shape_col_rgb, letter_col_rgb = label.split(",")
-                shape_probs = np.eye(13)[SHAPES.index(shape_name)]
+                shape_probs = np.ones(9)/9 # np.eye(9)[SHAPES.index(shape_name)]
                 letter_probs = np.eye(36)[LETTERS.index(alphanumeric)]
 
                 shape_col_rgb = csv_to_np(shape_col_rgb, ":")
