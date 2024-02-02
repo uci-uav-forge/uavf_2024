@@ -6,8 +6,8 @@
         "context":".."
 
     },
-    "workspaceFolder": "/home/ws/uavf_2024",
-    "workspaceMount": "source=${localWorkspaceFolder},target=/home/ws/uavf_2024,type=bind",
+    "workspaceFolder": "/home/ws/libuavf_2024",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/home/ws/libuavf_2024,type=bind",
     "containerEnv": {
         // For x86_64
         "DISPLAY": "unix:0",
@@ -34,7 +34,6 @@
     "forwardPorts": [
         6080
     ],
-    "postCreateCommand": "/usr/local/bin/bashrc_setup.sh",
     "customizations": {
         "vscode": {
             "extensions": [

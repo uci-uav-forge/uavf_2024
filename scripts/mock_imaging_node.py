@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# example usage: ros2 run uavf_2024 mock_imaging_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
+# example usage: ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
 
 # generates and mocks 5 unique targets
 
@@ -11,11 +11,11 @@
 
 import rclpy
 from rclpy.node import Node
-from uavf_2024.msg import TargetDetection
-from uavf_2024.srv import TakePicture
+from libuavf_2024.msg import TargetDetection
+from libuavf_2024.srv import TakePicture
 from geometry_msgs.msg import PoseStamped
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
-from libuavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m
+from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 import argparse

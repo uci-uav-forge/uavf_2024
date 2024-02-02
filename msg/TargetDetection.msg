@@ -4,7 +4,7 @@ float64 x
 float64 y
 float64 z
 
-float64[8] shape_conf 
+float64[13] shape_conf 
 # should sum to 1
 # indices in order:
 # circle, semicircle, quarter circle, triangle, rectangle, pentagon, star, cross
