@@ -99,7 +99,7 @@ class TestPipeline(unittest.TestCase):
         tracker.update(predictions_3d)
 
 
-        EPSILON = 2 
+        POSITION_ERROR_ACCEPTABLE_BOUND = 2 
 
         NUM_TARGET_SUBSETS = 100
 
@@ -127,7 +127,7 @@ class TestPipeline(unittest.TestCase):
             closest_tracks = tracker.estimate_positions([t.description for t in ground_truth])
             scores = []
             for gt_target, pred_track in zip(ground_truth, closest_tracks):
-                is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < EPSILON
+                is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND
                 scores.append(int(is_close_enough))
                 if i==0 and verbose:
                     print(f"Closest Match for {stringify_target_description(gt_target.description)}:")
@@ -141,11 +141,11 @@ class TestPipeline(unittest.TestCase):
 
                     print(f"\tClose tracks (each line is one track):")
                     for track in tracker.tracks:
-                        if np.linalg.norm(track.position - gt_target.position) < EPSILON:
+                        if np.linalg.norm(track.position - gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND:
                             print(f"\t\t{[detection.id for detection in track.get_measurements()]}")
 
                     print(f"\tClose detections:")
-                    print(f"\t\t{[p.id for p in filter(lambda pred: np.linalg.norm(pred.position-gt_target.position) < EPSILON, predictions_3d)]}")
+                    print(f"\t\t{[p.id for p in filter(lambda pred: np.linalg.norm(pred.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND, predictions_3d)]}")
                     print(f"\tPhysically closest detection distance: {np.linalg.norm(physically_closest_match.position-gt_target.position):.3f}")
                     print(f"\tPhysically closest detection descriptor score: {calc_match_score(physically_closest_match.description, gt_target.description)}")
                     print(f"\tPhysically closest detection id: {physically_closest_match.id}")
