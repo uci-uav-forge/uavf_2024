@@ -20,18 +20,13 @@ COLORS_TO_RGB = {
 
 SHAPES = [
  "circle",
- "rectangle",
+ "semicircle",
  "quartercircle",
  "triangle",
- "square",
+ "rectangle",
  "pentagon",
  "star",
  "cross",
- "semicircle",
- "octagon",
- "heptagon",
- "trapezoid",
- "hexagon",
  "person"
 ]
 

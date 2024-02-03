@@ -84,11 +84,9 @@ class MockImagingNode(Node):
 
     
     def imaging_callback(self, request, response: list[TargetDetection]):
-        response.detections = [
-            
-        ]
+        response.detections = []
 
-        cur_xy = np.array([self.cur_pose.pose.position.x,-self.cur_pose.pose.position.y])
+        cur_xy = np.array([self.cur_pose.pose.position.x, self.cur_pose.pose.position.y])
 
         for target in self.targets:
             delta = target[1] - cur_xy
