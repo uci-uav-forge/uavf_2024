@@ -29,7 +29,12 @@ def csv_to_np(csv_str: str, delim: str = ","):
 
 class TestPipeline(unittest.TestCase):
     def test_with_sim_dataset(self, verbose: bool = True):
-        FOV = 30
+        FOV = 50.9 # in degrees, 
+        # FOV IS NOT THE SAME AS THE CAMERA IN GODOT. 
+        # This is the horizontal FOV, the camera in godot has a vertical FOV of 30
+        # conversion formula is 2*arctan(16/9*tan(h_fov/2))
+
+        # The resolution of the camera in godot is 1920x1080
         RES = (1920, 1080)
         target_localizer = Localizer(
             FOV,
