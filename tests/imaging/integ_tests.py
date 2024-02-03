@@ -129,7 +129,7 @@ class TestPipeline(unittest.TestCase):
             for gt_target, pred_track in zip(ground_truth, closest_tracks):
                 is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND
                 scores.append(int(is_close_enough))
-                if i==0 and verbose:
+                if i==0 and verbose: # we only want to print this extra info for the first one to not clog up the output
                     print(f"Closest Match for {stringify_target_description(gt_target.description)}:")
                     physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
                     closest_match = max(predictions_3d, key=lambda pred: calc_match_score(pred.description, gt_target.description))
