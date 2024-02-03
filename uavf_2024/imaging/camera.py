@@ -30,6 +30,14 @@ class Camera:
     def setAbsoluteZoom(self, zoom_level: float):
         return self.cam.setAbsoluteZoom(1)
     
+    def getAttitude(self):
+        self.cam.requestGimbalAttitude()
+        print("hi")
+        return self.cam.getAttitude()
+    
+    def getAttitudeSpeed(self):
+        return self.cam.getAttitudeSpeed()
+    
     def disconnect(self):
         self.stream.disconnect()
         self.cam.disconnect()

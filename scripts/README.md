@@ -7,4 +7,6 @@
 ## Launching from launch files example
 
 1. Go into `~/ws`
-2. `ros2 launch src/libuavf_2024/launches/imaging_demo.launch`
+1. `source install/setup.bash`
+1. `colcon build --merge-install`
+1. `ros2 launch src/libuavf_2024/launches/imaging_demo.launch`

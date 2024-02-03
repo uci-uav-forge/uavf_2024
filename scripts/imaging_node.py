@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
-from libuavf_2024.srv import TakePicture
+from libuavf_2024.srv import TakePicture,GetAttitude
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 import numpy as np
 from time import strftime, time
@@ -12,6 +12,7 @@ class ImagingNode(Node):
     def __init__(self) -> None:
         super().__init__('imaging_node')
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.imaging_callback)
+        self.attitude_service = self.create_service(GetAttitude, 'attitude_service', self.get_attitudes)
         self.camera = Camera()
         self.camera.setAbsoluteZoom(1)
         self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}')
@@ -54,6 +55,17 @@ class ImagingNode(Node):
 
         self.get_logger().info("Returning Response")
         return response
+    
+    def get_attitudes(self, request, response: list[float]):
+        self.get_logger().info("Received Request for attitudes")
+
+        attitudes = self.camera.getAttitude()
+        self.get_logger().info(str(attitudes))
+
+        self.get_logger().info("prepping Request for attitudes")
+        response.attitudes = attitudes
+        return response
+        
 
 def main(args=None) -> None:
     print('Starting imaging node...')
