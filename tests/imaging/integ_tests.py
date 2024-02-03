@@ -17,13 +17,13 @@ CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 def stringify_target_description(desc: TargetDescription):
     return f"{COLORS[np.argmax(desc.shape_col_probs)]} {SHAPES[np.argmax(desc.shape_probs)]}, {COLORS[np.argmax(desc.letter_col_probs)]} {LETTERS[np.argmax(desc.letter_probs)]}"
 
-def csv_to_np(csv_str: str, delim: str = ","):
+def csv_to_np(csv_str: str, delim: str = ",", dtype: type = int):
     '''
     Parses strings like "1,2,3" or "1:2:3" into numpy array [1,2,3]
     '''
     return np.array(
         [
-            int(x) for x in
+            dtype(x) for x in
             csv_str.split(delim)
         ]
     )
@@ -68,17 +68,22 @@ class TestPipeline(unittest.TestCase):
         # sort by image number (e.g. img_2 is before img_10 despite lexigraphical ordering)
         def sort_key(file_name: str):
             return int(file_name.split("_")[0][5:])
-        for file_name in sorted(os.listdir(images_dirname), key=sort_key):
+        
+        img_files = filter(lambda f: f.endswith(".png"), os.listdir(images_dirname))
+        for file_name in sorted(img_files, key=sort_key):
             img = Image.from_file(f"{images_dirname}/{file_name}")
-            pose_strs = file_name.split(".")[0].split("_")[1:]
-            cam_position = csv_to_np(pose_strs[0])
-            cam_angles = csv_to_np(pose_strs[1])
+            img_no = sort_key(file_name)
+            pose_str = file_name.split(".")[0].split("_")[1:]
+            cam_position = csv_to_np(pose_str[0])
+            
+            with open(f"{images_dirname}/rotation{img_no}.txt", "r") as f:
+                cam_angles = csv_to_np(f.read(), dtype=float)
 
             predictions = image_processor.process_image(img)
             area_tracker.update(np.concatenate([cam_position, cam_angles]), label=file_name.split("_")[0])
 
             if verbose:
-                bounding_boxes_image_path = f"{debug_output_folder}/img_{sort_key(file_name)}/bounding_boxes.png"
+                bounding_boxes_image_path = f"{debug_output_folder}/img_{img_no}/bounding_boxes.png"
                 boxes_img = cv.imread(bounding_boxes_image_path)
 
             # calculate 3d positions for all detections, and draw them on the debug image
