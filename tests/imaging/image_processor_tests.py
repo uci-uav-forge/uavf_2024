@@ -169,7 +169,7 @@ class TestImagingFrontend(unittest.TestCase):
             shape_batch_size=20,
             letter_batch_size=30
         )
-        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/5k.png")
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/1080p.png")
         times = []
         N_runs = 10
         for i in tqdm(range(N_runs)):
@@ -188,7 +188,7 @@ class TestImagingFrontend(unittest.TestCase):
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/unit_test_run_data/images", f"{CURRENT_FILE_PATH}/imaging_data/unit_test_run_data/labels")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
         
         recalls = []
         precisions = []
