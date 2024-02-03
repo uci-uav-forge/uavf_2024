@@ -107,7 +107,7 @@ class MockImagingNode(Node):
                     x = target[1][0],
                     y = target[1][1],
                     z = -1.0, # why z????
-                    shape_conf = [int(i == target[0][0]) for i in range(8)],
+                    shape_conf = [int(i == target[0][0]) for i in range(13)],
                     letter_conf = [int(i == target[0][1]) for i in range(36)],
                     shape_color_conf = [int(i == target[0][2]) for i in range(8)],
                     letter_color_conf = [int(i == target[0][3]) for i in range(8)],

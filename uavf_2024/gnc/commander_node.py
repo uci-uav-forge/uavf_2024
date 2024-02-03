@@ -140,7 +140,7 @@ class CommanderNode(rclpy.node.Node):
                     is_current = False,
                     autocontinue = True,
 
-                    param1 = 5.0,
+                    param1 = 0.0,
                     param2 = 5.0,
                     param3 = 0.0,
                     param4 = yaw,
@@ -185,11 +185,13 @@ class CommanderNode(rclpy.node.Node):
     
     def gather_imaging_detections(self):
         detections = []
+        self.log("Waiting for imaging detections.")
         for future in self.imaging_futures:
             while not future.done():
                 pass
             detections += future.result().detections
         self.imaging_futures = []
+        self.log("Successfully retrieved imaging detections:", detections)
         return detections
     
     def wait_for_takeoff(self):
@@ -211,6 +213,9 @@ class CommanderNode(rclpy.node.Node):
 
             # Fly waypoint lap
             self.execute_waypoints(self.mission_wps)
+
+            if self.args.exit_early:
+                return
 
             # Fly to drop zone and release current payload
             self.dropzone_planner.conduct_air_drop()

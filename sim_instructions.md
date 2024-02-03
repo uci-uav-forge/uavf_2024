@@ -28,7 +28,7 @@ Launch MAVROS. (It converts ROS messages sent to it into commands sent to the fl
 On this iteration of the SITL you might notice that it complains just a little bit about some ROS stuff. The important stuff works; we can probably ignore it!
 
 ```
-ros2 launch mavros apm.launch fcu_url:=udp://:14540@
+ros2 launch mavros px4.launch fcu_url:=udp://:14540@
 ```
 
 Build uavf_2024.
