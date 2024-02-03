@@ -58,7 +58,7 @@ class CommanderNode(rclpy.node.Node):
             self.got_global_pos_cb,
             qos_profile)
 
-        self.last_wp_seq = None
+        self.last_wp_seq = -1
         self.reached_sub = self.create_subscription(
             mavros_msgs.msg.WaypointReached,
             'mavros/mission/reached',
@@ -178,6 +178,19 @@ class CommanderNode(rclpy.node.Node):
 
         while self.last_wp_seq != len(waypoints)-1:
             pass
+        # TODO: refactor this mess into a function, and evaluate if this is actually needed.
+        for _ in range(1000):
+            self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+                base_mode = 0,
+                custom_mode = 'AUTO.LOITER'
+            ))
+            time.sleep(0.2)
+            if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
+                self.log("Success setting mode")
+                break
+        else:
+            self.log("Failure setting mode, quitting.")
+            quit()
     
     def release_payload(self):
         # mocked out for now.

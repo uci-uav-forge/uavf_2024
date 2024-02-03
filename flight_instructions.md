@@ -1,5 +1,7 @@
 # Flight instructions
 
+Boot up PX4 on the ThinkPad and make sure you have a good connection to the drone. Also it would be worth adding in
+
 Start MAVROS:
 
 ```
@@ -21,7 +23,7 @@ cd /home/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/AIRDROP_BOUNDARY 12 9
 ```
 
-Launch the commander node.
+Launch the commander node (for now, note the `end-early` flag - this terminates the script after the mission is pushed and completed.) 
 
 ```
 cd /home/ws && colcon build --merge-install && source install/setup.bash
