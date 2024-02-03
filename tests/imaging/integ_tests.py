@@ -3,12 +3,12 @@ from uavf_2024.imaging.localizer import Localizer
 from uavf_2024.imaging.area_coverage import AreaCoverageTracker
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.tracker import TargetTracker
-from uavf_2024.imaging.color_classification import ColorClassifier
 from uavf_2024.imaging.imaging_types import HWC, Image, TargetDescription, Target3D, COLORS, SHAPES, LETTERS
 from uavf_2024.imaging.utils import calc_match_score
 import os
 import numpy as np
 import shutil
+import cv2 as cv
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -29,17 +29,16 @@ def csv_to_np(csv_str: str, delim: str = ","):
 
 class TestPipeline(unittest.TestCase):
     def test_with_sim_dataset(self, verbose: bool = True):
-        # VFOV = 67.6 degrees
-        # HFOV = 2*arctan(16/9*tan(67.6/2)) = 99.9 degrees
+        FOV = 30
+        RES = (1920, 1080)
         target_localizer = Localizer(
-            99.9,
-            (5312, 2988)
+            FOV,
+            RES
         )
         area_tracker = AreaCoverageTracker(
-            99.9,
-            (5312, 2988)
+            FOV,
+            RES
         )
-        color_classifier = ColorClassifier()
         if verbose:
             debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/integ_test"
             if os.path.exists(debug_output_folder):
@@ -49,19 +48,18 @@ class TestPipeline(unittest.TestCase):
         image_processor = ImageProcessor(debug_output_folder)
         ground_truth: list[Target3D] = []
 
-        with open(f"{CURRENT_FILE_PATH}/imaging_data/sim_dataset/labels.txt", "r") as f:
-            for line in f.readlines():
+        with open(f"{CURRENT_FILE_PATH}/imaging_data/3d_dataset/labels.txt", "r") as f:
+            for line in f.readlines()[:5]:
                 label, location_str = line.split(" ")
                 location = csv_to_np(location_str)
 
-                shape_name, alphanumeric, shape_col_rgb, letter_col_rgb = label.split(",")
-                shape_probs = np.ones(9)/9 # np.eye(9)[SHAPES.index(shape_name)]
+                shape_name, alphanumeric, shape_col, letter_col = label.split(",")
+                shape_probs = np.eye(9)[SHAPES.index(shape_name)]
                 letter_probs = np.eye(36)[LETTERS.index(alphanumeric)]
 
-                shape_col_rgb = csv_to_np(shape_col_rgb, ":")
-                letter_col_rgb = csv_to_np(letter_col_rgb, ":")
-                shape_col_probs = color_classifier.predict(shape_col_rgb)                
-                letter_color_probs = color_classifier.predict(letter_col_rgb)                
+                shape_col_probs = np.eye(8)[COLORS.index(shape_col)]
+                letter_color_probs = np.eye(8)[COLORS.index(letter_col)]
+
 
                 ground_truth.append(
                     Target3D(
@@ -77,9 +75,12 @@ class TestPipeline(unittest.TestCase):
 
         tracker = TargetTracker([t.description for t in ground_truth])
         
-        images_dirname = f"{CURRENT_FILE_PATH}/imaging_data/sim_dataset/images"
+        images_dirname = f"{CURRENT_FILE_PATH}/imaging_data/3d_dataset/images"
         predictions_3d: list[Target3D] =  []
-        for file_name in sorted(os.listdir(images_dirname)):
+        # sort by image number (e.g. img_2 is before img_10 despite lexigraphical ordering)
+        def sort_key(file_name: str):
+            return int(file_name.split("_")[0][5:])
+        for file_name in sorted(os.listdir(images_dirname), key=sort_key):
             img = Image.from_file(f"{images_dirname}/{file_name}")
             pose_strs = file_name.split(".")[0].split("_")[1:]
             cam_position = csv_to_np(pose_strs[0])
@@ -87,8 +88,24 @@ class TestPipeline(unittest.TestCase):
 
             predictions = image_processor.process_image(img)
             area_tracker.update(np.concatenate([cam_position, cam_angles]), label=file_name.split("_")[0])
+
+            if verbose:
+                bounding_boxes_image_path = f"{debug_output_folder}/img_{sort_key(file_name)}/bounding_boxes.png"
+                boxes_img = cv.imread(bounding_boxes_image_path)
+
+            # calculate 3d positions for all detections, and draw them on the debug image
             for pred in predictions:
-               predictions_3d.append(target_localizer.prediction_to_coords(pred, np.concatenate([cam_position, cam_angles])))
+                pred_3d = target_localizer.prediction_to_coords(pred, np.concatenate([cam_position, cam_angles]))
+                predictions_3d.append(pred_3d)
+
+                if not verbose: continue
+                x,y,w,h, = pred.x, pred.y, pred.width, pred.height
+                x3, y3, z3 = pred_3d.position
+                cv.putText(boxes_img, f"{x3:.01f}, {y3:.01f}, {z3:.01f}", (x,y+h+20), cv.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+
+            if verbose:
+                cv.imwrite(bounding_boxes_image_path, boxes_img)
+
 
         tracker.update(predictions_3d)
 
