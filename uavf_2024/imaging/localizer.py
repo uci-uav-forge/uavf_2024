@@ -22,6 +22,7 @@ class Localizer:
             pointed at the negative z axis, positive x axis is the right side of the camera and positive 
             y axis goes up from the camera. The rotations are applied relative to local frame in this order: 
             azimuth then altitude then roll.
+            Altitude = pitch, azimuth = yaw
         '''
 
 
