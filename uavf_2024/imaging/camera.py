@@ -24,6 +24,10 @@ class Camera:
     def request_center(self):
         return self.cam.requestAbsolutePosition(0, 0)
     
+    def request_down(self):
+        # Points up if the camera base is already pointed up
+        return self.cam.requestAbsolutePosition(0,-90)
+    
     def request_autofocus(self):
         return self.cam.requestAutoFocus()
     
@@ -31,11 +35,11 @@ class Camera:
         return self.cam.setAbsoluteZoom(1)
     
     def getAttitude(self):
-        self.cam.requestGimbalAttitude()
-        print("hi")
+        # Returns (yaw, pitch, roll)
         return self.cam.getAttitude()
     
     def getAttitudeSpeed(self):
+        # Returns (yaw_speed, pitch_speed, roll_speed)
         return self.cam.getAttitudeSpeed()
     
     def disconnect(self):
