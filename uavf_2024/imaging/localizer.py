@@ -44,3 +44,20 @@ class Localizer:
         assert abs(target_position[1])<1e-3
 
         return Target3D(target_position, pred.description, id=f"img_{pred.img_id}/det_{pred.det_id}")
+        
+    def coords_to_2d(self, coords: tuple[float,float,float], camera_pose: np.ndarray) -> tuple[int, int]:
+        cam_position = camera_pose[:3]
+        rot_transform = R.from_quat(camera_pose[3:])
+
+        relative_coords = coords - cam_position 
+
+        # apply inverse rotation
+        rotated_vector = rot_transform.inv().as_matrix() @ relative_coords
+
+        w,h = self.camera_resolution
+        focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
+
+        # divide by the z component to get the 2d position
+        x = -rotated_vector[0]*focal_len/rotated_vector[2] + w/2
+        y = h/2 + rotated_vector[1]*focal_len/rotated_vector[2]
+        return (x,y)

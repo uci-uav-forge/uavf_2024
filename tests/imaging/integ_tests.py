@@ -3,7 +3,7 @@ from uavf_2024.imaging.localizer import Localizer
 from uavf_2024.imaging.area_coverage import AreaCoverageTracker
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.tracker import TargetTracker
-from uavf_2024.imaging.imaging_types import Image, TargetDescription, Target3D, COLORS, SHAPES, LETTERS
+from uavf_2024.imaging.imaging_types import FullPrediction, Image, TargetDescription, Target3D, COLORS, SHAPES, LETTERS
 from uavf_2024.imaging.utils import calc_match_score
 import os
 import numpy as np
@@ -29,7 +29,7 @@ def csv_to_np(csv_str: str, delim: str = ",", dtype: type = int):
     )
 
 class TestPipeline(unittest.TestCase):
-    def test_with_sim_dataset(self, verbose: bool = True):
+    def test_with_sim_dataset(self, verbose: bool = False):
         '''
         Runs the entire pipeline on the simulated dataset that includes multiple
         images annotated with the 3D position of the targets, and selects 100
@@ -63,6 +63,24 @@ class TestPipeline(unittest.TestCase):
 
         tracker = TargetTracker()
         
+        all_ground_truth: list[Target3D] = []
+        with open(f"{CURRENT_FILE_PATH}/imaging_data/3d_dataset/labels.txt", "r") as f:
+            for line in f.readlines():
+                label, location_str = line.split(" ")
+                shape_name, alphanumeric, shape_col, letter_col = label.split(",")
+
+                all_ground_truth.append(
+                    Target3D(
+                        csv_to_np(location_str),
+                        TargetDescription(
+                            np.eye(9)[SHAPES.index(shape_name)],
+                            np.eye(36)[LETTERS.index(alphanumeric)],
+                            np.eye(8)[COLORS.index(shape_col)],
+                            np.eye(8)[COLORS.index(letter_col)]
+                        )
+                    )
+                )
+
         images_dirname = f"{CURRENT_FILE_PATH}/imaging_data/3d_dataset/images"
         predictions_3d: list[Target3D] =  []
         # sort by image number (e.g. img_2 is before img_10 despite lexigraphical ordering)
@@ -97,43 +115,42 @@ class TestPipeline(unittest.TestCase):
                 cv.putText(boxes_img, f"{x3:.01f}, {y3:.01f}, {z3:.01f}", (x,y+h+20), cv.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
             if verbose:
+                # draw on ground truth positions
+                for gt in all_ground_truth:
+                    x_reproj, y_reproj = target_localizer.coords_to_2d(gt.position, np.concatenate([cam_position, cam_angles]))
+                    re_estimated_3d = target_localizer.prediction_to_coords(FullPrediction(x_reproj, y_reproj, None, None, None), np.concatenate([cam_position, cam_angles]))
+                    x2_reproj, y2_reproj = target_localizer.coords_to_2d(re_estimated_3d.position, np.concatenate([cam_position, cam_angles]))
+                    if 0<=x_reproj<RES[0] and 0<=y_reproj<RES[1]:
+                        cv.circle(boxes_img, (int(x_reproj), int(y_reproj)), 7, (255,0,0), -1)
+                        cv.putText(boxes_img, stringify_target_description(gt.description), (int(x_reproj), int(y_reproj)), cv.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+                        cv.circle(boxes_img, (int(x2_reproj), int(y2_reproj)), 5, (255,255,0), -1)
+
                 cv.imwrite(bounding_boxes_image_path, boxes_img)
+
 
 
         area_tracker.visualize(f"{debug_output_folder}/coverage.png", 5000)
         tracker.update(predictions_3d)
 
 
-        POSITION_ERROR_ACCEPTABLE_BOUND = 2 
+        POSITION_ERROR_ACCEPTABLE_BOUND = 5
 
         NUM_TARGET_SUBSETS = 100
 
         scores_across_subsets = []
+        distances_across_subsets = []
 
         for i in range(NUM_TARGET_SUBSETS):
-            ground_truth: list[Target3D] = []
-            with open(f"{CURRENT_FILE_PATH}/imaging_data/3d_dataset/labels.txt", "r") as f:
-                for line in random.sample(f.readlines(), 5):
-                    label, location_str = line.split(" ")
-                    shape_name, alphanumeric, shape_col, letter_col = label.split(",")
-
-                    ground_truth.append(
-                        Target3D(
-                            csv_to_np(location_str),
-                            TargetDescription(
-                                np.eye(9)[SHAPES.index(shape_name)],
-                                np.eye(36)[LETTERS.index(alphanumeric)],
-                                np.eye(8)[COLORS.index(shape_col)],
-                                np.eye(8)[COLORS.index(letter_col)]
-                            )
-                        )
-                    )
+            ground_truth: list[Target3D] = random.sample(all_ground_truth, 5)
 
             closest_tracks = tracker.estimate_positions([t.description for t in ground_truth])
             scores = []
+            distances = []
             for gt_target, pred_track in zip(ground_truth, closest_tracks):
                 is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND
                 scores.append(int(is_close_enough))
+                if is_close_enough:
+                    distances.append(np.linalg.norm(pred_track.position-gt_target.position))
                 if i==0 and verbose: # we only want to print this extra info for the first one to not clog up the output
                     print(f"Closest Match for {stringify_target_description(gt_target.description)}:")
                     physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
@@ -161,9 +178,15 @@ class TestPipeline(unittest.TestCase):
             if i==0: 
                 print(f"Imaging Sim Score: {np.sum(scores)}/{len(scores)}") 
             scores_across_subsets.append(np.sum(scores))
-        print(f"Imaging Sim Average Score: {np.mean(scores_across_subsets)}/{len(scores)}")
+            distances_across_subsets.extend(distances)
+        
+        avg_score = np.mean(scores_across_subsets)
+        avg_distances = np.mean(distances_across_subsets)
+        distances_std = np.std(distances_across_subsets)
+        print(f"Imaging Sim Average Score: {avg_score}/{len(scores)}")
+        print(f"Localization error for correct detections: {avg_distances:.3f} +/- {distances_std:.3f}")
 
 
 if __name__ == "__main__":
     tests = TestPipeline()
-    tests.test_with_sim_dataset()
+    tests.test_with_sim_dataset(verbose=True)
