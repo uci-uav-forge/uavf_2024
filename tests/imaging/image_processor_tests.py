@@ -203,6 +203,7 @@ class TestImagingFrontend(unittest.TestCase):
 
         for img, ground_truth in zip(imgs, labels):
             predictions = image_processor.process_image(img)
+            
 
             if debug_letter_confusion:
                 prediction_list.append(predictions)

@@ -9,12 +9,36 @@ from .. import profiler
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
+SHAPES = [
+ "circle",
+ "semicircle",
+ "quartercircle",
+ "triangle",
+ "rectangle",
+ "pentagon",
+ "star",
+ "cross",
+ "person",
+ "background"
+]
+
 class ShapeInstanceSegmenter:
     def __init__(self, img_size):
         self.shape_model = YOLO(f"{CURRENT_FILE_PATH}/weights/seg-v8n-best.pt")
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.shape_model.predict(list(rand_input), verbose=False)
         self.num_processed = 0
+        self.cnf_matrix = {'circle' : [0.83, 0, 0, 0, 0, .01, 0, 0, 0, .04],
+                            'semicircle': [.01, .67, .28, .02, .05, .03, 0, 0, .01, .19],
+                            'quartercircle': [0, .18, .43, 0, .41, .17, 0, 0, 0, .29],
+                            'triangle': [0, .03, 0, .91, .01, 0, 0, 0, 0, .03],
+                            'rectangle': [.01, 0, .19, 0, .46, .08, 0, 0, 0, .24],
+                            'pentagon': [.10, .03, .08, 0, .01, .68, 0, 0, 0, .13],
+                            'star': [0, .01, 0, .04, 0, 0, .97, .02, 0, .02],
+                            'cross': [0, .04, 0, .01, 0, 0, 0, .96, .03, .02],
+                            'person': [0, .01, 0, .01, .01, 0, 0, 0, .91, .05],
+                            'background': [.05, .01, .02, .02, .03, .03, .03, .02, .04, 0]
+                                }
 
 
     @profiler
@@ -49,7 +73,8 @@ class ShapeInstanceSegmenter:
                         confidences = confidences,
                         mask = mask[y:y+h, x:x+w].unsqueeze(2).cpu().numpy(),
                         img = tiles[img_index].img.make_sub_image(x, y, w, h),
-                        id = self.num_processed
+                        id = self.num_processed,
+                        cnf_matrix_preds = self.cnf_matrix[SHAPES[cls.int()]]
                     )
                 )
                 self.num_processed += 1
