@@ -61,7 +61,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 shape_top_1_accuracies.append(int(shape == np.argmax(pred.description.shape_probs)))
                 
                 letter_top5_probs = np.argsort(pred.description.letter_probs)[-5:] # [top5, top4, top3, top2, top1]
-                letter_top5_probs = [int(letter_dict[i]) for i in letter_top5_probs]  # get letter prob names
+                letter_top5_probs = [int(i) for i in letter_top5_probs]  # get letter prob names
                 letter_top_5_accuracies.append(int(letter in letter_top5_probs))
                 
                 letter_top_1_accuracies.append(int(letter == int(letter_top5_probs[4])))                
