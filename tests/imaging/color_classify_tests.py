@@ -20,16 +20,11 @@ class ColorClassificationTest(unittest.TestCase):
         resized_image = image_array.reshape((1, 128, 128, 3))
         classifier = ColorClassifier()
         shape_score, letter_score = classifier.predict(resized_image)
-        print(shape_score)
-        
         green = list(COLORS_TO_RGB.keys()).index('green')
-        
         red = list(COLORS_TO_RGB.keys()).index('red')
         
         self.assertEqual(np.argmax(letter_score), green) 
         self.assertEqual(np.argmax(shape_score), red) 
-
-
 
 if __name__ == '__main__':
     unittest.main()
