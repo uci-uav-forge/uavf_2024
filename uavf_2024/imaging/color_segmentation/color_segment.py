@@ -9,8 +9,8 @@ from uavf_2024.imaging.imaging_types import HWC, Image
 @dataclass
 class ColorSegmentationResult:
     mask: np.ndarray
-    shape_color: np.ndarray
     letter_color: np.ndarray
+    shape_color: np.ndarray
 
 def color_segmentation(image: Image, rgb_mask_save_path: str | None = None):
     """
@@ -55,8 +55,8 @@ def color_segmentation(image: Image, rgb_mask_save_path: str | None = None):
         
     return ColorSegmentationResult(
         mask=mask.reshape((w,h)),
-        shape_color=reordered_centroids[1],
-        letter_color=reordered_centroids[2]
+        letter_color=reordered_centroids[1],
+        shape_color=reordered_centroids[2]
     )
 
 if __name__ == "__main__":
