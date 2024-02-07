@@ -32,7 +32,7 @@ class Camera:
         return self.cam.requestAutoFocus()
     
     def setAbsoluteZoom(self, zoom_level: float):
-        return self.cam.setAbsoluteZoom(1)
+        return self.cam.setAbsoluteZoom(zoom_level)
     
     def getAttitude(self):
         # Returns (yaw, pitch, roll)

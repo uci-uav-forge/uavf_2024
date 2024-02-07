@@ -23,11 +23,12 @@ class Camera_Projection:
     
     self.intrinsics_matrix = intrinsics
     self.resolution = resolution
+    self.img_folder = img_folder
 
     if self.intrinsics_matrix is None:
       '''Load the camera photos from the image folder'''
       img_directory = os.path.join(CURRENT_FILE_PATH, img_folder)
-      img_directory_ls = os.listdir(img_directory)
+      img_directory_ls = filter(lambda x: x.endswith(".png"), os.listdir(img_directory))
      
       img_list = np.array([cv2.imread(os.path.join(img_directory, f_name)) for f_name in img_directory_ls])
       self.calibrate_cv2( img_list , debug)
@@ -93,12 +94,12 @@ class Camera_Projection:
     if debug:
       cv2.destroyAllWindows()
 
-    ret, intrinsics_matrix, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+    ret, intrinsics_matrix, distortionCoeffs, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
     '''Calculate the reprojection error using the returned calibration values'''
     mean_error = 0
     for i in range(len(objpoints)):
-      imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], intrinsics_matrix, dist)
+      imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], intrinsics_matrix, distortionCoeffs)
       error = cv2.norm( imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
       mean_error += error
 
@@ -110,11 +111,21 @@ class Camera_Projection:
     assert ret > 0, f'UNSUCCESSFUL CALIBRATION, NOT SETTING INSTRINCS'
 
     self.intrinsics_matrix = np.around(intrinsics_matrix, decimals = 4)
-    np.savetxt(os.path.join(CURRENT_FILE_PATH, "intrinsics_matrix.txt"), self.intrinsics_matrix, delimiter = ",")
+    np.savetxt(f"{CURRENT_FILE_PATH}/{self.img_folder}/intrinsics_matrix.txt", self.intrinsics_matrix, delimiter = ",")
+    np.savetxt(f"{CURRENT_FILE_PATH}/{self.img_folder}/distortion_coefficients.txt", distortionCoeffs, delimiter = ",")
     
     if debug:
+      np.set_printoptions(suppress=True)
       print("SUCCESSFUL CALIBRATION SETTING INSTRINICS")
       print(f'INSTRINICS MATRIX {self.intrinsics_matrix}')
+      print("DISTORTION COEFFICIENTS:")
+      print(distortionCoeffs)
+      print("SANITY CHECK. FOCAL LENGTH IN MM FOR SIYI ZR10 PHYSICAL DIMENSIONS")
+      sensor_width_mm = 5.37
+      fx = self.intrinsics_matrix[0,0]
+      cam_width_pixels = 1920
+      print(sensor_width_mm*fx/cam_width_pixels)
+      print("Should be between 5.15 and 47.38")
     
     
 
@@ -123,4 +134,4 @@ class Camera_Projection:
 
 if __name__ == "__main__":
   '''Testing class instance'''
-  camera_initialize = Camera_Projection(debug= True)
+  camera_initialize = Camera_Projection(debug= True, resolution = (1080, 1920), img_folder="cam_imgs_zoom_3")
