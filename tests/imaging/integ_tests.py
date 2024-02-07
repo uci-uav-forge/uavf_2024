@@ -62,9 +62,11 @@ class TestPipeline(unittest.TestCase):
 
 
         tracker = TargetTracker()
+
+        DATASET_FOLDER = f'{CURRENT_FILE_PATH}/imaging_data/3d_dataset'
         
         all_ground_truth: list[Target3D] = []
-        with open(f"{CURRENT_FILE_PATH}/imaging_data/3d_dataset/labels.txt", "r") as f:
+        with open(f"{DATASET_FOLDER}/labels.txt", "r") as f:
             for line in f.readlines():
                 label, location_str = line.split(" ")
                 shape_name, alphanumeric, shape_col, letter_col = label.split(",")
@@ -81,7 +83,7 @@ class TestPipeline(unittest.TestCase):
                     )
                 )
 
-        images_dirname = f"{CURRENT_FILE_PATH}/imaging_data/3d_dataset/images"
+        images_dirname = f"{DATASET_FOLDER}/images"
         predictions_3d: list[Target3D] =  []
         # sort by image number (e.g. img_2 is before img_10 despite lexigraphical ordering)
         def sort_key(file_name: str):
