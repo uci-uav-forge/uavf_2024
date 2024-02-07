@@ -11,6 +11,8 @@ import shutil
 import cv2 as cv
 import random
 
+from scipy.spatial.transform import Rotation as R
+
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -97,10 +99,12 @@ class TestPipeline(unittest.TestCase):
             cam_position = csv_to_np(pose_str[0])
             
             with open(f"{images_dirname}/rotation{img_no}.txt", "r") as f:
-                cam_angles = csv_to_np(f.read(), dtype=float)
+                raw_quaternion = csv_to_np(f.read(), dtype=float)
+                cam_rot = R.from_quat(raw_quaternion)
+
 
             predictions = image_processor.process_image(img)
-            area_tracker.update(np.concatenate([cam_position, cam_angles]), label=file_name.split("_")[0])
+            area_tracker.update(([cam_position, cam_rot]), label=file_name.split("_")[0])
 
             if verbose:
                 bounding_boxes_image_path = f"{debug_output_folder}/img_{img_no}/bounding_boxes.png"
@@ -108,7 +112,7 @@ class TestPipeline(unittest.TestCase):
 
             # calculate 3d positions for all detections, and draw them on the debug image
             for pred in predictions:
-                pred_3d = target_localizer.prediction_to_coords(pred, np.concatenate([cam_position, cam_angles]))
+                pred_3d = target_localizer.prediction_to_coords(pred, [cam_position, cam_rot])
                 predictions_3d.append(pred_3d)
 
                 if not verbose: continue
@@ -119,9 +123,9 @@ class TestPipeline(unittest.TestCase):
             if verbose:
                 # draw on ground truth positions
                 for gt in all_ground_truth:
-                    x_reproj, y_reproj = target_localizer.coords_to_2d(gt.position, np.concatenate([cam_position, cam_angles]))
-                    re_estimated_3d = target_localizer.prediction_to_coords(FullPrediction(x_reproj, y_reproj, None, None, None), np.concatenate([cam_position, cam_angles]))
-                    x2_reproj, y2_reproj = target_localizer.coords_to_2d(re_estimated_3d.position, np.concatenate([cam_position, cam_angles]))
+                    x_reproj, y_reproj = target_localizer.coords_to_2d(gt.position, [cam_position, cam_rot])
+                    re_estimated_3d = target_localizer.prediction_to_coords(FullPrediction(x_reproj, y_reproj, None, None, None), [cam_position, cam_rot])
+                    x2_reproj, y2_reproj = target_localizer.coords_to_2d(re_estimated_3d.position, [cam_position, cam_rot])
                     if 0<=x_reproj<RES[0] and 0<=y_reproj<RES[1]:
                         cv.circle(boxes_img, (int(x_reproj), int(y_reproj)), 7, (255,0,0), -1)
                         cv.putText(boxes_img, stringify_target_description(gt.description), (int(x_reproj), int(y_reproj)), cv.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)

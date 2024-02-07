@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import cv2
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation
 
 class AreaCoverageTracker:
     def __init__(self, camera_hfov: float, camera_resolution: tuple[int,int]):
@@ -16,7 +16,7 @@ class AreaCoverageTracker:
         self.frustrum_projections: list[np.ndarray] = []
         self.labels: list[str] = []
 
-    def update(self, camera_pose: np.ndarray, label: str = None):
+    def update(self, camera_pose: tuple[np.ndarray, Rotation], label: str = None):
         '''
             the pose is [x,y,z, altitude, azimuth, roll] in degrees, where the camera at (0,0,0) is
             pointed at the negative z axis, positive x axis is the right side of the camera and positive 
@@ -26,9 +26,8 @@ class AreaCoverageTracker:
         w,h = self.camera_resolution
         focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
 
-        camera_position = camera_pose[:3]
+        camera_position, rot_transform = camera_pose
         
-        rot_transform = R.from_quat(camera_pose[3:])
         frustrum_projection = []
 
         # the vector pointing out the camera at the target, if the camera was facing positive Z
