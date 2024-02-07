@@ -12,7 +12,9 @@ def test_localization(w,h, hfov, camera_pose, pos_2d, actual_position):
         x,y,None,None,None
     )
     pred_position = localizer.prediction_to_coords(pred, camera_pose).position
-    assert np.allclose(actual_position, pred_position), f"{actual_position} / {pred_position}"
+    reproj_x, reproj_y = localizer.coords_to_2d(pred_position, camera_pose)
+    assert np.allclose([reproj_x, reproj_y], [x,y]), f"{x},{y} / {reproj_x}, {reproj_y}"
+    assert np.allclose(actual_position, pred_position, atol=0.1), f"{actual_position} / {pred_position}"
 class TestLocalizer(unittest.TestCase):
 
     def test_straight_down(self):
@@ -45,35 +47,35 @@ class TestLocalizer(unittest.TestCase):
             np.array([22.5,0,-30])
         )
 
-    # def test_sim_case(self):
-    #     w, h = 5312, 2988
-    #     test_localization(
-    #         w,h,
-    #         99.9,
-    #         [np.array([-13, 78, 0]), R.from_euler('zxy', [0,-86,-90], degrees=True)],
-    #         (1367,1841),
-    #         np.array([-19,0,-44])
-    #     )
+    def test_sim_case(self):
+        w, h = 5312, 2988
+        test_localization(
+            w,h,
+            99.9,
+            [np.array([-13, 78, 0]), R.from_euler('zxy', [0,-86,-90], degrees=True)],
+            (1367,1841),
+            np.array([-19.6,0,-44.6])
+        )
 
-    # def test_sim_case_2(self):
-    #     w, h = 1920, 1080
-    #     test_localization(
-    #         w,h,
-    #         50.94,
-    #         [np.array([-88, 76, 40]), R.from_euler('zxy', [-3.5, -100, -106.9], degrees=True)],
-    #         (1040, 835),
-    #         np.array([-112.96, 0, 34.93])
-    #     )
+    def test_sim_case_2(self):
+        w, h = 1920, 1080
+        test_localization(
+            w,h,
+            50.94,
+            [np.array([-88, 76, 40]), R.from_euler('zxy', [-3.5, -100, -106.9], degrees=True)],
+            (1040, 835),
+            np.array([-112.96, 0, 34.93])
+        )
 
-    # def test_sim_case_3(self):
-    #     w, h = 1920, 1080
-    #     test_localization(
-    #         w,h,
-    #         50.94,
-    #         [np.array([-88, 76, 40]), R.from_euler('zxy', [-91.2309, -101.4257, 0.512614], degrees=True)],
-    #         (1559, 268),
-    #         (-83.81858, 0, 63.73396),
-    #      )
+    def test_sim_case_3(self):
+        w, h = 1920, 1080
+        test_localization(
+            w,h,
+            50.94,
+            [np.array([-88, 76, 40]), R.from_euler('zxy', [0.512614, -91.2309, -101.4257], degrees=True)],
+            (1559, 268),
+            (-83.81858, 0, 63.73396),
+         )
 
 if __name__=="__main__":
     unittest.main()
