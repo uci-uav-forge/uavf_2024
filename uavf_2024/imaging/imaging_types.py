@@ -27,7 +27,8 @@ SHAPES = [
  "pentagon",
  "star",
  "cross",
- "person"
+ "person",
+ "background"
 ]
 
 # LETTERS_OLD = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
@@ -59,7 +60,7 @@ class TargetDescription:
         return f'''
         TargetDescription(
             Shapes:
-                {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}f}" for i in range(len(self.shape_probs[:9]))])}
+                {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}f}" for i in range(len(self.shape_probs))])}
             Letters:
                 {NEWLINE.join([f"{LETTERS[i]}: {self.letter_probs[i]:.{3}f}" for i in range(len(self.letter_probs))])}
             Shape Colors:
