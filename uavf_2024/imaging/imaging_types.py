@@ -55,6 +55,7 @@ class TargetDescription:
     letter_probs: np.ndarray
     shape_col_probs: np.ndarray
     letter_col_probs: np.ndarray
+    cnf_matrix_preds: np.ndarray
     def __repr__(self):
         return f'''
         TargetDescription(
@@ -66,6 +67,8 @@ class TargetDescription:
                 {NEWLINE.join([f"{COLORS[i]}: {self.shape_col_probs[i]:.{3}f}" for i in range(len(self.shape_col_probs))])}
             Letter Colors:
                 {NEWLINE.join([f"{COLORS[i]}: {self.letter_col_probs[i]:.{3}f}" for i in range(len(self.letter_col_probs))])}
+            Confusion Matrix Probabilities:
+                {NEWLINE.join([f"{SHAPES[i]}: {self.cnf_matrix_preds[i]:.{3}f}" for i in range(len(self.cnf_matrix_preds))])}
         )
         '''
 
@@ -74,7 +77,8 @@ class TargetDescription:
             self.shape_probs + other.shape_probs,
             self.letter_probs + other.letter_probs,
             self.shape_col_probs + other.shape_col_probs,
-            self.letter_col_probs + other.letter_col_probs
+            self.letter_col_probs + other.letter_col_probs,
+            self.cnf_matrix_preds + other.cnf_matrix_preds
         )
 
     def __truediv__(self, scalar):
@@ -82,7 +86,8 @@ class TargetDescription:
             self.shape_probs / scalar,
             self.letter_probs / scalar,
             self.shape_col_probs / scalar,
-            self.letter_col_probs / scalar
+            self.letter_col_probs / scalar,
+            self.cnf_matrix_preds / scalar
         )
 
 @dataclass

@@ -131,6 +131,8 @@ class ImageProcessor:
                 # Classify the colors
                 shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
                 letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
+                cnf_matrix_preds = np.array(shape_res.cnf_matrix_preds)
+
                 # add to total_results
                 letter_conf = None
                 total_results.append(
@@ -143,7 +145,8 @@ class ImageProcessor:
                         shape_conf,
                         letter_conf,
                         shape_color_conf,
-                        letter_color_conf
+                        letter_color_conf,
+                        cnf_matrix_preds
                     ),
                     img_id = self.num_processed-1, # at this point it will have been incremented already
                     det_id = shape_res.id
