@@ -3,7 +3,7 @@ import cv2 as cv
 import os
 
 
-zoom_level = 1
+zoom_level = 7
 dirname = f"cam_imgs_zoom_{zoom_level}"
 os.makedirs(dirname, exist_ok=True)
 
