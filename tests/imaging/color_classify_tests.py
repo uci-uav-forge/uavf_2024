@@ -13,18 +13,15 @@ class ColorClassificationTest(unittest.TestCase):
         This specific shade of blue was misclassified as purple
         when we first made the simple KNN color classifier with 1 example per color.
         '''
-        image_path = CURRENT_FILE_PATH / 'imaging_data/fake_dataset/red_green.jpg'
+        image_path = CURRENT_FILE_PATH + '/imaging_data/fake_dataset/0.jpg'
         image = Image.open(image_path)
-
-        image_array = np.array(image)
-        resized_image = image_array.reshape((1, 128, 128, 3))
         classifier = ColorClassifier()
-        shape_score, letter_score = classifier.predict(resized_image)
-        green = list(COLORS_TO_RGB.keys()).index('green')
+        shape_score, letter_score = classifier.predict(image)
         red = list(COLORS_TO_RGB.keys()).index('red')
+        orange = list(COLORS_TO_RGB.keys()).index('orange')
         
-        self.assertEqual(np.argmax(letter_score), green) 
-        self.assertEqual(np.argmax(shape_score), red) 
+        self.assertEqual(np.argmax(letter_score), red) 
+        self.assertEqual(np.argmax(shape_score), orange) 
 
 if __name__ == '__main__':
     unittest.main()
