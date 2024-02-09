@@ -134,4 +134,5 @@ class Camera_Projection:
 
 if __name__ == "__main__":
   '''Testing class instance'''
-  camera_initialize = Camera_Projection(debug= True, resolution = (1080, 1920), img_folder="cam_imgs_zoom_3")
+  for i in [6,7]:
+    camera_initialize = Camera_Projection(debug= False, resolution = (1080, 1920), img_folder=f"cam_imgs_zoom_{i}")
