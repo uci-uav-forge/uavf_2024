@@ -38,7 +38,7 @@ class ShapeInstanceSegmenter:
                 x,y,w,h = box.int()
                 x-=int(w/2) # adjust to make x,y the top left
                 y-=int(h/2)
-                confidences = np.ones(9) * (1-prob.item())/8
+                confidences = np.zeros(9) # TODO: change this to 8 for new model
                 confidences[cls.int()] = prob
                 full_results.append(
                     InstanceSegmentationResult(
