@@ -56,6 +56,7 @@ install(PROGRAMS
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
   scripts/demo_imaging_node.py
+  scripts/perception_with_3d.py
   scripts/imaging_node.py
   scripts/mock_imaging_node.py
   DESTINATION lib/${PROJECT_NAME}
