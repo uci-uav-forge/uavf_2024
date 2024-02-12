@@ -1,11 +1,11 @@
 import unittest
 from uavf_2024.imaging.color_classification import ColorClassifier, COLORS_TO_RGB
 import numpy as np
-import cv2 as cv
 from PIL import Image
-import numpy as np
 import os
+
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
+
 class ColorClassificationTest(unittest.TestCase):
     def test_blue_color_classification(self):
         '''
@@ -15,13 +15,18 @@ class ColorClassificationTest(unittest.TestCase):
         '''
         image_path = CURRENT_FILE_PATH + '/imaging_data/fake_dataset/0.jpg'
         image = Image.open(image_path)
+        image_array = np.array(image)
+        
         classifier = ColorClassifier()
-        shape_score, letter_score = classifier.predict(image)
+        
+        # Ensure that the returned scores are converted to lists
+        shape_scores, letter_scores = classifier.predict(image_array)
+
         red = list(COLORS_TO_RGB.keys()).index('red')
         orange = list(COLORS_TO_RGB.keys()).index('orange')
-        
-        self.assertEqual(np.argmax(letter_score), red) 
-        self.assertEqual(np.argmax(shape_score), orange) 
+
+        self.assertEqual(np.argmax(letter_scores), red) 
+        self.assertEqual(np.argmax(shape_scores), orange)
 
 if __name__ == '__main__':
     unittest.main()

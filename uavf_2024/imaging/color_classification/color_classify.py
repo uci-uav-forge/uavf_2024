@@ -3,7 +3,7 @@ import torch
 from torchvision import transforms
 import os
 import torch.nn as nn
-
+from PIL import Image
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 COLORS_TO_RGB = {
@@ -54,17 +54,22 @@ class ColorModel(nn.Module):
         return letter_output, shape_output
 
 
+class NumpyToTensor:
+    def __init__(self):
+        pass
+
+    def __call__(self, img):
+        return torch.from_numpy(img.transpose((2, 0, 1))).float()
+
 class ColorClassifier:
     def __init__(self):
-        model_path = CURRENT_FILE_PATH + "\\trained_model.pth"
+        model_path = CURRENT_FILE_PATH + "/trained_model.pth"
         num_classes = 8
         self.model = self.load_model(model_path, num_classes)
-        self.transform = transforms.Compose(
-            [
-                transforms.Resize((128, 128)),
-                transforms.ToTensor(),
-            ]
-        )
+        self.transform = transforms.Compose([
+            NumpyToTensor(),
+            transforms.Resize((128, 128)),
+        ])
 
     def load_model(self, model_path, num_classes):
         model = ColorModel(num_classes)
@@ -75,9 +80,10 @@ class ColorClassifier:
     def predict(self, image: np.ndarray) -> (int, int):
         """Returns probabilities for each color"""
         image_tensor = self.transform(image).unsqueeze(0)  # Add a batch dimension
+        
         with torch.no_grad():
             predicted_letter, predicted_shape = self.model(image_tensor)
 
         # _, predicted_shape = torch.max(predicted_shape, 1)
         # _, predicted_letter = torch.max(predicted_letter, 1)
-        return predicted_letter, predicted_shape
+        return predicted_letter.squeeze().tolist(), predicted_shape.squeeze().tolist()
