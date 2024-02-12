@@ -8,6 +8,8 @@ Start MAVROS:
 ros2 launch mavros px4.launch fcu_url:=/dev/ttyACM0:921600
 ```
 
+If this isn't working with an error message like `serial open permission denied`, you need to run this setup step: `sudo chmod 666 /dev/ttyACM0`
+
 At this point it would be a good idea to make sure all is good with MAVROS topics; poke around a bit with
 
 ```
