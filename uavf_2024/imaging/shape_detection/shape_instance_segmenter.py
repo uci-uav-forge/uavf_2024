@@ -70,7 +70,7 @@ class ShapeInstanceSegmenter:
                         y=img_coord_t(y.item())+tiles[img_index].y,
                         width=img_coord_t(w.item()),
                         height=img_coord_t(h.item()),
-                        confidences = self.cnf_matrix[SHAPES[cls.int()]], #confidences,
+                        confidences = self.cnf_matrix[SHAPES[cls.int()]],
                         mask = mask[y:y+h, x:x+w].unsqueeze(2).cpu().numpy(),
                         img = tiles[img_index].img.make_sub_image(x, y, w, h),
                         id = self.num_processed

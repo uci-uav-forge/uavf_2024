@@ -27,8 +27,7 @@ SHAPES = [
  "pentagon",
  "star",
  "cross",
- "person",
- "background"
+ "person"
 ]
 
 # LETTERS_OLD = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
@@ -60,7 +59,7 @@ class TargetDescription:
         return f'''
         TargetDescription(
             Shapes:
-                {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}f}" for i in range(len(self.shape_probs))])}
+                {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}f}" for i in range(len(self.shape_probs[:-1]))])}
             Letters:
                 {NEWLINE.join([f"{LETTERS[i]}: {self.letter_probs[i]:.{3}f}" for i in range(len(self.letter_probs))])}
             Shape Colors:
@@ -122,7 +121,6 @@ class InstanceSegmentationResult:
     mask: np.ndarray
     img: 'Image'
     id : int
-    # cnf_matrix_preds: list[float]
 
 @dataclass
 class Target3D:
