@@ -18,9 +18,8 @@ import cv2 #for debugging purposes
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-# in calc metrics, want to add visuals to see why IOU is bad
-def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction]):
-    #, raw_img
+def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction], debug_img = None):
+    #debug_img should be receiving the image np array, img.get_array(), and visuals are provided of the bounding box
     true_positives = 0 # how many predictions were on top of a ground-truth box
     targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
     shape_top_1_accuracies = []
@@ -52,10 +51,11 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         shape_col = np.argmax(truth.description.shape_col_probs)
         letter_col = np.argmax(truth.description.letter_col_probs)
         
-        #x, y, x1, y1 = true_box.flatten()
-        #color = (255, 0, 0)  # BGR color (green in this example)
-        #thickness = 2
-        #cv2.rectangle(raw_img, (x, y), (x1, y1), color, thickness) #ok ik what's wrong the truth bounding box is actually wrong oops
+        if debug_img:
+            x, y, x1, y1 = true_box.flatten()
+            color = (255, 0, 0) 
+            thickness = 2
+            cv2.rectangle(debug_img, (x, y), (x1, y1), color, thickness) 
 
         this_target_was_detected = False
         for pred in predictions:
@@ -63,18 +63,13 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
             ]])
 
-            #print(f"truth: {true_box}  prediction: {pred_box}")   
-
-            #x, y, x1, y1 = pred_box.flatten()
-            #color = (0, 255, 0)  # BGR color (green in this example)
-            #thickness = 2
-            #cv2.rectangle(raw_img, (x, y), (x1, y1), color, thickness)  
-
-
-
+            if debug_img:
+                x, y, x1, y1 = pred_box.flatten()
+                color = (0, 255, 0)  
+                thickness = 2
+                cv2.rectangle(debug_img, (x, y), (x1, y1), color, thickness)  
 
             iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
-            #print(f"IOU: {iou}")
             if iou>0.1:
                 true_positives+=1
                 this_target_was_detected = True
@@ -91,9 +86,10 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         if this_target_was_detected:
             targets_detected+=1
 
-    #cv2.imshow("truth and prediction bounding boxes", raw_img)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
+    if debug_img:
+        cv2.imshow("truth and prediction bounding boxes", debug_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     recall = targets_detected / len(ground_truth) if len(ground_truth)>0 else None
     precision = true_positives / len(predictions) if len(predictions)>0 else None
@@ -233,11 +229,6 @@ class TestImagingFrontend(unittest.TestCase):
 
         for img, ground_truth in zip(imgs, labels):
             predictions = image_processor.process_image(img)
-
-            '''print(f"type: {type(predictions)}, predictions: {len(predictions)},\
-                  type: {type(ground_truth)} , truths: {len(ground_truth)} \
-                    img: {dir(img)}") '''
-            #print(dir(img))
             if debug_letter_confusion:
                 prediction_list.append(predictions)
             (
@@ -249,7 +240,6 @@ class TestImagingFrontend(unittest.TestCase):
                 shape_color_top1,
                 letter_color_top1
             ) = calc_metrics(predictions, ground_truth) 
-            #img.get_array()
             
             for metric, aggregate in zip(
                 [recall, precision, shape_top1, letter_top1, letter_top5, shape_color_top1, letter_color_top1],
