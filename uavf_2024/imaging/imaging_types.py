@@ -93,6 +93,7 @@ class ProbabilisticTargetDescriptor:
             LETTERS[np.argmax(self.letter_probs)]
         )
 
+
 class CertainTargetDescriptor:
     '''
     `shape` is one of "circle", "semicircle", "quartercircle", "triangle", "rectangle", "pentagon", "star", "cross", "person"
@@ -111,6 +112,9 @@ class CertainTargetDescriptor:
 
     @staticmethod
     def from_indices(shape_index: int, letter_index: int, shape_col_index: int, letter_col_index: int) -> CertainTargetDescriptor:
+        '''
+        Using indices is unsafe because it's easy to mix them up. The __init__ constructor should be used whenever possible.
+        '''
         return CertainTargetDescriptor(
             COLORS[shape_col_index],
             SHAPES[shape_index],
@@ -136,6 +140,7 @@ class CertainTargetDescriptor:
     def __repr__(self):
         return f"{self.shape_col} {self.shape}, {self.letter_col} {self.letter}"
 
+CertainTargetDescriptor.from_indices(0, 0, 0, 0)
 @dataclass
 class Tile:
     img: 'Image'
