@@ -147,7 +147,7 @@ class TestPipeline(unittest.TestCase):
         for i in range(NUM_TARGET_SUBSETS):
             ground_truth: list[Target3D] = random.sample(all_ground_truth, 5)
 
-            closest_tracks = tracker.estimate_positions([t.descriptor for t in ground_truth])
+            closest_tracks = tracker.estimate_positions([t.descriptor.collapse_to_certain() for t in ground_truth])
             scores = []
             distances = []
             for gt_target, pred_track in zip(ground_truth, closest_tracks):
