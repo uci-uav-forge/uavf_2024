@@ -4,7 +4,7 @@ import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import HWC, FullBBoxPrediction, Image, ProbabilisticTargetDescriptor, LETTERS
+from uavf_2024.imaging.imaging_types import HWC, FullBBoxPrediction, Image, CertainTargetDescriptor, LETTERS
 from uavf_2024.imaging import profiler
 import numpy as np
 import os
@@ -116,9 +116,9 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullBB
 
                 ground_truth.append(FullBBoxPrediction(
                     x,y,w,h,
-                    ProbabilisticTargetDescriptor(
-                        np.eye(9)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
-                    )
+                    CertainTargetDescriptor(
+                        shape, letter, shape_col, letter_col
+                    ).as_probabilistic()
                 ))
         imgs.append(img)
         labels.append(ground_truth)
