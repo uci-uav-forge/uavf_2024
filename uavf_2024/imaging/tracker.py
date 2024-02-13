@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .imaging_types import Target3D, ProbabilisticTargetDescriptor
+from .imaging_types import Target3D, CertainTargetDescriptor
 from .utils import calc_match_score
 import numpy as np
 
@@ -57,12 +57,12 @@ class TargetTracker:
             else:
                 self.tracks.append(Track([detection]))
 
-    def estimate_positions(self, search_candidates: list[ProbabilisticTargetDescriptor]) -> list[Track]:
+    def estimate_positions(self, search_candidates: list[CertainTargetDescriptor]) -> list[Track]:
         '''
         Returns closest track in descriptor space for each search candidate
         '''
         closest_tracks = [
-            max(self.tracks, key=lambda track: calc_match_score(track.descriptor, candidate))
+            max(self.tracks, key=lambda track: calc_match_score(track.descriptor, candidate.as_probabilistic()))
             for candidate in search_candidates
         ]
 

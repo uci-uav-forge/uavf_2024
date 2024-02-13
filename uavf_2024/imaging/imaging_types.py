@@ -93,12 +93,21 @@ class ProbabilisticTargetDescriptor:
             COLORS[np.argmax(self.letter_col_probs)]
         )
 
-@dataclass
 class CertainTargetDescriptor:
-    shape: str
-    letter: str
-    shape_col: str
-    letter_col: str 
+    '''
+    `shape` is one of "circle", "semicircle", "quartercircle", "triangle", "rectangle", "pentagon", "star", "cross", "person"
+    `letter` is an uppercase letter or a number (e.g. "A" or "1")
+    `shape_col` and `letter_col` are one of "red", "green", "blue", "orange", "purple", "white", "black", "brown"
+    ''' 
+    def __init__(self, shape: str, letter: str, shape_col: str, letter_col: str):
+        assert shape in SHAPES
+        assert letter in LETTERS
+        assert shape_col in COLORS
+        assert letter_col in COLORS
+        self.shape = shape
+        self.letter = letter
+        self.shape_col = shape_col
+        self.letter_col = letter_col
     
     def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
         shape_probs = np.zeros(len(SHAPES))
