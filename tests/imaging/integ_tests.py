@@ -75,10 +75,10 @@ class TestPipeline(unittest.TestCase):
                     Target3D(
                         csv_to_np(location_str),
                         CertainTargetDescriptor(
-                            shape_name,
-                            alphanumeric,
                             shape_col,
-                            letter_col
+                            shape_name,
+                            letter_col,
+                            alphanumeric
                         ).as_probabilistic()
                     )
                 )

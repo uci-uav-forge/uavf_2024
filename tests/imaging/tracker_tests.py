@@ -11,7 +11,7 @@ class TargetTrackerTests(unittest.TestCase):
                 'circle',
                 'blue',
                 'A'
-            )
+            ).as_probabilistic()
         target = Target3D(
             position = np.array([0,0,0]),
             descriptor = bogus_descriptor

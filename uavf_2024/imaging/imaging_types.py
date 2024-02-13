@@ -87,10 +87,10 @@ class ProbabilisticTargetDescriptor:
     
     def collapse_to_certain(self) -> CertainTargetDescriptor:
         return CertainTargetDescriptor(
-            SHAPES[np.argmax(self.shape_probs)],
-            LETTERS[np.argmax(self.letter_probs)],
             COLORS[np.argmax(self.shape_col_probs)],
-            COLORS[np.argmax(self.letter_col_probs)]
+            SHAPES[np.argmax(self.shape_probs)],
+            COLORS[np.argmax(self.letter_col_probs)],
+            LETTERS[np.argmax(self.letter_probs)]
         )
 
 class CertainTargetDescriptor:
@@ -99,23 +99,23 @@ class CertainTargetDescriptor:
     `letter` is an uppercase letter or a number (e.g. "A" or "1")
     `shape_col` and `letter_col` are one of "red", "green", "blue", "orange", "purple", "white", "black", "brown"
     ''' 
-    def __init__(self, shape: str, letter: str, shape_col: str, letter_col: str):
-        assert shape in SHAPES
-        assert letter in LETTERS
+    def __init__(self, shape_col: str, shape: str, letter_col: str, letter: str):
         assert shape_col in COLORS
+        assert shape in SHAPES
         assert letter_col in COLORS
-        self.shape = shape
-        self.letter = letter
+        assert letter in LETTERS
         self.shape_col = shape_col
+        self.shape = shape
         self.letter_col = letter_col
+        self.letter = letter
 
     @staticmethod
     def from_indices(shape_index: int, letter_index: int, shape_col_index: int, letter_col_index: int) -> CertainTargetDescriptor:
         return CertainTargetDescriptor(
-            SHAPES[shape_index],
-            LETTERS[letter_index],
             COLORS[shape_col_index],
-            COLORS[letter_col_index]
+            SHAPES[shape_index],
+            COLORS[letter_col_index],
+            LETTERS[letter_index]
         )
     
     def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
