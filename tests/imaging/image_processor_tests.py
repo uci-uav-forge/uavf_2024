@@ -14,11 +14,13 @@ import line_profiler
 from memory_profiler import profile as mem_profile
 import pandas as pd
 import sys
+import cv2 #for debugging purposes
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-
+# in calc metrics, want to add visuals to see why IOU is bad
 def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction]):
+    #, raw_img
     true_positives = 0 # how many predictions were on top of a ground-truth box
     targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
     shape_top_1_accuracies = []
@@ -36,6 +38,8 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     # old to new:
     #   A - Z (0-25): + 10
     #   1 - 9 (26-34): -25
+
+
     
     for truth in ground_truth:
         x,y = truth.x, truth.y
@@ -47,6 +51,11 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         letter = np.argmax(truth.description.letter_probs)
         shape_col = np.argmax(truth.description.shape_col_probs)
         letter_col = np.argmax(truth.description.letter_col_probs)
+        
+        #x, y, x1, y1 = true_box.flatten()
+        #color = (255, 0, 0)  # BGR color (green in this example)
+        #thickness = 2
+        #cv2.rectangle(raw_img, (x, y), (x1, y1), color, thickness) #ok ik what's wrong the truth bounding box is actually wrong oops
 
         this_target_was_detected = False
         for pred in predictions:
@@ -54,7 +63,18 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
             ]])
 
+            #print(f"truth: {true_box}  prediction: {pred_box}")   
+
+            #x, y, x1, y1 = pred_box.flatten()
+            #color = (0, 255, 0)  # BGR color (green in this example)
+            #thickness = 2
+            #cv2.rectangle(raw_img, (x, y), (x1, y1), color, thickness)  
+
+
+
+
             iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
+            #print(f"IOU: {iou}")
             if iou>0.1:
                 true_positives+=1
                 this_target_was_detected = True
@@ -70,6 +90,10 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
 
         if this_target_was_detected:
             targets_detected+=1
+
+    #cv2.imshow("truth and prediction bounding boxes", raw_img)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
     recall = targets_detected / len(ground_truth) if len(ground_truth)>0 else None
     precision = true_positives / len(predictions) if len(predictions)>0 else None
@@ -101,6 +125,10 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
     for img_file_name in os.listdir(imgs_path):
         img = Image.from_file(f"{imgs_path}/{img_file_name}")
         ground_truth: list[FullPrediction] = []
+
+        img_debug = img.get_array()
+        #print(img_debug)
+
         with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
             for line in f.readlines():
                 label = line.split(' ')
@@ -111,7 +139,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
                 box = np.array([float(v) for v in label[4:]])
                 box[[0,2]]*=img.shape[1]
                 box[[1,3]]*=img.shape[0]
-                box[[0,1]] -= box[[2,3]]/2 # adjust xy to be top-left
+                box[[0,1]] -= box[[2,3]] # adjust xy to be top-left
                 x,y,w,h = box.astype(int)
 
                 ground_truth.append(FullPrediction(
@@ -120,8 +148,10 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
                         np.eye(9)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
                     )
                 ))
+        
         imgs.append(img)
         labels.append(ground_truth)
+        
     return (imgs, labels)
 
 
@@ -145,7 +175,7 @@ def generate_letter_confusion_matrix( unit_test_letter_truth, unit_test_letter_p
                 iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
                 if iou>0.1:
                     letter_pred.append(int(np.argmax(pred.description.letter_probs)))
-                    break
+                
                 
     letter_confusion_matrix = np.zeros((36,36))
 
@@ -204,6 +234,10 @@ class TestImagingFrontend(unittest.TestCase):
         for img, ground_truth in zip(imgs, labels):
             predictions = image_processor.process_image(img)
 
+            '''print(f"type: {type(predictions)}, predictions: {len(predictions)},\
+                  type: {type(ground_truth)} , truths: {len(ground_truth)} \
+                    img: {dir(img)}") '''
+            #print(dir(img))
             if debug_letter_confusion:
                 prediction_list.append(predictions)
             (
@@ -215,6 +249,7 @@ class TestImagingFrontend(unittest.TestCase):
                 shape_color_top1,
                 letter_color_top1
             ) = calc_metrics(predictions, ground_truth) 
+            #img.get_array()
             
             for metric, aggregate in zip(
                 [recall, precision, shape_top1, letter_top1, letter_top5, shape_color_top1, letter_color_top1],
@@ -222,6 +257,7 @@ class TestImagingFrontend(unittest.TestCase):
             ):
                 if not metric is None:
                     aggregate.append(metric)
+             #for debugging purposes <- just test over one image 
 
         if debug_letter_confusion:
             generate_letter_confusion_matrix(unit_test_letter_pred= prediction_list, unit_test_letter_truth= labels)
