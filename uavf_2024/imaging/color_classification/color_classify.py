@@ -7,14 +7,14 @@ from PIL import Image
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 COLORS_TO_RGB = {
-    "red": (200, 40, 0),
-    "orange": (217, 101, 13),
-    "green": (53, 194, 41),
-    "blue": (41, 87, 194),
-    "purple": (127, 41, 194),
-    "white": (255, 255, 255),
-    "black": (0, 0, 0),
-    "brown": (165, 42, 42),
+    "red": 0,
+    "orange": 1,
+    "green": 2,
+    "blue": 3,
+    "purple": 4,
+    "white": 5,
+    "black": 6,
+    "brown": 7,
 }
 
 
@@ -66,10 +66,7 @@ class ColorClassifier:
         model_path = CURRENT_FILE_PATH + "/trained_model.pth"
         num_classes = 8
         self.model = self.load_model(model_path, num_classes)
-        self.transform = transforms.Compose([
-            NumpyToTensor(),
-            transforms.Resize((128, 128)),
-        ])
+        self.transform = transforms.ToTensor()
 
     def load_model(self, model_path, num_classes):
         model = ColorModel(num_classes)
