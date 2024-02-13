@@ -50,7 +50,7 @@ img_coord_t = np.int16
 NEWLINE = '\n' + ' '*16 # For use in f-strings because apparently you can't use escape characters in them
 
 @dataclass
-class TargetDescription:
+class ProbabilisticTargetDescriptor:
     shape_probs: np.ndarray
     letter_probs: np.ndarray
     shape_col_probs: np.ndarray
@@ -70,7 +70,7 @@ class TargetDescription:
         '''
 
     def __add__(self, other):
-        return TargetDescription(
+        return ProbabilisticTargetDescriptor(
             self.shape_probs + other.shape_probs,
             self.letter_probs + other.letter_probs,
             self.shape_col_probs + other.shape_col_probs,
@@ -78,12 +78,45 @@ class TargetDescription:
         )
 
     def __truediv__(self, scalar):
-        return TargetDescription(
+        return ProbabilisticTargetDescriptor(
             self.shape_probs / scalar,
             self.letter_probs / scalar,
             self.shape_col_probs / scalar,
             self.letter_col_probs / scalar
         )
+    
+    def collapse_to_certain(self) -> CertainTargetDescriptor:
+        return CertainTargetDescriptor(
+            SHAPES[np.argmax(self.shape_probs)],
+            LETTERS[np.argmax(self.letter_probs)],
+            COLORS[np.argmax(self.shape_col_probs)],
+            COLORS[np.argmax(self.letter_col_probs)]
+        )
+
+@dataclass
+class CertainTargetDescriptor:
+    shape: str
+    letter: str
+    shape_col: str
+    letter_col: str 
+    
+    def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
+        shape_probs = np.zeros(len(SHAPES))
+        shape_probs[SHAPES.index(self.shape)] = 1.0
+
+        letter_probs = np.zeros(len(LETTERS))
+        letter_probs[LETTERS.index(self.letter)] = 1.0
+
+        shape_col_probs = np.zeros(len(COLORS))
+        shape_col_probs[COLORS.index(self.shape_col)] = 1.0
+
+        letter_col_probs = np.zeros(len(COLORS))
+        letter_col_probs[COLORS.index(self.letter_col)] = 1.0
+
+        return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
+
+    def __repr__(self):
+        return f"{self.shape_col} {self.shape}, {self.letter_col} {self.letter}"
 
 @dataclass
 class Tile:
@@ -92,7 +125,7 @@ class Tile:
     y: img_coord_t
 
 @dataclass
-class FullPrediction:
+class FullBBoxPrediction:
     x: img_coord_t
     y: img_coord_t
     width: img_coord_t
@@ -100,7 +133,7 @@ class FullPrediction:
     '''
     We can worry about typechecking these later, but the gist is that they're probability distributions over the possible classes.
     '''
-    description: TargetDescription
+    descriptor: ProbabilisticTargetDescriptor
     '''
     The id is a unique identifier for debugging purposes. All the debugging images will be saved with this id.
     The format is `{run_id}_{image_id}_{prediction_index}`
@@ -128,7 +161,7 @@ class Target3D:
     We might also want to incorporate information about the distance from which we've seen this target. Like, if we've only seen it from far away, and we get a new classification from a closer image, it should have more weight.
     '''
     position: np.ndarray # (x,y,z) in local frame
-    description: TargetDescription
+    descriptor: ProbabilisticTargetDescriptor
     id: str = None
 
 class ImageDimension(Enum):
