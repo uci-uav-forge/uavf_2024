@@ -116,7 +116,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullBB
 
                 ground_truth.append(FullBBoxPrediction(
                     x,y,w,h,
-                    CertainTargetDescriptor(
+                    CertainTargetDescriptor.from_indices(
                         shape, letter, shape_col, letter_col
                     ).as_probabilistic()
                 ))

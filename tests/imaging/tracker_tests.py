@@ -9,7 +9,7 @@ class TargetTrackerTests(unittest.TestCase):
         bogus_descriptor = CertainTargetDescriptor(
                 'red',
                 'circle',
-                'yellow',
+                'blue',
                 'A'
             )
         target = Target3D(

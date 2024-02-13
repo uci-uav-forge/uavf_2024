@@ -108,6 +108,15 @@ class CertainTargetDescriptor:
         self.letter = letter
         self.shape_col = shape_col
         self.letter_col = letter_col
+
+    @staticmethod
+    def from_indices(shape_index: int, letter_index: int, shape_col_index: int, letter_col_index: int) -> CertainTargetDescriptor:
+        return CertainTargetDescriptor(
+            SHAPES[shape_index],
+            LETTERS[letter_index],
+            COLORS[shape_col_index],
+            COLORS[letter_col_index]
+        )
     
     def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
         shape_probs = np.zeros(len(SHAPES))
