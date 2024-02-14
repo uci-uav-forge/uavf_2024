@@ -44,10 +44,10 @@ class ImagingNode(Node):
                 x = p.position[0],
                 y = p.position[1],
                 z = p.position[2],
-                shape_conf = p.description.shape_probs.tolist(),
-                letter_conf = p.description.letter_probs.tolist(),
-                shape_color_conf = p.description.shape_col_probs.tolist(),
-                letter_color_conf = p.description.letter_col_probs.tolist()
+                shape_conf = p.descriptor.shape_probs.tolist(),
+                letter_conf = p.descriptor.letter_probs.tolist(),
+                shape_color_conf = p.descriptor.shape_col_probs.tolist(),
+                letter_color_conf = p.descriptor.letter_col_probs.tolist()
             )
 
             response.detections.append(t)
