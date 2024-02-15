@@ -3,21 +3,20 @@ from uavf_2024.imaging.localizer import Localizer
 from uavf_2024.imaging.area_coverage import AreaCoverageTracker
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.tracker import TargetTracker
-from uavf_2024.imaging.imaging_types import FullPrediction, Image, TargetDescription, Target3D, COLORS, SHAPES, LETTERS
+from uavf_2024.imaging.imaging_types import FullBBoxPrediction, Image, ProbabilisticTargetDescriptor, Target3D, COLORS, SHAPES, LETTERS, CertainTargetDescriptor
 from uavf_2024.imaging.utils import calc_match_score
 import os
 import numpy as np
 import shutil
 import cv2 as cv
 import random
+from tqdm import tqdm
 
 from scipy.spatial.transform import Rotation as R
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
-def stringify_target_description(desc: TargetDescription):
-    return f"{COLORS[np.argmax(desc.shape_col_probs)]} {SHAPES[np.argmax(desc.shape_probs)]}, {COLORS[np.argmax(desc.letter_col_probs)]} {LETTERS[np.argmax(desc.letter_probs)]}"
 
 def csv_to_np(csv_str: str, delim: str = ",", dtype: type = int):
     '''
@@ -76,12 +75,12 @@ class TestPipeline(unittest.TestCase):
                 all_ground_truth.append(
                     Target3D(
                         csv_to_np(location_str),
-                        TargetDescription(
-                            np.eye(9)[SHAPES.index(shape_name)],
-                            np.eye(36)[LETTERS.index(alphanumeric)],
-                            np.eye(8)[COLORS.index(shape_col)],
-                            np.eye(8)[COLORS.index(letter_col)]
-                        )
+                        CertainTargetDescriptor(
+                            shape_col,
+                            shape_name,
+                            letter_col,
+                            alphanumeric
+                        ).as_probabilistic()
                     )
                 )
 
@@ -92,7 +91,7 @@ class TestPipeline(unittest.TestCase):
             return int(file_name.split("_")[0][5:])
         
         img_files = filter(lambda f: f.endswith(".png"), os.listdir(images_dirname))
-        for file_name in sorted(img_files, key=sort_key):
+        for file_name in tqdm(sorted(img_files, key=sort_key)):
             img = Image.from_file(f"{images_dirname}/{file_name}")
             img_no = sort_key(file_name)
             pose_str = file_name.split(".")[0].split("_")[1:]
@@ -124,11 +123,11 @@ class TestPipeline(unittest.TestCase):
                 # draw on ground truth positions
                 for gt in all_ground_truth:
                     x_reproj, y_reproj = target_localizer.coords_to_2d(gt.position, [cam_position, cam_rot])
-                    re_estimated_3d = target_localizer.prediction_to_coords(FullPrediction(x_reproj, y_reproj, None, None, None), [cam_position, cam_rot])
+                    re_estimated_3d = target_localizer.prediction_to_coords(FullBBoxPrediction(x_reproj, y_reproj, None, None, None), [cam_position, cam_rot])
                     x2_reproj, y2_reproj = target_localizer.coords_to_2d(re_estimated_3d.position, [cam_position, cam_rot])
                     if 0<=x_reproj<RES[0] and 0<=y_reproj<RES[1]:
                         cv.circle(boxes_img, (int(x_reproj), int(y_reproj)), 7, (255,0,0), -1)
-                        cv.putText(boxes_img, stringify_target_description(gt.description), (int(x_reproj), int(y_reproj)), cv.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+                        cv.putText(boxes_img, str(gt.descriptor.collapse_to_certain()), (int(x_reproj), int(y_reproj)), cv.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
                         cv.circle(boxes_img, (int(x2_reproj), int(y2_reproj)), 5, (255,255,0), -1)
 
                 cv.imwrite(bounding_boxes_image_path, boxes_img)
@@ -139,17 +138,18 @@ class TestPipeline(unittest.TestCase):
         tracker.update(predictions_3d)
 
 
-        POSITION_ERROR_ACCEPTABLE_BOUND = 5
+        POSITION_ERROR_ACCEPTABLE_BOUND = 5 
 
-        NUM_TARGET_SUBSETS = 100
+        NUM_TARGET_SUBSETS = 1000
 
         scores_across_subsets = []
+        hist = np.zeros(6)
         distances_across_subsets = []
 
-        for i in range(NUM_TARGET_SUBSETS):
+        for i in tqdm(range(NUM_TARGET_SUBSETS)):
             ground_truth: list[Target3D] = random.sample(all_ground_truth, 5)
 
-            closest_tracks = tracker.estimate_positions([t.description for t in ground_truth])
+            closest_tracks = tracker.estimate_positions([t.descriptor.collapse_to_certain() for t in ground_truth])
             scores = []
             distances = []
             for gt_target, pred_track in zip(ground_truth, closest_tracks):
@@ -158,10 +158,9 @@ class TestPipeline(unittest.TestCase):
                 if is_close_enough:
                     distances.append(np.linalg.norm(pred_track.position-gt_target.position))
                 if i==0 and verbose: # we only want to print this extra info for the first one to not clog up the output
-                    print(f"Closest Match for {stringify_target_description(gt_target.description)}:")
+                    print(f"Closest Match for {str(gt_target.descriptor.collapse_to_certain())}:")
                     physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
-                    closest_match = max(predictions_3d, key=lambda pred: calc_match_score(pred.description, gt_target.description))
-                    print(stringify_target_description(gt_target.description))
+                    closest_match = max(predictions_3d, key=lambda pred: calc_match_score(pred.descriptor, gt_target.descriptor))
 
                     print(f"\tTrack distance: {np.linalg.norm(pred_track.position-gt_target.position):.3f}")
                     print(f"\tDetections used in track:")
@@ -175,21 +174,23 @@ class TestPipeline(unittest.TestCase):
                     print(f"\tClose detections:")
                     print(f"\t\t{[p.id for p in filter(lambda pred: np.linalg.norm(pred.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND, predictions_3d)]}")
                     print(f"\tPhysically closest detection distance: {np.linalg.norm(physically_closest_match.position-gt_target.position):.3f}")
-                    print(f"\tPhysically closest detection descriptor score: {calc_match_score(physically_closest_match.description, gt_target.description)}")
+                    print(f"\tPhysically closest detection descriptor score: {calc_match_score(physically_closest_match.descriptor, gt_target.descriptor)}")
                     print(f"\tPhysically closest detection id: {physically_closest_match.id}")
-                    print(f"\tHighest descriptor match score: {calc_match_score(closest_match.description, gt_target.description)}")
+                    print(f"\tHighest descriptor match score: {calc_match_score(closest_match.descriptor, gt_target.descriptor)}")
                     print(f"\tHighest descriptor match id: {closest_match.id}")
                     print(f"\tHigh descriptor match distance: {np.linalg.norm(closest_match.position-gt_target.position):.3f}")
                     print(f"\tClose enough? {is_close_enough}")
             if i==0: 
                 print(f"Imaging Sim Score: {np.sum(scores)}/{len(scores)}") 
             scores_across_subsets.append(np.sum(scores))
+            hist[np.sum(scores)] += 1
             distances_across_subsets.extend(distances)
         
         avg_score = np.mean(scores_across_subsets)
         avg_distances = np.mean(distances_across_subsets)
         distances_std = np.std(distances_across_subsets)
         print(f"Imaging Sim Average Score: {avg_score}/{len(scores)}")
+        print(f"Distribution of scores: {dict(zip(range(6), hist.astype(int)))}")
         print(f"Localization error for correct detections: {avg_distances:.3f} +/- {distances_std:.3f}")
 
 

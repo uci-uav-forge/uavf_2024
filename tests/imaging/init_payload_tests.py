@@ -1,6 +1,6 @@
 import unittest
 from uavf_2024.imaging.utils import sort_payload
-from uavf_2024.imaging.imaging_types import TargetDescription
+from uavf_2024.imaging.imaging_types import ProbabilisticTargetDescriptor
 import numpy as np
 
 class TestCameraCalibration(unittest.TestCase):
@@ -9,19 +9,19 @@ class TestCameraCalibration(unittest.TestCase):
         np.random.seed(42)
 
         test_search_list = [
-                TargetDescription(
+                ProbabilisticTargetDescriptor(
                     np.eye(9)[1],
                     np.eye(36)[2],
                     np.eye(8)[3],
                     np.eye(8)[4],
                 ),
-                TargetDescription(
+                ProbabilisticTargetDescriptor(
                     np.eye(9)[8],
                     np.eye(36)[7],
                     np.eye(8)[6],
                     np.eye(8)[5],
                 ),
-                TargetDescription(
+                ProbabilisticTargetDescriptor(
                     np.eye(9)[4],
                     np.eye(36)[3],
                     np.eye(8)[2],
@@ -42,12 +42,12 @@ class TestCameraCalibration(unittest.TestCase):
         '''Checks if the algorithm will first select target_1 with a higher color confidence score over target_2.
         '''
         np.random.seed(42)
-        target_1 = TargetDescription(
+        target_1 = ProbabilisticTargetDescriptor(
                     np.eye(9)[1],
                     np.eye(36)[2],
                     np.eye(8)[5],
                     np.eye(8)[6])
-        target_2 = TargetDescription(
+        target_2 = ProbabilisticTargetDescriptor(
                     np.eye(9)[8],
                     np.eye(36)[7],
                     np.eye(8)[0],
