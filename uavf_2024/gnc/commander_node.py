@@ -11,6 +11,8 @@ from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_l
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
+from pymavlink import mavutil
+import threading
 
 class CommanderNode(rclpy.node.Node):
     '''
@@ -19,6 +21,13 @@ class CommanderNode(rclpy.node.Node):
 
     def __init__(self, args):
         super().__init__('uavf_commander_node')
+        # Initialize the MAVLink connection
+        self.mavlink_connection = mavutil.mavlink_connection('udpin:localhost:14550')
+        
+        # Start a separate thread to listen for MAVLink messages to avoid blocking ROS2 operations
+        self.mavlink_thread = threading.Thread(target=self.listen_for_commands)
+        self.mavlink_thread.daemon = True  # This makes the thread exit when the main program exits
+        self.mavlink_thread.start()
 
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -81,6 +90,25 @@ class CommanderNode(rclpy.node.Node):
 
         self.turn_angle_limit = 170
     
+    def listen_for_commands(self):
+        while True:
+            msg = self.mavlink_connection.recv_match(type='COMMAND_LONG', blocking=True)
+            if msg is not None:
+                self.handle_message(msg)
+
+    def handle_message(self, msg):
+        if msg.command == mavutil.mavlink.MAV_CMD_USER_1:
+            print("Received MAV_CMD_USER_1")
+
+            # Process the command as needed.
+            # Respond to the command
+            self.send_response_message()
+
+    def send_response_message(self):
+        text = "Custom command from GCS received by drone."
+        self.mavlink_connection.mav.statustext_send(mavutil.mavlink.MAV_SEVERITY_INFO, text.encode())
+
+
     def log(self, *args, **kwargs):
         print(*args, **kwargs)
     
