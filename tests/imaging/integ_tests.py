@@ -10,6 +10,7 @@ import numpy as np
 import shutil
 import cv2 as cv
 import random
+from tqdm import tqdm
 
 from scipy.spatial.transform import Rotation as R
 
@@ -90,7 +91,7 @@ class TestPipeline(unittest.TestCase):
             return int(file_name.split("_")[0][5:])
         
         img_files = filter(lambda f: f.endswith(".png"), os.listdir(images_dirname))
-        for file_name in sorted(img_files, key=sort_key):
+        for file_name in tqdm(sorted(img_files, key=sort_key)):
             img = Image.from_file(f"{images_dirname}/{file_name}")
             img_no = sort_key(file_name)
             pose_str = file_name.split(".")[0].split("_")[1:]
@@ -139,13 +140,13 @@ class TestPipeline(unittest.TestCase):
 
         POSITION_ERROR_ACCEPTABLE_BOUND = 5 
 
-        NUM_TARGET_SUBSETS = 100
+        NUM_TARGET_SUBSETS = 1000
 
         scores_across_subsets = []
         hist = np.zeros(6)
         distances_across_subsets = []
 
-        for i in range(NUM_TARGET_SUBSETS):
+        for i in tqdm(range(NUM_TARGET_SUBSETS)):
             ground_truth: list[Target3D] = random.sample(all_ground_truth, 5)
 
             closest_tracks = tracker.estimate_positions([t.descriptor.collapse_to_certain() for t in ground_truth])
