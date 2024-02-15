@@ -41,7 +41,7 @@ class ColorModel(nn.Module):
             nn.Softmax(dim=1),
         )
 
-    def forward(self, x):
+    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
         x = self.conv1(x)
         x = self.pool1(x)
         x = self.conv2(x)
@@ -74,13 +74,13 @@ class ColorClassifier:
         model.eval()
         return model
 
-    def predict(self, image: np.ndarray) -> (int, int):
+    def predict(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Returns probabilities for each color"""
         image_tensor = self.transform(image).unsqueeze(0)  # Add a batch dimension
         
         with torch.no_grad():
-            predicted_letter, predicted_shape = self.model(image_tensor)
+            predicted_letter, predicted_shape = self.model.forward(image_tensor)
 
         # _, predicted_shape = torch.max(predicted_shape, 1)
         # _, predicted_letter = torch.max(predicted_letter, 1)
-        return predicted_letter.squeeze().tolist(), predicted_shape.squeeze().tolist()
+        return predicted_letter.cpu()[0].numpy(), predicted_shape.cpu()[0].numpy()
