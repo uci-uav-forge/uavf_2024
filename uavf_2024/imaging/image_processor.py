@@ -2,13 +2,11 @@ from __future__ import annotations
 import numpy as np
 import os
 import cv2 as cv
-import time
 
 from .utils import batched
 from .imaging_types import HWC, FullBBoxPrediction, Image, InstanceSegmentationResult, ProbabilisticTargetDescriptor
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
-from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
 from . import profiler
 from memory_profiler import profile as mem_profile
@@ -117,17 +115,15 @@ class ImageProcessor:
 
                 # Color segmentations
                 shape_conf = shape_res.confidences
-                letter_img = cv.resize(shape_res.img.get_array().astype(np.float32), (128,128))
-                letter_imgs.append(letter_img)
                 img_black_bg = shape_res.img * shape_res.mask
-                color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
+                letter_img = cv.resize(img_black_bg.get_array().astype(np.float32), (128,128))
+                letter_imgs.append(letter_img)
 
                 if self.debug_path is not None:
                     instance_debug_path = f"{local_debug_path}/det_{shape_res.id}"
                     os.makedirs(instance_debug_path, exist_ok=True)
                     cv.imwrite(f"{instance_debug_path}/input.png", shape_res.img.get_array())
                     cv.imwrite(f"{instance_debug_path}/black_bg.png", img_black_bg.get_array())
-                    cv.imwrite(f"{instance_debug_path}/color_seg.png", color_seg_result.mask*127)
                 # Classify the colors
                 letter_color_conf, shape_color_conf = self.color_classifier.predict(letter_img)
                 # add to total_results
