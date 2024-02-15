@@ -137,11 +137,12 @@ class TestPipeline(unittest.TestCase):
         tracker.update(predictions_3d)
 
 
-        POSITION_ERROR_ACCEPTABLE_BOUND = 5
+        POSITION_ERROR_ACCEPTABLE_BOUND = 5 
 
         NUM_TARGET_SUBSETS = 100
 
         scores_across_subsets = []
+        hist = np.zeros(6)
         distances_across_subsets = []
 
         for i in range(NUM_TARGET_SUBSETS):
@@ -181,12 +182,14 @@ class TestPipeline(unittest.TestCase):
             if i==0: 
                 print(f"Imaging Sim Score: {np.sum(scores)}/{len(scores)}") 
             scores_across_subsets.append(np.sum(scores))
+            hist[np.sum(scores)] += 1
             distances_across_subsets.extend(distances)
         
         avg_score = np.mean(scores_across_subsets)
         avg_distances = np.mean(distances_across_subsets)
         distances_std = np.std(distances_across_subsets)
         print(f"Imaging Sim Average Score: {avg_score}/{len(scores)}")
+        print(f"Distribution of scores: {dict(zip(range(6), hist.astype(int)))}")
         print(f"Localization error for correct detections: {avg_distances:.3f} +/- {distances_std:.3f}")
 
 
