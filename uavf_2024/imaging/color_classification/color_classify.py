@@ -53,14 +53,6 @@ class ColorModel(nn.Module):
 
         return letter_output, shape_output
 
-
-class NumpyToTensor:
-    def __init__(self):
-        pass
-
-    def __call__(self, img):
-        return torch.from_numpy(img.transpose((2, 0, 1))).float()
-
 class ColorClassifier:
     def __init__(self):
         model_path = CURRENT_FILE_PATH + "/trained_model.pth"
