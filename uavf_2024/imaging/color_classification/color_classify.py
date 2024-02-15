@@ -6,7 +6,7 @@ import torch.nn as nn
 from PIL import Image
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-COLORS_TO_RGB = {
+COLOR_INDICES = {
     "red": 0,
     "orange": 1,
     "green": 2,
