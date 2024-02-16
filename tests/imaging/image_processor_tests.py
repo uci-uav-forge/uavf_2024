@@ -159,6 +159,9 @@ def generate_confusion_matrices(true_values: list[list[FullBBoxPrediction]], pre
         [shape_confusion, letter_confusion, shape_col_confusion, letter_col_confusion],
         [SHAPES, LETTERS, COLORS, COLORS]
     ):
+        for i in range(len(index)):
+            if np.argmax(confusion_matrix[i]) != i:
+                print(f"WARNING: {name} confusion matrix is not diagonal dominant (potential label mismatch)")
         conf_matrix_df = pd.DataFrame(confusion_matrix, index=list(index), columns=list(index))
         conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics/{name}_confusion_matrix.csv")
 
