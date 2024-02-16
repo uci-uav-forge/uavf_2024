@@ -160,7 +160,7 @@ def generate_confusion_matrices(true_values: list[list[FullBBoxPrediction]], pre
         [SHAPES, LETTERS, COLORS, COLORS]
     ):
         for i in range(len(index)):
-            if np.argmax(confusion_matrix[i]) != i:
+            if confusion_matrix[i,i] < max(confusion_matrix[i]):
                 print(f"WARNING: {name} confusion matrix is not diagonal dominant (potential label mismatch)")
                 break
         conf_matrix_df = pd.DataFrame(confusion_matrix, index=list(index), columns=list(index))
