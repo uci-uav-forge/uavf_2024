@@ -18,8 +18,8 @@ import cv2 #for debugging purposes
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction], debug_img = None):
-    #debug_img should be receiving the image np array, img.get_array(), and visuals are provided of the bounding box
+def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction], debug_img = np.ndarray):
+    '''debug_img should be receiving the image np array, img.get_array(), and visuals are provided of the bounding box'''
     true_positives = 0 # how many predictions were on top of a ground-truth box
     targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
     shape_top_1_accuracies = []
@@ -28,15 +28,15 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     shape_color_top_1_accuracies = []
     letter_color_top_1_accuracies = []
 
-    # letter_dict is from the letter model's raw_output[0].names
-    # it is basically 0-35 in alphabetical order and maps the predicton results from the model to 
-    # the new letter labels indicies
+    ''' letter_dict is from the letter model's raw_output[0].names
+        it is basically 0-35 in alphabetical order and maps the predicton results from the model to 
+        the new letter labels indicies '''
     letter_dict = {0: '0', 1: '1', 10: '2', 11: '3', 12: '4', 13: '5', 14: '6', 15: '7', 16: '8', 17: '9', 18: '10', 19: '11', 2: '12', 20: '13', 21: '14', 22: '15', 23: '16', 24: '17', 25: '18', 26: '19', 27: '20', 28: '21', 29: '22', 3: '23', 30: '24', 31: '25', 32: '26', 33: '27', 34: '28', 35: '29', 4: '30', 5: '31', 6: '32', 7: '33', 8: '34', 9: '35'}
-    # old truth letter labels = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    # new letter labels = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
-    # old to new:
-    #   A - Z (0-25): + 10
-    #   1 - 9 (26-34): -25
+    ''' old truth letter labels = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        new letter labels = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
+        old to new:
+        A - Z (0-25): + 10
+        1 - 9 (26-34): -25 '''
 
 
     
@@ -51,7 +51,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         shape_col = np.argmax(truth.description.shape_col_probs)
         letter_col = np.argmax(truth.description.letter_col_probs)
         
-        if debug_img:
+        if debug_img is not None:
             x, y, x1, y1 = true_box.flatten()
             color = (255, 0, 0) 
             thickness = 2
@@ -63,14 +63,14 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
             ]])
 
-            if debug_img:
+            if debug_img is not None:
                 x, y, x1, y1 = pred_box.flatten()
                 color = (0, 255, 0)  
                 thickness = 2
                 cv2.rectangle(debug_img, (x, y), (x1, y1), color, thickness)  
 
             iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
-            if iou>0.1:
+            if iou>0.5:
                 true_positives+=1
                 this_target_was_detected = True
                 shape_top_1_accuracies.append(int(shape == np.argmax(pred.description.shape_probs)))
@@ -86,7 +86,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         if this_target_was_detected:
             targets_detected+=1
 
-    if debug_img:
+    if debug_img is not None:
         cv2.imshow("truth and prediction bounding boxes", debug_img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -122,9 +122,6 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
         img = Image.from_file(f"{imgs_path}/{img_file_name}")
         ground_truth: list[FullPrediction] = []
 
-        img_debug = img.get_array()
-        #print(img_debug)
-
         with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
             for line in f.readlines():
                 label = line.split(' ')
@@ -155,15 +152,15 @@ def generate_letter_confusion_matrix( unit_test_letter_truth, unit_test_letter_p
     letter_labels = list(LETTERS)
     letter_truth = []
     letter_pred = []
-    #parse over each image from the unit test data
+    '''parse over each image from the unit test data'''
     for img_truth, img_pred in zip(unit_test_letter_truth, unit_test_letter_pred):
-        #parse over each truth object within the image 
+        '''parse over each truth object within the image '''
         for truth_val in img_truth:
             letter_truth.append(np.argmax(truth_val.description.letter_probs))
             x,y = truth_val.x, truth_val.y
             w,h = truth_val.width, truth_val.height 
             true_box = np.array([[x,y,x+w,y+h]])
-            #compare each truth to every possible predition
+            '''compare each truth to every possible prediction '''
             for pred in img_pred:
                 pred_box = np.array([[
                 pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
@@ -223,7 +220,7 @@ class TestImagingFrontend(unittest.TestCase):
         letter_top5s = []
         shape_color_top1s = []
         letter_color_top1s = []
-        #Storing the predictions from pipeline for the confusion matrix evaluation
+        '''Storing the predictions from pipeline for the confusion matrix evaluation '''
         if debug_letter_confusion:
             prediction_list = []
 
@@ -239,7 +236,7 @@ class TestImagingFrontend(unittest.TestCase):
                 letter_top5,
                 shape_color_top1,
                 letter_color_top1
-            ) = calc_metrics(predictions, ground_truth) 
+            ) = calc_metrics(predictions, ground_truth, debug_img= None) 
             
             for metric, aggregate in zip(
                 [recall, precision, shape_top1, letter_top1, letter_top5, shape_color_top1, letter_color_top1],
@@ -247,7 +244,6 @@ class TestImagingFrontend(unittest.TestCase):
             ):
                 if not metric is None:
                     aggregate.append(metric)
-             #for debugging purposes <- just test over one image 
 
         if debug_letter_confusion:
             generate_letter_confusion_matrix(unit_test_letter_pred= prediction_list, unit_test_letter_truth= labels)
