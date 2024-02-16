@@ -3,19 +3,9 @@ import torch
 from torchvision import transforms
 import os
 import torch.nn as nn
-from PIL import Image
-CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
+from uavf_2024.imaging.imaging_types import COLOR_INDICES
 
-COLOR_INDICES = {
-    "red": 0,
-    "orange": 1,
-    "green": 2,
-    "blue": 3,
-    "purple": 4,
-    "white": 5,
-    "black": 6,
-    "brown": 7,
-}
+CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 class ColorModel(nn.Module):
