@@ -59,10 +59,14 @@ class ColorClassifier:
     def predict(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Returns probabilities for each color"""
         image_tensor = self.transform(image).unsqueeze(0)  # Add a batch dimension
+
+
         
         with torch.no_grad():
             predicted_letter, predicted_shape = self.model.forward(image_tensor)
+        letter_probs, shape_probs = predicted_letter.cpu()[0].numpy(), predicted_shape[0].cpu().numpy()
 
-        # _, predicted_shape = torch.max(predicted_shape, 1)
-        # _, predicted_letter = torch.max(predicted_letter, 1)
-        return predicted_letter.cpu()[0].numpy(), predicted_shape.cpu()[0].numpy()
+        # janky label swap b/c this increases the accuracy
+        shape_probs[0], shape_probs[2] = shape_probs[2], shape_probs[0]         
+        
+        return letter_probs, shape_probs
