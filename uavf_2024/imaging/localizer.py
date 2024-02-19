@@ -1,8 +1,7 @@
 from __future__ import annotations
-from .imaging_types import FullPrediction, Target3D, TargetDescription
+from .imaging_types import FullBBoxPrediction, Target3D
 import numpy as np
-from typing import Callable, Any
-
+from scipy.spatial.transform import Rotation
 
 class Localizer:
     def __init__(self, 
@@ -16,12 +15,13 @@ class Localizer:
         self.camera_hfov = camera_hfov
         self.camera_resolution = camera_resolution
 
-    def prediction_to_coords(self, pred: FullPrediction, camera_pose: np.ndarray) -> Target3D:
+    def prediction_to_coords(self, pred: FullBBoxPrediction, camera_pose: tuple[np.ndarray, Rotation]) -> Target3D:
         '''
-            the pose is [x,y,z, altitude, azimuth, roll] in degrees, where the camera at (0,0,0) is
-            pointed at the negative z axis, positive x axis is the right side of the camera and positive 
-            y axis goes up from the camera. The rotations are applied relative to local frame in this order: 
-            azimuth then altitude then roll.
+            `camera_pose` is [x,y,z, qx, qy, qz, qw]
+
+            currently, the code assumes that for quaternion [0,0,0,1],
+            the camera is pointed at the negative z axis,
+            with positive x to the right of the image, and positive y up from the image
         '''
 
 
@@ -29,30 +29,32 @@ class Localizer:
         w,h = self.camera_resolution
         focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
 
-        rot_alt, rot_az, rot_roll = np.deg2rad(camera_pose[3:])
-        camera_position = camera_pose[:3]
-
-        rot_alt_mat = np.array([[1,0,0],
-                                [0,np.cos(rot_alt),-np.sin(rot_alt)],
-                                [0,np.sin(rot_alt),np.cos(rot_alt)]])
-    
-        rot_az_mat = np.array([[np.cos(rot_az),0,np.sin(rot_az)],
-                                [0,1,0],
-                                [-np.sin(rot_az),0,np.cos(rot_az)]])
-        
-        rot_roll_mat = np.array([[np.cos(rot_roll),-np.sin(rot_roll),0],
-                                [np.sin(rot_roll),np.cos(rot_roll),0],
-                                [0,0,1]])
-
+        camera_position, rot_transform = camera_pose
         # the vector pointing out the camera at the target, if the camera was facing positive Z
-        initial_direction_vector = np.array([x-w//2,h//2-y,-focal_len])
+        initial_direction_vector = np.array([x-w/2,h/2-y,-focal_len])
 
         # rotate the vector to match the camera's rotation
-        rotated_vector = rot_az_mat @ rot_alt_mat @ rot_roll_mat @ initial_direction_vector
+        rotated_vector = rot_transform.as_matrix() @ initial_direction_vector
 
         # solve camera_pose + t*rotated_vector = [x,0,z] = target_position
         t = -camera_position[1]/rotated_vector[1]
         target_position = camera_position + t*rotated_vector
         assert abs(target_position[1])<1e-3
 
-        return Target3D(target_position, pred.description, id=f"img_{pred.img_id}/det_{pred.det_id}")
+        return Target3D(target_position, pred.descriptor, id=f"img_{pred.img_id}/det_{pred.det_id}")
+        
+    def coords_to_2d(self, coords: tuple[float,float,float], camera_pose: tuple[np.ndarray, Rotation]) -> tuple[int, int]:
+        cam_position, rot_transform = camera_pose[:3]
+
+        relative_coords = coords - cam_position 
+
+        # apply inverse rotation
+        rotated_vector = rot_transform.inv().as_matrix() @ relative_coords
+
+        w,h = self.camera_resolution
+        focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
+
+        # divide by the z component to get the 2d position
+        x = -rotated_vector[0]*focal_len/rotated_vector[2] + w/2
+        y = h/2 + rotated_vector[1]*focal_len/rotated_vector[2]
+        return (x,y)
