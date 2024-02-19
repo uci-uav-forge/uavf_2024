@@ -1,4 +1,5 @@
 from uavf_2024.gnc.payload import Payload
+from uavf_2024.imaging import ProbabilisticTargetDescriptor
 from geographiclib.geodesic import Geodesic
 import numpy as np
 

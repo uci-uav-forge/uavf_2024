@@ -1,6 +1,6 @@
 import unittest
 from uavf_2024.imaging.localizer import Localizer
-from uavf_2024.imaging.imaging_types import FullPrediction
+from uavf_2024.imaging.imaging_types import FullBBoxPrediction
 import numpy as np
 
 from scipy.spatial.transform import Rotation as R
@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation as R
 def test_localization(w,h, hfov, camera_pose, pos_2d, actual_position):
     localizer = Localizer(hfov, (w,h))
     x,y = pos_2d
-    pred = FullPrediction(
+    pred = FullBBoxPrediction(
         x,y,None,None,None
     )
     pred_position = localizer.prediction_to_coords(pred, camera_pose).position
