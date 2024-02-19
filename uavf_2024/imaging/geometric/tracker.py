@@ -1,6 +1,6 @@
 from __future__ import annotations
-from .imaging_types import Target3D, TargetDescription
-from .utils import calc_match_score
+from ..imaging_types import Target3D, TargetDescription
+from ..utils import calc_match_score
 import numpy as np
 
 class Track:

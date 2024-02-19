@@ -1,8 +1,5 @@
 import unittest
-from uavf_2024.imaging.localizer import Localizer
-from uavf_2024.imaging.area_coverage import AreaCoverageTracker
-from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.tracker import TargetTracker
+from uavf_2024.imaging import Localizer, AreaCoverageTracker, ImageProcessor, TargetTracker
 from uavf_2024.imaging.imaging_types import FullPrediction, Image, TargetDescription, Target3D, COLORS, SHAPES, LETTERS
 from uavf_2024.imaging.utils import calc_match_score
 import os

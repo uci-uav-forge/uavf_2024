@@ -1,4 +1,4 @@
-from uavf_2024.imaging.tracker import TargetTracker
+from uavf_2024.imaging.geometric.tracker import TargetTracker
 from uavf_2024.imaging.imaging_types import Target3D, TargetDescription
 import numpy as np
 import unittest

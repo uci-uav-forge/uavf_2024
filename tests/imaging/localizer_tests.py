@@ -1,5 +1,5 @@
 import unittest
-from uavf_2024.imaging.localizer import Localizer
+from uavf_2024.imaging import Localizer
 from uavf_2024.imaging.imaging_types import FullPrediction
 import numpy as np
 

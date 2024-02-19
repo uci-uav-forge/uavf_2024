@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .imaging_types import FullPrediction, Target3D
+from ..imaging_types import FullPrediction, Target3D
 import numpy as np
 from scipy.spatial.transform import Rotation
 
