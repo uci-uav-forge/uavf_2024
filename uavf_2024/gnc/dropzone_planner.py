@@ -1,5 +1,4 @@
-from typing import List, Tuple
-from uavf_2024.gnc.util import convert_local_m_to_delta_gps
+from uavf_2024.gnc.commander_node import CommanderNode
 import numpy as np
 import math
 altitude = 20.0
@@ -9,7 +8,7 @@ class DropzonePlanner:
     Handles all logic related to controlling drone motion during the payload drop.
     '''
 
-    def __init__(self, commander, image_width_m: float, image_height_m: float):
+    def __init__(self, commander: CommanderNode, image_width_m: float, image_height_m: float):
         self.commander = commander
         self.image_width_m = image_width_m
         self.image_height_m = image_height_m

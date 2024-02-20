@@ -25,8 +25,6 @@ Ask QGC to takeoff using the UI.
 
 Launch MAVROS. (It converts ROS messages sent to it into commands sent to the flight control software.)
 
-On this iteration of the SITL you might notice that it complains just a little bit about some ROS stuff. The important stuff works; we can probably ignore it!
-
 ```
 ros2 launch mavros px4.launch fcu_url:=udp://:14540@
 ```

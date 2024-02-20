@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .imaging_types import FullPrediction, Target3D
+from .imaging_types import FullBBoxPrediction, Target3D
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -15,7 +15,7 @@ class Localizer:
         self.camera_hfov = camera_hfov
         self.camera_resolution = camera_resolution
 
-    def prediction_to_coords(self, pred: FullPrediction, camera_pose: tuple[np.ndarray, Rotation]) -> Target3D:
+    def prediction_to_coords(self, pred: FullBBoxPrediction, camera_pose: tuple[np.ndarray, Rotation]) -> Target3D:
         '''
             `camera_pose` is [x,y,z, qx, qy, qz, qw]
 
@@ -41,7 +41,7 @@ class Localizer:
         target_position = camera_position + t*rotated_vector
         assert abs(target_position[1])<1e-3
 
-        return Target3D(target_position, pred.description, id=f"img_{pred.img_id}/det_{pred.det_id}")
+        return Target3D(target_position, pred.descriptor, id=f"img_{pred.img_id}/det_{pred.det_id}")
         
     def coords_to_2d(self, coords: tuple[float,float,float], camera_pose: tuple[np.ndarray, Rotation]) -> tuple[int, int]:
         cam_position, rot_transform = camera_pose[:3]
