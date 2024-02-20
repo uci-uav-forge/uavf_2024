@@ -128,7 +128,7 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints")
 
         
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, self.last_global_pos.altitude)] +  waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, 20.0)] +  waypoints
         yaws = [float('NaN')] + yaws
         self.log(waypoints, yaws)
         
@@ -221,4 +221,4 @@ class CommanderNode(rclpy.node.Node):
             self.dropzone_planner.conduct_air_drop()
 
             # Fly back to home position
-            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude)])
+            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude, self.home_global_pos.altitude)])

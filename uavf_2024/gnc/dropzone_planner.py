@@ -1,4 +1,4 @@
-from uavf_2024.gnc.commander_node import CommanderNode
+#from uavf_2024.gnc.commander_node import CommanderNode
 import numpy as np
 import math
 altitude = 20.0
@@ -8,7 +8,7 @@ class DropzonePlanner:
     Handles all logic related to controlling drone motion during the payload drop.
     '''
 
-    def __init__(self, commander: CommanderNode, image_width_m: float, image_height_m: float):
+    def __init__(self, commander, image_width_m: float, image_height_m: float):
         self.commander = commander
         self.image_width_m = image_width_m
         self.image_height_m = image_height_m
@@ -101,7 +101,7 @@ class DropzonePlanner:
             self.has_scanned_dropzone = True
         
         best_match = max(self.detections, key = self.match_score)
-        self.commander.execute_waypoints([self.commander.local_to_gps((best_match.x, best_match.y),np.array([altitude]))])
+        self.commander.execute_waypoints([np.concatenate([self.commander.local_to_gps((best_match.x, best_match.y),np.array([altitude]))])])
         self.commander.release_payload()
         self.commander.payloads[self.current_payload_index].display()
         self.current_payload_index += 1
