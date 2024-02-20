@@ -84,7 +84,7 @@ class DropzonePlanner:
         dropzone_plan = self.gen_dropzone_plan()
         self.commander.log("Planned waypoints", [self.commander.local_to_gps(wp) for wp, _ in dropzone_plan])
         self.commander.call_imaging_at_wps = True
-        self.commander.execute_waypoints([np.concatenate(self.commander.local_to_gps(wp),altitude) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
+        self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp),np.array([altitude]))) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
         self.commander.call_imaging_at_wps = False
         self.detections = self.commander.gather_imaging_detections()
 
@@ -102,7 +102,7 @@ class DropzonePlanner:
             self.has_scanned_dropzone = True
         
         best_match = max(self.detections, key = self.match_score)
-        self.commander.execute_waypoints([self.commander.local_to_gps((best_match.x, best_match.y))])
+        self.commander.execute_waypoints([self.commander.local_to_gps((best_match.x, best_match.y),np.array([altitude]))])
         self.commander.release_payload()
         self.commander.payloads[self.current_payload_index].display()
         self.current_payload_index += 1
