@@ -140,58 +140,42 @@ class TestPipeline(unittest.TestCase):
 
         POSITION_ERROR_ACCEPTABLE_BOUND = 5 
 
-        NUM_TARGET_SUBSETS = 1000
+        ground_truth: list[Target3D] = all_ground_truth
 
-        scores_across_subsets = []
-        hist = np.zeros(6)
-        distances_across_subsets = []
+        closest_tracks = tracker.estimate_positions([t.descriptor.collapse_to_certain() for t in ground_truth])
+        scores = []
+        distances = []
+        for gt_target, pred_track in zip(ground_truth, closest_tracks):
+            is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND
+            scores.append(int(is_close_enough))
+            if is_close_enough:
+                distances.append(np.linalg.norm(pred_track.position-gt_target.position))
+            if verbose: # we only want to print this extra info for the first one to not clog up the output
+                print(f"Closest Match for {str(gt_target.descriptor.collapse_to_certain())}:")
+                physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
+                closest_match = max(predictions_3d, key=lambda pred: calc_match_score(pred.descriptor, gt_target.descriptor))
 
-        for i in tqdm(range(NUM_TARGET_SUBSETS)):
-            ground_truth: list[Target3D] = random.sample(all_ground_truth, 5)
+                print(f"\tTrack distance: {np.linalg.norm(pred_track.position-gt_target.position):.3f}")
+                print(f"\tDetections used in track:")
+                print(f"\t\t{[detection.id for detection in pred_track.get_measurements()]}") 
 
-            closest_tracks = tracker.estimate_positions([t.descriptor.collapse_to_certain() for t in ground_truth])
-            scores = []
-            distances = []
-            for gt_target, pred_track in zip(ground_truth, closest_tracks):
-                is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND
-                scores.append(int(is_close_enough))
-                if is_close_enough:
-                    distances.append(np.linalg.norm(pred_track.position-gt_target.position))
-                if i==0 and verbose: # we only want to print this extra info for the first one to not clog up the output
-                    print(f"Closest Match for {str(gt_target.descriptor.collapse_to_certain())}:")
-                    physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
-                    closest_match = max(predictions_3d, key=lambda pred: calc_match_score(pred.descriptor, gt_target.descriptor))
+                print(f"\tClose tracks (each line is one track):")
+                for track in tracker.tracks:
+                    if np.linalg.norm(track.position - gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND:
+                        print(f"\t\t{[detection.id for detection in track.get_measurements()]}")
 
-                    print(f"\tTrack distance: {np.linalg.norm(pred_track.position-gt_target.position):.3f}")
-                    print(f"\tDetections used in track:")
-                    print(f"\t\t{[detection.id for detection in pred_track.get_measurements()]}") 
-
-                    print(f"\tClose tracks (each line is one track):")
-                    for track in tracker.tracks:
-                        if np.linalg.norm(track.position - gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND:
-                            print(f"\t\t{[detection.id for detection in track.get_measurements()]}")
-
-                    print(f"\tClose detections:")
-                    print(f"\t\t{[p.id for p in filter(lambda pred: np.linalg.norm(pred.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND, predictions_3d)]}")
-                    print(f"\tPhysically closest detection distance: {np.linalg.norm(physically_closest_match.position-gt_target.position):.3f}")
-                    print(f"\tPhysically closest detection descriptor score: {calc_match_score(physically_closest_match.descriptor, gt_target.descriptor)}")
-                    print(f"\tPhysically closest detection id: {physically_closest_match.id}")
-                    print(f"\tHighest descriptor match score: {calc_match_score(closest_match.descriptor, gt_target.descriptor)}")
-                    print(f"\tHighest descriptor match id: {closest_match.id}")
-                    print(f"\tHigh descriptor match distance: {np.linalg.norm(closest_match.position-gt_target.position):.3f}")
-                    print(f"\tClose enough? {is_close_enough}")
-            if i==0: 
-                print(f"Imaging Sim Score: {np.sum(scores)}/{len(scores)}") 
-            scores_across_subsets.append(np.sum(scores))
-            hist[np.sum(scores)] += 1
-            distances_across_subsets.extend(distances)
+                print(f"\tClose detections:")
+                print(f"\t\t{[p.id for p in filter(lambda pred: np.linalg.norm(pred.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND, predictions_3d)]}")
+                print(f"\tPhysically closest detection distance: {np.linalg.norm(physically_closest_match.position-gt_target.position):.3f}")
+                print(f"\tPhysically closest detection descriptor score: {calc_match_score(physically_closest_match.descriptor, gt_target.descriptor)}")
+                print(f"\tPhysically closest detection id: {physically_closest_match.id}")
+                print(f"\tHighest descriptor match score: {calc_match_score(closest_match.descriptor, gt_target.descriptor)}")
+                print(f"\tHighest descriptor match id: {closest_match.id}")
+                print(f"\tHigh descriptor match distance: {np.linalg.norm(closest_match.position-gt_target.position):.3f}")
+                print(f"\tClose enough? {is_close_enough}")
+        print(f"Imaging Sim Score: {np.sum(scores)}/{len(scores)}") 
+        print(f"Average distance of close matches: {np.mean(distances):.3f}")
         
-        avg_score = np.mean(scores_across_subsets)
-        avg_distances = np.mean(distances_across_subsets)
-        distances_std = np.std(distances_across_subsets)
-        print(f"Imaging Sim Average Score: {avg_score}/{len(scores)}")
-        print(f"Distribution of scores: {dict(zip(range(6), hist.astype(int)))}")
-        print(f"Localization error for correct detections: {avg_distances:.3f} +/- {distances_std:.3f}")
 
 
 if __name__ == "__main__":
