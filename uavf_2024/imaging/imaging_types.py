@@ -121,7 +121,6 @@ class InstanceSegmentationResult:
     mask: np.ndarray
     img: 'Image'
     id : int
-    cnf_matrix_preds: list[float]
 
 @dataclass
 class Target3D:

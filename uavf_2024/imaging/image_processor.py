@@ -114,7 +114,7 @@ class ImageProcessor:
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
 
-                print(f"{shape_res.confidences}, {shape_res.cnf_matrix_preds}")
+
                 # Color segmentations
                 shape_conf = shape_res.confidences
                 letter_img = cv.resize(shape_res.img.get_array().astype(np.float32), (128,128))
