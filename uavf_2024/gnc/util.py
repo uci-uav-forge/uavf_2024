@@ -1,6 +1,7 @@
 from uavf_2024.gnc.payload import Payload
 from uavf_2024.imaging import ProbabilisticTargetDescriptor
 from geographiclib.geodesic import Geodesic
+from shapely.geometry import Point, Polygon
 import numpy as np
 
 def read_gps(fname):
@@ -10,6 +11,12 @@ def read_gps(fname):
 def read_payload_list(fname):
     with open(fname) as f:
         return [Payload(line.split(',')) for line in f]
+
+def is_inside_bounds_local(bounds, pt):
+    p = Point(pt[0], pt[1])
+    boundary = Polygon(bounds)
+
+    return p.within(boundary)
 
 def convert_delta_gps_to_local_m(gp1, gp2):
     geod = Geodesic.WGS84

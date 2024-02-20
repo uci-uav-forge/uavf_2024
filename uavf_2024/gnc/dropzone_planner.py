@@ -1,4 +1,5 @@
 from uavf_2024.gnc.commander_node import CommanderNode
+from uavf_2024.gnc.util import is_inside_bounds
 import numpy as np
 import math
 
@@ -88,6 +89,27 @@ class DropzonePlanner:
 
         self.commander.log("Imaging detections", self.detections)
 
+    def generate_wps_to_target(self, target_x, target_y):
+        current_x, current_y = self.commander.cur_pose.pose.position.x, self.commander.cur_pose.pose.position.y
+        x_diff, y_diff = current_x - target_x, current_y - target_y
+        
+        divisor = abs(x_diff) / self.dist_btwn_img_wps
+        if abs(y_diff) > abs(x_diff):
+            divisor = abs(y_diff) / self.dist_btwn_img_wps
+        
+        x_diff = x_diff / divisor
+        y_diff = y_diff / divisor
+        
+        waypoints = [(target_x, target_y)]
+
+        new_wp = (target_x + x_diff, target_y + y_diff)
+        while (is_inside_bounds(self.commander.dropzone_bounds, new_wp)):
+            waypoints.append(new_wp)
+            new_wp = (new_wp[0] + x_diff, new_wp[1] + y_diff)
+
+        waypoints.reverse()
+        return waypoints
+
     def conduct_air_drop(self):
         '''
         Will be executed each time the drone completes a waypoint lap.
@@ -100,7 +122,10 @@ class DropzonePlanner:
             self.has_scanned_dropzone = True
         
         best_match = max(self.detections, key = self.match_score)
-        self.commander.execute_waypoints([self.commander.local_to_gps((best_match.x, best_match.y))])
+
+        next_wps = self.generate_wps_to_target(best_match.x, best_match.y)
+        self.commander.log("Opportunistic imaging waypoints:", next_wps)
+        self.commander.execute_waypoints([self.commander.local_to_gps(wp) for wp in next_wps])
         self.commander.release_payload()
         self.commander.payloads[self.current_payload_index].display()
         self.current_payload_index += 1
