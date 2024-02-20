@@ -153,7 +153,7 @@ def generate_letter_confusion_matrix(unit_test_letter_truth, unit_test_letter_pr
         letter_confusion_matrix[actual, predict]+= 1
 
     conf_matrix_df = pd.DataFrame(letter_confusion_matrix, index=letter_labels, columns=letter_labels)
-    conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/2024_test_data/visualizations/test_metrics/letter_confusion_matrix.csv")
+    conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/visualizations/test_metrics/letter_confusion_matrix.csv")
 
 class TestImagingFrontend(unittest.TestCase):
 
@@ -184,7 +184,7 @@ class TestImagingFrontend(unittest.TestCase):
     
     def test_metrics(self, debug_letter_confusion = False):
 
-        debug_output_folder = f"{CURRENT_FILE_PATH}/2024_test_data/visualizations/test_metrics"
+        debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/test_metrics"
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)

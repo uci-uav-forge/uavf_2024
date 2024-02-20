@@ -54,7 +54,7 @@ class TestPipeline(unittest.TestCase):
             RES
         )
         if verbose:
-            debug_output_folder = f"{CURRENT_FILE_PATH}/2024_test_data/visualizations/integ_test"
+            debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/integ_test"
             if os.path.exists(debug_output_folder):
                 shutil.rmtree(debug_output_folder)
         else:
