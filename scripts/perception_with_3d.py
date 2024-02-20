@@ -6,11 +6,12 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 import rclpy.node
 from scipy.spatial.transform import Rotation as R
 from typing import Callable
-from uavf_2024.imaging import Tracker, Localizer
+from uavf_2024.imaging import TargetTracker, Localizer
 from libuavf_2024.srv import TakePicture
+from libuavf_2024.msg import TargetDetection
 
 class BasicDrone(rclpy.node.Node):
-    def __init__(self, custom_pose_callback: Callable):
+    def __init__(self):
         super().__init__('uavf_basic_node')
 
         qos_profile = QoSProfile(
@@ -26,12 +27,13 @@ class BasicDrone(rclpy.node.Node):
             qos_profile)
 
         self.got_pose = False
-        self.custom_pose_callback = custom_pose_callback
 
         self.imaging_client = self.create_client(TakePicture, 'imaging_service')
         while not self.imaging_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Waiting for imaging service...')
         self.get_logger().info("Finished intializing imaging client")
+
+        self.tracker = 
 
     def got_pose_cb(self, pose: PoseStamped):
         self.cur_pose = pose
@@ -40,8 +42,8 @@ class BasicDrone(rclpy.node.Node):
         self.got_pose = True
         self.req = TakePicture.Request()
         res = self.send_request()
+        detections: TargetDetection = res.detections
         self.get_logger().info(str(res.detections))
-        self.custom_pose_callback(self.cur_position, self.cur_rot, self.log)
 
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)
@@ -49,9 +51,6 @@ class BasicDrone(rclpy.node.Node):
 if __name__ == "__main__":
     rclpy.init()
 
-    def my_pose_callback(position: Point, rotation: R, log_fn: Callable):
-        log_fn(str(position))
-        log_fn(str(rotation.as_rotvec()))
 
-    drone = BasicDrone(my_pose_callback)
+    drone = BasicDrone()
     rclpy.spin(drone)
