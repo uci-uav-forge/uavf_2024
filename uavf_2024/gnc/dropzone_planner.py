@@ -2,6 +2,7 @@ from typing import List, Tuple
 from uavf_2024.gnc.util import convert_local_m_to_delta_gps
 import numpy as np
 import math
+altitude = 20.0
 
 class DropzonePlanner:
     '''
@@ -83,7 +84,7 @@ class DropzonePlanner:
         dropzone_plan = self.gen_dropzone_plan()
         self.commander.log("Planned waypoints", [self.commander.local_to_gps(wp) for wp, _ in dropzone_plan])
         self.commander.call_imaging_at_wps = True
-        self.commander.execute_waypoints([self.commander.local_to_gps(wp) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
+        self.commander.execute_waypoints([np.concatenate(self.commander.local_to_gps(wp),altitude) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
         self.commander.call_imaging_at_wps = False
         self.detections = self.commander.gather_imaging_detections()
 

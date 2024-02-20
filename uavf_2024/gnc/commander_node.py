@@ -119,7 +119,7 @@ class CommanderNode(rclpy.node.Node):
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
-    def execute_waypoints(self, waypoints, yaws = None):
+    def execute_waypoints(self, waypoints, yaws = None, altitude = 0):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
@@ -128,7 +128,7 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints")
 
         
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude)] +  waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, altitude)] +  waypoints
         yaws = [float('NaN')] + yaws
         self.log(waypoints, yaws)
         
@@ -143,11 +143,12 @@ class CommanderNode(rclpy.node.Node):
                     param1 = 0.0,
                     param2 = 5.0,
                     param3 = 0.0,
+                    param4 = 0.0;
                     param4 = yaw,
 
                     x_lat = wp[0],
                     y_long = wp[1],
-                    z_alt = 20.0)
+                    z_alt = wp[2])
 
                 for wp,yaw in zip(waypoints, yaws)]
 
