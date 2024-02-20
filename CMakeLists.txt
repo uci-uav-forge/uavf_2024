@@ -41,6 +41,7 @@ set(msg_files
 )
 set(srv_files
   "srv/TakePicture.srv"
+  "srv/GetAttitude.srv"
 )
 
 rosidl_generate_interfaces(libuavf_2024
