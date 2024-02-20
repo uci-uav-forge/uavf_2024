@@ -54,7 +54,7 @@ class TestPipeline(unittest.TestCase):
             RES
         )
         if verbose:
-            debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/integ_test"
+            debug_output_folder = f"{CURRENT_FILE_PATH}/2024_test_data/visualizations/integ_test"
             if os.path.exists(debug_output_folder):
                 shutil.rmtree(debug_output_folder)
         else:
@@ -64,7 +64,7 @@ class TestPipeline(unittest.TestCase):
 
         tracker = TargetTracker()
 
-        DATASET_FOLDER = f'{CURRENT_FILE_PATH}/imaging_data/3d_dataset'
+        DATASET_FOLDER = f'{CURRENT_FILE_PATH}/2024_test_data/3d_dataset'
         
         all_ground_truth: list[Target3D] = []
         with open(f"{DATASET_FOLDER}/labels.txt", "r") as f:

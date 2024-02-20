@@ -1,5 +1,0 @@
-rectangle,Q,purple,orange -75,0,-20
-rectangle,M,red,blue 135,0,-30
-quartercircle,Q,white,purple 85,0,40
-semicircle,V,white,orange -100,0,-65
-cross,O,brown,red 65,0,-40
