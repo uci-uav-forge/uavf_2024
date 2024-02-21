@@ -29,7 +29,7 @@ def csv_to_np(csv_str: str, delim: str = ",", dtype: type = int):
         ]
     )
 
-def test_with_dataset(dataset_path: str, verbose: bool = False):
+def test_with_dataset(dataset_path: str, debug_folder_name: str = None):
     '''
     Runs the entire pipeline on the simulated dataset that includes multiple
     images annotated with the 3D position of the targets, and selects 100
@@ -52,8 +52,10 @@ def test_with_dataset(dataset_path: str, verbose: bool = False):
         FOV,
         RES
     )
+
+    verbose = debug_folder_name is not None
     if verbose:
-        debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/integ_test"
+        debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/integ_test/{debug_folder_name}"
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
     else:
@@ -63,13 +65,17 @@ def test_with_dataset(dataset_path: str, verbose: bool = False):
 
     tracker = TargetTracker()
 
-    DATASET_FOLDER = f'{CURRENT_FILE_PATH}/2024_test_data/{dataset_path}'
-    
     all_ground_truth: list[Target3D] = []
-    with open(f"{DATASET_FOLDER}/labels.txt", "r") as f:
+    with open(f"{dataset_path}/labels.txt", "r") as f:
         for line in f.readlines():
             label, location_str = line.split(" ")
-            shape_name, alphanumeric, shape_col, letter_col = label.split(",")
+            if len(label.split(",")) != 4:
+                shape_name = label 
+                alphanumeric = None
+                shape_col = None
+                letter_col = None
+            else:
+                shape_name, alphanumeric, shape_col, letter_col = label.split(",")
 
             all_ground_truth.append(
                 Target3D(
@@ -83,7 +89,7 @@ def test_with_dataset(dataset_path: str, verbose: bool = False):
                 )
             )
 
-    images_dirname = f"{DATASET_FOLDER}/images"
+    images_dirname = f"{dataset_path}/images"
     predictions_3d: list[Target3D] =  []
     # sort by image number (e.g. img_2 is before img_10 despite lexigraphical ordering)
     def sort_key(file_name: str):
@@ -177,12 +183,22 @@ def test_with_dataset(dataset_path: str, verbose: bool = False):
         
 class TestPipeline(unittest.TestCase):
     def test_with_sim_dataset(self, verbose: bool = False):
-        score, dist_avg, dist_std = test_with_dataset("3d_dataset", verbose)
+        data_path = f'{CURRENT_FILE_PATH}/2024_test_data/3d_datasets/0'
+        score, dist_avg, dist_std = test_with_dataset(data_path, 'integ_test')
         print(f"Imaging Sim Score: {score}/5") 
         print(f"Average distance of close matches: {dist_avg:.3f} +/- {dist_std:.3f}")
 
-    def 
-
 if __name__ == "__main__":
-    tests = TestPipeline()
-    tests.test_with_sim_dataset(verbose=True)
+    scores = []
+    dists = []
+    datasets_folder = f'{CURRENT_FILE_PATH}/2024_test_data/3d_datasets/'
+    for dataset_name in os.listdir(datasets_folder):
+        score, dist_avg, dist_std = test_with_dataset(f'{datasets_folder}/{dataset_name}', f'integ_test_{dataset_name}')
+        scores.append(score)
+        dists.append(dist_avg)
+    scores_hist = np.histogram(scores, bins=[0,1,2,3,4,5])
+    print(f"Imaging Avg Sim Score: {np.mean(scores)}/5")
+    print("Distribution of scores:")
+    for i in range(5):
+        print(f"{scores_hist[1][i]}: {scores_hist[0][i]}")
+    print(f"Average distance of close matches: {np.mean(dists):.3f} +/- {np.std(dists):.3f}")
