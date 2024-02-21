@@ -5,6 +5,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from uavf_2024.imaging import Localizer
 from uavf_2024.imaging.imaging_types import FullBBoxPrediction
+from scipy.spatial.transform import Rotation
 import shapely.geometry
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -137,7 +138,9 @@ class LookupTests(unittest.TestCase):
         with open(rot_file, 'r') as f:
             rot = csv_to_np(f.read(), dtype=float) 
 
-        transform = finder.find_image(img, np.concatenate([cam_position, rot]))
+        rot = Rotation(rot)
+
+        transform = finder.find_image(img, (cam_position, rot))
 
 if __name__ == "__main__":
     unittest.main()
