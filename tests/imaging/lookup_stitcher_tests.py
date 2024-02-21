@@ -4,7 +4,7 @@ import os
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from uavf_2024.imaging import Localizer
-from uavf_2024.imaging.imaging_types import FullPrediction
+from uavf_2024.imaging.imaging_types import FullBBoxPrediction
 import shapely.geometry
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -48,22 +48,22 @@ class ImageFinder:
         localizer = Localizer(CAM_FOV, CAM_RES)
 
         top_left = localizer.prediction_to_coords(
-            FullPrediction(0, 0, None, None, None),
+            FullBBoxPrediction(0, 0, None, None, None),
             cam_pose
         ).position
 
         top_right = localizer.prediction_to_coords(
-            FullPrediction(CAM_RES[0], 0, None, None, None),
+            FullBBoxPrediction(CAM_RES[0], 0, None, None, None),
             cam_pose
         ).position
 
         bottom_left = localizer.prediction_to_coords(
-            FullPrediction(0, CAM_RES[1], None, None, None),
+            FullBBoxPrediction(0, CAM_RES[1], None, None, None),
             cam_pose
         ).position
 
         bottom_right = localizer.prediction_to_coords(
-            FullPrediction(CAM_RES[0], CAM_RES[1], None, None, None),
+            FullBBoxPrediction(CAM_RES[0], CAM_RES[1], None, None, None),
             cam_pose
         ).position
         # create shapely polygon
