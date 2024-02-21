@@ -171,7 +171,7 @@ class TestImagingFrontend(unittest.TestCase):
         )
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/1080p.png")
         times = []
-        N_runs = 10
+        N_runs = 1000
         for i in tqdm(range(N_runs)):
             start = time()
             res = image_processor.process_image(sample_input)

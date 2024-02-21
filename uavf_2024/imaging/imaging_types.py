@@ -384,11 +384,14 @@ class Image(Generic[_UnderlyingImageT]):
         Yields:
             Generator[Tile, None, None]: Generator that yields each tile
         """
-    
-        img_height, img_width = self.height, self.width
 
+        img_height, img_width = self.height, self.width
+        if img_height < 1080:
+            tile_size = 640
+            
         if tile_size > img_width or tile_size > img_height:
-            raise ValueError("tile dimensions cannot be larger than origin dimensions")
+            print("ERRR")
+            raise ValueError(f"tile dimensions {tile_size} cannot be larger than origin dimensions ({img_width},{img_height})")
 
         # Number of tiles in each dimension
         x_count = np.uint8(np.ceil(
@@ -419,7 +422,9 @@ class Image(Generic[_UnderlyingImageT]):
             for horizontal_index in range(x_count):
                 # Converting back to int because its expected downstream
                 # All dimensions should be refactored to use unit16
-                yield self.make_tile(x, y, tile_size)
+                tile = self.make_tile(x, y, tile_size)
+                tile.img.resize((640,640))
+                yield tile
                 
                 if horizontal_index < (x_count-1):
                     next_horizontal_overlap = min_overlap + remaindersX[horizontal_index]
@@ -428,3 +433,5 @@ class Image(Generic[_UnderlyingImageT]):
             if vertical_index < (y_count-1):
                 next_vertical_overlap = min_overlap + remaindersY[vertical_index]
                 y += tile_size - next_vertical_overlap
+    def resize(self, new_shape: list[int]):
+        self._array = cv2.resize(self._array, new_shape, interpolation=cv2.INTER_AREA)
