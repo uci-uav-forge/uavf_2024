@@ -42,6 +42,14 @@ class Camera:
         # Returns (yaw_speed, pitch_speed, roll_speed)
         return self.cam.getAttitudeSpeed()
     
+    def getAttitude(self):
+        # Returns (yaw, pitch, roll)
+        return self.cam.getAttitude()
+    
+    def getAttitudeSpeed(self):
+        # Returns (yaw_speed, pitch_speed, roll_speed)
+        return self.cam.getAttitudeSpeed()
+    
     def disconnect(self):
         self.stream.disconnect()
         self.cam.disconnect()
