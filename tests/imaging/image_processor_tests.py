@@ -18,7 +18,8 @@ import cv2 #for debugging purposes
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction], debug_img = np.ndarray):
+def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction], 
+                 debug_img: np.ndarray, debug_path: str, debug_lab: int):
     '''debug_img should be receiving the image np array, img.get_array(), and visuals are provided of the bounding box'''
     true_positives = 0 # how many predictions were on top of a ground-truth box
     targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
@@ -28,15 +29,15 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     shape_color_top_1_accuracies = []
     letter_color_top_1_accuracies = []
 
-    ''' letter_dict is from the letter model's raw_output[0].names
-        it is basically 0-35 in alphabetical order and maps the predicton results from the model to 
-        the new letter labels indicies '''
+    #letter_dict is from the letter model's raw_output[0].names
+    #it is basically 0-35 in alphabetical order and maps the predicton results from the model to 
+    #the new letter labels indicies 
     letter_dict = {0: '0', 1: '1', 10: '2', 11: '3', 12: '4', 13: '5', 14: '6', 15: '7', 16: '8', 17: '9', 18: '10', 19: '11', 2: '12', 20: '13', 21: '14', 22: '15', 23: '16', 24: '17', 25: '18', 26: '19', 27: '20', 28: '21', 29: '22', 3: '23', 30: '24', 31: '25', 32: '26', 33: '27', 34: '28', 35: '29', 4: '30', 5: '31', 6: '32', 7: '33', 8: '34', 9: '35'}
-    ''' old truth letter labels = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        new letter labels = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
-        old to new:
-        A - Z (0-25): + 10
-        1 - 9 (26-34): -25 '''
+    #old truth letter labels = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    #new letter labels = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
+    #old to new:
+    # A - Z (0-25): + 10
+    #1 - 9 (26-34): -25 '''
 
 
     
@@ -53,9 +54,10 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         
         if debug_img is not None:
             x, y, x1, y1 = true_box.flatten()
-            color = (255, 0, 0) 
+            color = (0, 0, 255) 
             thickness = 2
             cv2.rectangle(debug_img, (x, y), (x1, y1), color, thickness) 
+            cv2.putText(debug_img, "truth", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
         this_target_was_detected = False
         for pred in predictions:
@@ -68,6 +70,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
                 color = (0, 255, 0)  
                 thickness = 2
                 cv2.rectangle(debug_img, (x, y), (x1, y1), color, thickness)  
+                cv2.putText(debug_img, "prediction", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
             iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
             if iou>0.5:
@@ -87,9 +90,9 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
             targets_detected+=1
 
     if debug_img is not None:
-        cv2.imshow("truth and prediction bounding boxes", debug_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+         local_debug_path = f"{debug_path}/img_{debug_lab}"
+         os.makedirs(local_debug_path, exist_ok=True)
+         cv2.imwrite(f"{local_debug_path}/bounding_boxes.png", debug_img)
 
     recall = targets_detected / len(ground_truth) if len(ground_truth)>0 else None
     precision = true_positives / len(predictions) if len(predictions)>0 else None
@@ -126,7 +129,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
             for line in f.readlines():
                 label = line.split(' ')
                 shape, letter, shape_col, letter_col = map(int, label[:4])
-                #the conversion from old letter to new letter is made                
+                '''the conversion from old letter to new letter is made '''               
                 letter = int(letter_dict[letter])
 
                 box = np.array([float(v) for v in label[4:]])
@@ -208,6 +211,8 @@ class TestImagingFrontend(unittest.TestCase):
     def test_metrics(self, debug_letter_confusion = False):
 
         debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
+        debug_folder_path = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_bounding_box"
+
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)
@@ -220,6 +225,7 @@ class TestImagingFrontend(unittest.TestCase):
         letter_top5s = []
         shape_color_top1s = []
         letter_color_top1s = []
+        img_counter = 0
         '''Storing the predictions from pipeline for the confusion matrix evaluation '''
         if debug_letter_confusion:
             prediction_list = []
@@ -236,14 +242,16 @@ class TestImagingFrontend(unittest.TestCase):
                 letter_top5,
                 shape_color_top1,
                 letter_color_top1
-            ) = calc_metrics(predictions, ground_truth, debug_img= None) 
-            
+            ) = calc_metrics(predictions, ground_truth, debug_img= None, debug_path= debug_folder_path, debug_lab = img_counter) 
+            img_counter += 1
+
             for metric, aggregate in zip(
                 [recall, precision, shape_top1, letter_top1, letter_top5, shape_color_top1, letter_color_top1],
                 [recalls, precisions, shape_top1s, letter_top1s, letter_top5s, shape_color_top1s, letter_color_top1s]
             ):
                 if not metric is None:
                     aggregate.append(metric)
+            
 
         if debug_letter_confusion:
             generate_letter_confusion_matrix(unit_test_letter_pred= prediction_list, unit_test_letter_truth= labels)
