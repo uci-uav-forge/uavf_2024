@@ -1,6 +1,9 @@
 # Instructions for testing using SITL
 
-## Launch SITL
+You might need to run the following:
+```
+git submodule init siyi_sdk && git submodule update siyi_sdk
+```
 
 ## Simple SITL
 
