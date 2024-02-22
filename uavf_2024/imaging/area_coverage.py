@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import cv2
+from scipy.spatial.transform import Rotation
 
 class AreaCoverageTracker:
     def __init__(self, camera_hfov: float, camera_resolution: tuple[int,int]):
@@ -15,7 +16,7 @@ class AreaCoverageTracker:
         self.frustrum_projections: list[np.ndarray] = []
         self.labels: list[str] = []
 
-    def update(self, camera_pose: np.ndarray, label: str = None):
+    def update(self, camera_pose: tuple[np.ndarray, Rotation], label: str = None):
         '''
             the pose is [x,y,z, altitude, azimuth, roll] in degrees, where the camera at (0,0,0) is
             pointed at the negative z axis, positive x axis is the right side of the camera and positive 
@@ -25,21 +26,7 @@ class AreaCoverageTracker:
         w,h = self.camera_resolution
         focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
 
-        rot_alt, rot_az, rot_roll = np.deg2rad(camera_pose[3:])
-        camera_position = camera_pose[:3]
-
-        rot_alt_mat = np.array([[1,0,0],
-                                [0,np.cos(rot_alt),-np.sin(rot_alt)],
-                                [0,np.sin(rot_alt),np.cos(rot_alt)]])
-    
-        rot_az_mat = np.array([[np.cos(rot_az),0,np.sin(rot_az)],
-                                [0,1,0],
-                                [-np.sin(rot_az),0,np.cos(rot_az)]])
-        
-        rot_roll_mat = np.array([[np.cos(rot_roll),-np.sin(rot_roll),0],
-                                [np.sin(rot_roll),np.cos(rot_roll),0],
-                                [0,0,1]])
-
+        camera_position, rot_transform = camera_pose
         
         frustrum_projection = []
 
@@ -48,7 +35,7 @@ class AreaCoverageTracker:
             initial_direction_vector = np.array([x,y,-focal_len])
 
             # rotate the vector to match the camera's rotation
-            rotated_vector = rot_az_mat @ rot_alt_mat @ rot_roll_mat @ initial_direction_vector
+            rotated_vector = rot_transform.as_matrix() @ initial_direction_vector
 
             # solve camera_pose + t*rotated_vector = [x,0,z] = target_position
             t = -camera_position[1]/rotated_vector[1]

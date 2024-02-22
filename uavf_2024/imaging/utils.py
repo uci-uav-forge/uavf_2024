@@ -2,20 +2,20 @@ from typing import Generator, List
 
 import numpy as np
 
-from .imaging_types import TargetDescription, Tile
+from .imaging_types import ProbabilisticTargetDescriptor, Tile
 
 from itertools import islice
 
-def normalize_distribution( b: TargetDescription, offset):
+def normalize_distribution( b: ProbabilisticTargetDescriptor, offset):
     shape_norm_prob = (b.shape_probs + offset)/sum(b.shape_probs + offset)
     letter_norm_prob = (b.letter_probs + offset)/sum(b.letter_probs + offset)
     shape_col_norm_prob = (b.shape_col_probs + offset)/sum(b.shape_col_probs + offset)
     letter_col_norm_prob = (b.letter_col_probs + offset)/sum(b.letter_col_probs + offset)
     
-    return TargetDescription(shape_norm_prob, letter_norm_prob, shape_col_norm_prob, letter_col_norm_prob)
+    return ProbabilisticTargetDescriptor(shape_norm_prob, letter_norm_prob, shape_col_norm_prob, letter_col_norm_prob)
 
 
-def calc_match_score(a: TargetDescription, b: TargetDescription):
+def calc_match_score(a: ProbabilisticTargetDescriptor, b: ProbabilisticTargetDescriptor):
         '''
         Returns a number between 0 and 1 representing how likely the two descriptions are the same target
         
@@ -28,7 +28,7 @@ def calc_match_score(a: TargetDescription, b: TargetDescription):
         return shape_score * letter_score * shape_color_score * letter_color_score
     
 
-def sort_payload(list_payload_targets: List[TargetDescription], shape_confusion: np.ndarray , 
+def sort_payload(list_payload_targets: List[ProbabilisticTargetDescriptor], shape_confusion: np.ndarray , 
                  letter_confusion: np.ndarray, color_confusion = np.ndarray, penalty = False ):
     """
     Sorts a list of TargetDescription instances based on confidence scores calculated using confusion matrices.

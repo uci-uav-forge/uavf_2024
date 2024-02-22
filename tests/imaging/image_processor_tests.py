@@ -4,7 +4,7 @@ import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import HWC, FullPrediction, Image, TargetDescription, LETTERS
+from uavf_2024.imaging.imaging_types import HWC, FullBBoxPrediction, Image, CertainTargetDescriptor, LETTERS
 from uavf_2024.imaging import profiler
 import numpy as np
 import os
@@ -47,10 +47,11 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         true_box = np.array([[
             x,y,x+w,y+h
         ]])
-        shape = np.argmax(truth.description.shape_probs)
-        letter = np.argmax(truth.description.letter_probs)
-        shape_col = np.argmax(truth.description.shape_col_probs)
-        letter_col = np.argmax(truth.description.letter_col_probs)
+        
+        shape = np.argmax(truth.descriptor.shape_probs)
+        letter = np.argmax(truth.descriptor.letter_probs)
+        shape_col = np.argmax(truth.descriptor.shape_col_probs)
+        letter_col = np.argmax(truth.descriptor.letter_col_probs)
         
         if debug_img is not None:
             x, y, x1, y1 = true_box.flatten()
@@ -76,15 +77,15 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
             if iou>0.5:
                 true_positives+=1
                 this_target_was_detected = True
-                shape_top_1_accuracies.append(int(shape == np.argmax(pred.description.shape_probs)))
+                shape_top_1_accuracies.append(int(shape == np.argmax(pred.descriptor.shape_probs)))
                 
-                letter_top5_probs = np.argsort(pred.description.letter_probs)[-5:] # [top5, top4, top3, top2, top1]
+                letter_top5_probs = np.argsort(pred.descriptor.letter_probs)[-5:] # [top5, top4, top3, top2, top1]
                 letter_top5_probs = [int(i) for i in letter_top5_probs]  # get letter prob names
                 letter_top_5_accuracies.append(int(letter in letter_top5_probs))
                 
                 letter_top_1_accuracies.append(int(letter == int(letter_top5_probs[4])))                
-                shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.description.shape_col_probs)))
-                letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.description.letter_col_probs)))
+                shape_color_top_1_accuracies.append(int(shape_col == np.argmax(pred.descriptor.shape_col_probs)))
+                letter_color_top_1_accuracies.append(int(letter_col == np.argmax(pred.descriptor.letter_col_probs)))
 
         if this_target_was_detected:
             targets_detected+=1
@@ -112,7 +113,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
         letter_color_top1
     )
 
-def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPrediction]]]:
+def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullBBoxPrediction]]]:
     '''
     ret_value[i] is the list of predictions for the ith image
     ret_value[i][j] is the jth prediction for the ith image
@@ -123,8 +124,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
     labels = []
     for img_file_name in os.listdir(imgs_path):
         img = Image.from_file(f"{imgs_path}/{img_file_name}")
-        ground_truth: list[FullPrediction] = []
-
+        ground_truth: list[FullBBoxPrediction] = []
         with open(f"{labels_path}/{img_file_name.split('.')[0]}.txt") as f:
             for line in f.readlines():
                 label = line.split(' ')
@@ -138,11 +138,11 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
                 box[[0,1]] -= box[[2,3]] # adjust xy to be top-left
                 x,y,w,h = box.astype(int)
 
-                ground_truth.append(FullPrediction(
+                ground_truth.append(FullBBoxPrediction(
                     x,y,w,h,
-                    TargetDescription(
-                        np.eye(9)[shape], np.eye(36)[letter], np.eye(8)[shape_col], np.eye(8)[letter_col]
-                    )
+                    CertainTargetDescriptor.from_indices(
+                        shape, letter, shape_col, letter_col
+                    ).as_probabilistic()
                 ))
         
         imgs.append(img)
@@ -151,7 +151,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullPr
     return (imgs, labels)
 
 
-def generate_letter_confusion_matrix( unit_test_letter_truth, unit_test_letter_pred):
+def generate_letter_confusion_matrix(unit_test_letter_truth, unit_test_letter_pred):
     letter_labels = list(LETTERS)
     letter_truth = []
     letter_pred = []
@@ -159,7 +159,7 @@ def generate_letter_confusion_matrix( unit_test_letter_truth, unit_test_letter_p
     for img_truth, img_pred in zip(unit_test_letter_truth, unit_test_letter_pred):
         '''parse over each truth object within the image '''
         for truth_val in img_truth:
-            letter_truth.append(np.argmax(truth_val.description.letter_probs))
+            letter_truth.append(np.argmax(truth_val.descriptor.letter_probs))
             x,y = truth_val.x, truth_val.y
             w,h = truth_val.width, truth_val.height 
             true_box = np.array([[x,y,x+w,y+h]])
@@ -170,8 +170,7 @@ def generate_letter_confusion_matrix( unit_test_letter_truth, unit_test_letter_p
                 ]])
                 iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
                 if iou>0.1:
-                    letter_pred.append(int(np.argmax(pred.description.letter_probs)))
-                
+                    letter_pred.append(int(np.argmax(pred.descriptor.letter_probs)))
                 
     letter_confusion_matrix = np.zeros((36,36))
 
