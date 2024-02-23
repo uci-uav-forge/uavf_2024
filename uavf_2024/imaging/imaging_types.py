@@ -7,16 +7,17 @@ from enum import Enum
 
 import torch
 
-COLORS_TO_RGB = {
-    'red': (255, 0, 0),
-    'green': (0, 255, 0),
-    'blue': (0, 0, 255),
-    'orange': (255, 165, 0),
-    'purple': (200, 0, 200),
-    'white': (255, 255, 255),
-    'black': (0, 0, 0),
-    'brown': (165, 42, 42),
+COLOR_INDICES = {
+    "red": 0,
+    "orange": 1,
+    "green": 2,
+    "blue": 3,
+    "purple": 4,
+    "white": 5,
+    "black": 6,
+    "brown": 7,
 }
+
 
 SHAPES = [
  "circle",
@@ -37,7 +38,7 @@ SHAPES = [
 # it is basically LETTER_NEW in alphabetical order (0-35)
 LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
 
-COLORS = list(COLORS_TO_RGB.keys())
+COLORS = list(COLOR_INDICES.keys())
 
 # TODO: Limit these to the types we actually use
 integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]

@@ -4,7 +4,7 @@ import torch
 from torchvision.ops import box_iou
 import unittest
 from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import HWC, FullBBoxPrediction, Image, CertainTargetDescriptor, LETTERS
+from uavf_2024.imaging.imaging_types import HWC, FullBBoxPrediction, Image, CertainTargetDescriptor, LETTERS, SHAPES, COLORS
 from uavf_2024.imaging import profiler
 import numpy as np
 import os
@@ -125,35 +125,46 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullBB
     return (imgs, labels)
 
 
-def generate_letter_confusion_matrix(unit_test_letter_truth, unit_test_letter_pred):
-    letter_labels = list(LETTERS)
-    letter_truth = []
-    letter_pred = []
+def generate_confusion_matrices(true_values: list[list[FullBBoxPrediction]], pred_values: list[list[FullBBoxPrediction]]) -> None:
+    shape_confusion = np.zeros((len(SHAPES), len(SHAPES)))
+    letter_confusion = np.zeros((len(LETTERS), len(LETTERS)))
+    shape_col_confusion = np.zeros((len(COLORS), len(COLORS)))
+    letter_col_confusion = np.zeros((len(COLORS), len(COLORS)))
+
     #parse over each image from the unit test data
-    for img_truth, img_pred in zip(unit_test_letter_truth, unit_test_letter_pred):
+    for img_truth, img_pred in zip(true_values, pred_values):
         #parse over each truth object within the image 
-        for truth_val in img_truth:
-            letter_truth.append(np.argmax(truth_val.descriptor.letter_probs))
-            x,y = truth_val.x, truth_val.y
-            w,h = truth_val.width, truth_val.height 
+        for true_box_pred in img_truth:
+            x,y = true_box_pred.x, true_box_pred.y
+            w,h = true_box_pred.width, true_box_pred.height 
             true_box = np.array([[x,y,x+w,y+h]])
-            #compare each truth to every possible predition
+            true_desc = true_box_pred.descriptor.collapse_to_certain()
+
+            #compare each truth to every possible prediction
             for pred in img_pred:
                 pred_box = np.array([[
                 pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
                 ]])
                 iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
                 if iou>0.1:
-                    letter_pred.append(int(np.argmax(pred.descriptor.letter_probs)))
-                    break
+                    pred_top1_labels = pred.descriptor.collapse_to_certain()
+                    shape_confusion[SHAPES.index(true_desc.shape), SHAPES.index(pred_top1_labels.shape)]+=1
+                    letter_confusion[LETTERS.index(true_desc.letter), LETTERS.index(pred_top1_labels.letter)]+=1
+                    shape_col_confusion[COLORS.index(true_desc.shape_col), COLORS.index(pred_top1_labels.shape_col)]+=1
+                    letter_col_confusion[COLORS.index(true_desc.letter_col), COLORS.index(pred_top1_labels.letter_col)]+=1
+                    
                 
-    letter_confusion_matrix = np.zeros((36,36))
-
-    for actual, predict in zip (letter_truth, letter_pred):
-        letter_confusion_matrix[actual, predict]+= 1
-
-    conf_matrix_df = pd.DataFrame(letter_confusion_matrix, index=letter_labels, columns=letter_labels)
-    conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics/letter_confusion_matrix.csv")
+    for name, confusion_matrix, index in zip(
+        ["shape", "letter", "shape_col", "letter_col"],
+        [shape_confusion, letter_confusion, shape_col_confusion, letter_col_confusion],
+        [SHAPES, LETTERS, COLORS, COLORS]
+    ):
+        for i in range(len(index)):
+            if confusion_matrix[i,i] < max(confusion_matrix[i]):
+                print(f"WARNING: {name} confusion matrix is not diagonal dominant (potential label mismatch)")
+                break
+        conf_matrix_df = pd.DataFrame(confusion_matrix, index=list(index), columns=list(index))
+        conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics/{name}_confusion_matrix.csv")
 
 class TestImagingFrontend(unittest.TestCase):
 
@@ -182,7 +193,7 @@ class TestImagingFrontend(unittest.TestCase):
         # lstats = profiler.get_stats()
         # line_profiler.show_text(lstats.timings, lstats.unit)
     
-    def test_metrics(self, debug_letter_confusion = False):
+    def test_metrics(self, gen_confusion_matrices = True):
 
         debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
         if os.path.exists(debug_output_folder):
@@ -198,13 +209,13 @@ class TestImagingFrontend(unittest.TestCase):
         shape_color_top1s = []
         letter_color_top1s = []
         #Storing the predictions from pipeline for the confusion matrix evaluation
-        if debug_letter_confusion:
+        if gen_confusion_matrices:
             prediction_list = []
 
         for img, ground_truth in zip(imgs, labels):
             predictions = image_processor.process_image(img)
 
-            if debug_letter_confusion:
+            if gen_confusion_matrices:
                 prediction_list.append(predictions)
             (
                 recall,
@@ -223,8 +234,8 @@ class TestImagingFrontend(unittest.TestCase):
                 if not metric is None:
                     aggregate.append(metric)
 
-        if debug_letter_confusion:
-            generate_letter_confusion_matrix(unit_test_letter_pred= prediction_list, unit_test_letter_truth= labels)
+        if gen_confusion_matrices:
+            generate_confusion_matrices(labels, prediction_list)
 
         print(f"Recall: {np.mean(recalls)}")
         print(f"Precision: {np.mean(precisions)}")
