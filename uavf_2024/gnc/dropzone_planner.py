@@ -1,4 +1,3 @@
-from uavf_2024.gnc.commander_node import CommanderNode
 from uavf_2024.gnc.util import is_inside_bounds
 import numpy as np
 import math
@@ -8,7 +7,7 @@ class DropzonePlanner:
     Handles all logic related to controlling drone motion during the payload drop.
     '''
 
-    def __init__(self, commander: CommanderNode, image_width_m: float, image_height_m: float):
+    def __init__(self, commander: 'CommanderNode', image_width_m: float, image_height_m: float):
         self.commander = commander
         self.image_width_m = image_width_m
         self.image_height_m = image_height_m
