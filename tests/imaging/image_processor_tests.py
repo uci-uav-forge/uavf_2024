@@ -19,8 +19,8 @@ import cv2 #for debugging purposes
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPrediction], 
-                 debug_img: np.ndarray, debug_path: str, debug_lab: int):
-    '''debug_img should be receiving the image np array, img.get_array(), and visuals are provided of the bounding box'''
+                 debug_img: np.ndarray, debug_path: str, img_num: int):
+    #debug_img should be receiving the image np array, img.get_array(), and visuals are provided of the bounding box'''
     true_positives = 0 # how many predictions were on top of a ground-truth box
     targets_detected = 0 # how many ground-truth boxes had at least 1 prediction on top of them
     shape_top_1_accuracies = []
@@ -91,7 +91,7 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
             targets_detected+=1
 
     if debug_img is not None:
-         local_debug_path = f"{debug_path}/img_{debug_lab}"
+         local_debug_path = f"{debug_path}/img_{img_num}"
          os.makedirs(local_debug_path, exist_ok=True)
          cv2.imwrite(f"{local_debug_path}/bounding_boxes.png", debug_img)
 
@@ -114,10 +114,10 @@ def calc_metrics(predictions: list[FullPrediction], ground_truth: list[FullPredi
     )
 
 def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullBBoxPrediction]]]:
-    '''
-    ret_value[i] is the list of predictions for the ith image
-    ret_value[i][j] is the jth prediction for the ith image
-    '''
+
+    #ret_value[i] is the list of predictions for the ith image
+    #ret_value[i][j] is the jth prediction for the ith image
+
     letter_dict = {0: '0', 1: '1', 10: '2', 11: '3', 12: '4', 13: '5', 14: '6', 15: '7', 16: '8', 17: '9', 18: '10', 19: '11', 2: '12', 20: '13', 21: '14', 22: '15', 23: '16', 24: '17', 25: '18', 26: '19', 27: '20', 28: '21', 29: '22', 3: '23', 30: '24', 31: '25', 32: '26', 33: '27', 34: '28', 35: '29', 4: '30', 5: '31', 6: '32', 7: '33', 8: '34', 9: '35'}
 
     imgs: list[Image] = []
@@ -129,7 +129,7 @@ def parse_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[FullBB
             for line in f.readlines():
                 label = line.split(' ')
                 shape, letter, shape_col, letter_col = map(int, label[:4])
-                '''the conversion from old letter to new letter is made '''               
+                #the conversion from old letter to new letter is made               
                 letter = int(letter_dict[letter])
 
                 box = np.array([float(v) for v in label[4:]])
@@ -225,7 +225,7 @@ class TestImagingFrontend(unittest.TestCase):
         shape_color_top1s = []
         letter_color_top1s = []
         img_counter = 0
-        '''Storing the predictions from pipeline for the confusion matrix evaluation '''
+        #Storing the predictions from pipeline for the confusion matrix evaluation 
         if debug_letter_confusion:
             prediction_list = []
 
@@ -241,7 +241,7 @@ class TestImagingFrontend(unittest.TestCase):
                 letter_top5,
                 shape_color_top1,
                 letter_color_top1
-            ) = calc_metrics(predictions, ground_truth, debug_img= None, debug_path= debug_folder_path, debug_lab = img_counter) 
+            ) = calc_metrics(predictions, ground_truth, debug_img= None, debug_path= debug_folder_path, img_num= img_counter) 
             img_counter += 1
 
             for metric, aggregate in zip(
