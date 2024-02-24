@@ -1,7 +1,6 @@
 from __future__ import annotations
-from .imaging_types import Target3D, TargetDescription
+from .imaging_types import Target3D, CertainTargetDescriptor
 from .utils import calc_match_score
-from dataclasses import dataclass
 import numpy as np
 
 class Track:
@@ -29,7 +28,7 @@ class Track:
 
     def _recalculate_averages(self) -> None:
         self._position = np.mean([measurement.position for measurement in self._measurements], axis=0)
-        self._descriptor = np.mean([measurement.description for measurement in self._measurements], axis=0)
+        self._descriptor = np.mean([measurement.descriptor for measurement in self._measurements], axis=0)
 
     def add_measurement(self, measurement: Target3D) -> None:
         self._measurements.append(measurement)
@@ -39,8 +38,7 @@ class Track:
         return self._measurements
 
 class TargetTracker:
-    def __init__(self, search_candidates: list[TargetDescription], debug_path: str  = None):
-        self.search_candidates = search_candidates
+    def __init__(self, debug_path: str  = None):
         self.tracks: list[Track] = []
         self.debug_path = debug_path
 
@@ -59,13 +57,13 @@ class TargetTracker:
             else:
                 self.tracks.append(Track([detection]))
 
-    def estimate_positions(self) -> list[Track]:
+    def estimate_positions(self, search_candidates: list[CertainTargetDescriptor]) -> list[Track]:
         '''
         Returns closest track in descriptor space for each search candidate
         '''
         closest_tracks = [
-            max(self.tracks, key=lambda track: calc_match_score(track.descriptor, candidate))
-            for candidate in self.search_candidates
+            max(self.tracks, key=lambda track: calc_match_score(track.descriptor, candidate.as_probabilistic()))
+            for candidate in search_candidates
         ]
 
         return closest_tracks

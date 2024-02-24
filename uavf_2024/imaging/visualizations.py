@@ -1,9 +1,9 @@
-from .imaging_types import FullPrediction
+from .imaging_types import FullBBoxPrediction
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
 
-def visualize_predictions(img: np.ndarray, predictions: list[FullPrediction], file_name):
+def visualize_predictions(img: np.ndarray, predictions: list[FullBBoxPrediction], file_name):
     img = img.copy()
     for pred in predictions:
         x, y = pred.x, pred.y
