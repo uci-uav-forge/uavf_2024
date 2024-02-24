@@ -18,8 +18,7 @@ SHAPES = [
  "pentagon",
  "star",
  "cross",
- "person",
- "background"
+ "person"
 ]
 
 class ShapeInstanceSegmenter:
@@ -28,16 +27,15 @@ class ShapeInstanceSegmenter:
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.shape_model.predict(list(rand_input), verbose=False)
         self.num_processed = 0
-        self.cnf_matrix = {'circle' : [0.83, 0, 0, 0, 0, .01, 0, 0, 0, .04],
-                            'semicircle': [.01, .67, .28, .02, .05, .03, 0, 0, .01, .19],
-                            'quartercircle': [0, .18, .43, 0, .41, .17, 0, 0, 0, .29],
-                            'triangle': [0, .03, 0, .91, .01, 0, 0, 0, 0, .03],
-                            'rectangle': [.01, 0, .19, 0, .46, .08, 0, 0, 0, .24],
-                            'pentagon': [.10, .03, .08, 0, .01, .68, 0, 0, 0, .13],
-                            'star': [0, .01, 0, .04, 0, 0, .97, .02, 0, .02],
-                            'cross': [0, .04, 0, .01, 0, 0, 0, .96, .03, .02],
-                            'person': [0, .01, 0, .01, .01, 0, 0, 0, .91, .05],
-                            'background': [.05, .01, .02, .02, .03, .03, .03, .02, .04, 0]
+        self.cnf_matrix = {'circle' : [0.83, 0, 0, 0, 0, .01, 0, 0, 0],
+                            'semicircle': [.01, .67, .28, .02, .05, .03, 0, 0, .01],
+                            'quartercircle': [0, .18, .43, 0, .41, .17, 0, 0, 0],
+                            'triangle': [0, .03, 0, .91, .01, 0, 0, 0, 0],
+                            'rectangle': [.01, 0, .19, 0, .46, .08, 0, 0, 0],
+                            'pentagon': [.10, .03, .08, 0, .01, .68, 0, 0, 0],
+                            'star': [0, .01, 0, .04, 0, 0, .97, .02, 0],
+                            'cross': [0, .04, 0, .01, 0, 0, 0, .96, .03],
+                            'person': [0, .01, 0, .01, .01, 0, 0, 0, .91]
                                 }
 
 
@@ -70,7 +68,7 @@ class ShapeInstanceSegmenter:
                         y=img_coord_t(y.item())+tiles[img_index].y,
                         width=img_coord_t(w.item()),
                         height=img_coord_t(h.item()),
-                        confidences = self.cnf_matrix[SHAPES[cls.int()]],
+                        confidences = np.array(self.cnf_matrix[SHAPES[cls.int()]]),
                         mask = mask[y:y+h, x:x+w].unsqueeze(2).cpu().numpy(),
                         img = tiles[img_index].img.make_sub_image(x, y, w, h),
                         id = self.num_processed
