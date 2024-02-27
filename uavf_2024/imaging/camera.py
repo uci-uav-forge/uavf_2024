@@ -20,6 +20,12 @@ class Camera:
         pic = self.stream.get_frame()
         return Image(pic, HWC)
         # return np.random.rand(3, 3840, 2160)
+    
+    def requestAbsolutePosition(self, yaw: float, pitch: float):
+        return self.cam.requestAbsolutePosition(yaw, pitch)
+    
+    def requestGimbalSpeed(self, yaw_speed: float, pitch_speed: float):
+        return self.cam.requestGimbalSpeed(yaw_speed, pitch_speed)
 
     def request_center(self):
         return self.cam.requestAbsolutePosition(0, 0)
@@ -50,6 +56,9 @@ class Camera:
         '''
         zoom = self.cam.getZoomLevel()
         return 90.9 + 1597.2 * zoom
+    
+    def __del__(self):
+        self.disconnect()
     
     def disconnect(self):
         self.stream.disconnect()
