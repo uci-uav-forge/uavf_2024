@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="libuavf_2024" exec="perception_with_3d.py" name="perception_3d_tester" />
+</launch>
