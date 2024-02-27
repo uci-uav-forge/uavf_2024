@@ -164,5 +164,8 @@ RUN bash /usr/local/bin/bashrc_setup.sh
 RUN mv /home/ws/uavf_2024 /home/ws/libuavf_2024
 WORKDIR /home/ws/libuavf_2024
 RUN python -m pip install -e .
+WORKDIR /home/ws/libuavf_2024/siyi_sdk
+COPY siyi_sdk/setup.py setup.py
+RUN python -m pip install -e .
 
 CMD ["/bin/bash"]
