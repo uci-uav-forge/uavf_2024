@@ -3,23 +3,13 @@ import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
 import numpy as np
-from ..imaging_types import Tile, InstanceSegmentationResult, img_coord_t
+from ..imaging_types import Tile, InstanceSegmentationResult, img_coord_t, SHAPES
 import os
 from .. import profiler
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-SHAPES = [
- "circle",
- "semicircle",
- "quartercircle",
- "triangle",
- "rectangle",
- "pentagon",
- "star",
- "cross",
- "person"
-]
+
 
 class ShapeInstanceSegmenter:
     def __init__(self, img_size):
