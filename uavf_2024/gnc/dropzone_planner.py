@@ -1,4 +1,4 @@
-from uavf_2024.gnc.util import is_inside_bounds
+from uavf_2024.gnc.util import is_inside_bounds_local
 import numpy as np
 import math
 
@@ -14,6 +14,7 @@ class DropzonePlanner:
         self.detections = []
         self.current_payload_index = 0
         self.has_scanned_dropzone = False
+        self.dist_btwn_img_wps = 2
     
     def gen_dropzone_plan(self):
         '''
@@ -98,11 +99,13 @@ class DropzonePlanner:
         
         x_diff = x_diff / divisor
         y_diff = y_diff / divisor
-        
+        self.commander.log("X diff:", x_diff, "Y diff:", y_diff)
         waypoints = [(target_x, target_y)]
 
         new_wp = (target_x + x_diff, target_y + y_diff)
-        while (is_inside_bounds(self.commander.dropzone_bounds, new_wp)):
+        self.commander.log("New WP:", new_wp)
+        self.commander.log("Is inside bounds:", is_inside_bounds_local(self.commander.dropzone_bounds, new_wp))
+        while (is_inside_bounds_local(self.commander.dropzone_bounds, new_wp)):
             waypoints.append(new_wp)
             new_wp = (new_wp[0] + x_diff, new_wp[1] + y_diff)
 
