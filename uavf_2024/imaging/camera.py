@@ -1,8 +1,8 @@
-import numpy as np
-from time import sleep
 from siyi_sdk import SIYISTREAM,SIYISDK
 from uavf_2024.imaging.imaging_types import Image, HWC
 import matplotlib.image 
+from scipy.spatial.transform import Rotation
+import numpy as np
 
 class Camera:
     def __init__(self):
@@ -54,6 +54,20 @@ class Camera:
     def disconnect(self):
         self.stream.disconnect()
         self.cam.disconnect()
+
+    @staticmethod
+    def orientation_in_world_frame(drone_rot: Rotation, cam_attitude: np.ndarray) -> Rotation:
+        cam_rotation = Rotation.from_euler('yxz', cam_attitude)
+
+        cam_to_world_mat = np.array([
+            [0, 0, 1],
+            [-1, 0, 0],
+            [0, 1, 0]
+        ])
+
+        cam_to_world = Rotation.from_matrix(cam_to_world_mat) 
+
+        return drone_rot * cam_to_world * cam_rotation
 
 if __name__ == "__main__":
     cam = Camera()

@@ -73,17 +73,8 @@ class ImagingNode(Node):
 
         true_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
 
-        cam_rotation = R.from_euler('yxz', true_angles)
 
-        cam_to_world_mat = np.array([
-            [0, 0, 1],
-            [-1, 0, 0],
-            [0, 1, 0]
-        ])
-
-        cam_to_world = R.from_matrix(cam_to_world_mat) 
-
-        cam_pose = (self.cur_position, self.cur_rot @ cam_to_world @ cam_rotation)
+        cam_pose = (self.cur_position, self.camera.orientation_in_world_frame(self.cur_rot, true_angles))
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         self.get_logger().info("Localization finished")
