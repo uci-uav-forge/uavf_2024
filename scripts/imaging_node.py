@@ -56,9 +56,9 @@ class ImagingNode(Node):
 
         self.camera.request_autofocus()
         self.camera.request_down()
-        while abs(self.camera.getAttitude()[1] - 90) > 2:
+        while abs(self.camera.getAttitude()[1] - -90) > 2:
 
-            self.get_logger().info(f"Waiting to point down {self.camera.getAttitude()[1] } . " )
+            self.get_logger().info(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
             sleep(0.1)
         sleep(1) # To let the autofocus finish
         
