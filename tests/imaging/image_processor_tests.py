@@ -244,6 +244,7 @@ class TestImagingFrontend(unittest.TestCase):
 
         for img, ground_truth in zip(imgs, labels):
             predictions = image_processor.process_image(img)
+            
 
             if gen_confusion_matrices:
                 prediction_list.append(predictions)

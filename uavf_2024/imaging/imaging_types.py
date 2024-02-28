@@ -75,7 +75,7 @@ class ProbabilisticTargetDescriptor:
             self.shape_probs + other.shape_probs,
             self.letter_probs + other.letter_probs,
             self.shape_col_probs + other.shape_col_probs,
-            self.letter_col_probs + other.letter_col_probs
+            self.letter_col_probs + other.letter_col_probs,
         )
 
     def __truediv__(self, scalar):
