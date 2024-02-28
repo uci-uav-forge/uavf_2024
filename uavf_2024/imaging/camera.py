@@ -35,7 +35,7 @@ class Camera:
         return self.cam.setAbsoluteZoom(zoom_level)
     
     def getAttitude(self):
-        # Returns (yaw, pitch, roll)
+        ''' Returns (yaw, pitch, roll) '''
         return self.cam.getAttitude()
     
     def getAttitudeSpeed(self):
