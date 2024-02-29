@@ -104,8 +104,8 @@ class DropzonePlanner:
 
         new_wp = (target_x + x_diff, target_y + y_diff)
         self.commander.log("New WP:", new_wp)
-        self.commander.log("Is inside bounds:", is_inside_bounds_local(self.commander.dropzone_bounds, new_wp))
-        while (is_inside_bounds_local(self.commander.dropzone_bounds, new_wp)):
+        self.commander.log("Is inside bounds:", is_inside_bounds_local(self.commander.dropzone_bounds_mlocal, new_wp))
+        while (is_inside_bounds_local(self.commander.dropzone_bounds_mlocal, new_wp)):
             waypoints.append(new_wp)
             new_wp = (new_wp[0] + x_diff, new_wp[1] + y_diff)
 
