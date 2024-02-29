@@ -57,17 +57,19 @@ class Camera:
 
     @staticmethod
     def orientation_in_world_frame(drone_rot: Rotation, cam_attitude: np.ndarray) -> Rotation:
-        cam_rotation = Rotation.from_euler('yxz', cam_attitude)
+        '''
+        Returns the rotation of the camera in the world frame.
+        
+        `cam_attitude` needs to be (yaw, pitch, roll) in degrees, where
+        yaw is rotation around the z-axis, pitch is rotation around the negative y-axis, and roll is rotation around the x-axis.
 
-        cam_to_world_mat = np.array([
-            [0, 0, 1],
-            [-1, 0, 0],
-            [0, 1, 0]
-        ])
+        roll might be bugged because we aren't using it nor testing it very much.
+        '''
+        # flip the sign of pitch rotation since negative pitch is pointing down, not up
+        cam_attitude_modified = [cam_attitude[0], -cam_attitude[1], cam_attitude[2]]
+        cam_rotation = Rotation.from_euler('zyx', cam_attitude_modified, degrees=True)
 
-        cam_to_world = Rotation.from_matrix(cam_to_world_mat) 
-
-        return drone_rot * cam_to_world * cam_rotation
+        return drone_rot * cam_rotation
 
 if __name__ == "__main__":
     cam = Camera()
