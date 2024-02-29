@@ -111,8 +111,6 @@ class ImageProcessor:
             results: list[InstanceSegmentationResult] = results # type hinting
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
-
-
                 # Color segmentations
                 shape_conf = shape_res.confidences
                 img_black_bg = shape_res.img * shape_res.mask
@@ -125,7 +123,9 @@ class ImageProcessor:
                     cv.imwrite(f"{instance_debug_path}/input.png", shape_res.img.get_array())
                     cv.imwrite(f"{instance_debug_path}/black_bg.png", img_black_bg.get_array())
                 # Classify the colors
+
                 letter_color_conf, shape_color_conf = self.color_classifier.predict(letter_img)
+
                 # add to total_results
                 letter_conf = None
                 total_results.append(

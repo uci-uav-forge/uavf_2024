@@ -15,6 +15,15 @@ class Localizer:
         self.camera_hfov = camera_hfov
         self.camera_resolution = camera_resolution
 
+    @staticmethod
+    def from_focal_length(cam_focal_len: float, cam_res: tuple[int,int]):
+        '''
+        Create a Localizer from a focal length and resolution
+        '''
+        w,h = cam_res
+        hfov = 2*np.arctan(w/(2*cam_focal_len))
+        return Localizer(np.rad2deg(hfov), cam_res)
+
     def prediction_to_coords(self, pred: FullBBoxPrediction, camera_pose: tuple[np.ndarray, Rotation]) -> Target3D:
         '''
             `camera_pose` is [x,y,z, qx, qy, qz, qw]

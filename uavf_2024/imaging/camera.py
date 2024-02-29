@@ -32,7 +32,7 @@ class Camera:
         return self.cam.requestAutoFocus()
     
     def setAbsoluteZoom(self, zoom_level: float):
-        return self.cam.setAbsoluteZoom(1)
+        return self.cam.setAbsoluteZoom(zoom_level)
     
     def getAttitude(self):
         # Returns (yaw, pitch, roll)
@@ -41,6 +41,15 @@ class Camera:
     def getAttitudeSpeed(self):
         # Returns (yaw_speed, pitch_speed, roll_speed)
         return self.cam.getAttitudeSpeed()
+
+    def getFocalLength(self):
+        '''
+            calculates focal length linear regression from doing 
+            calibration at zoom levels 1-7 and 10, and using the 
+            x focal length values, then rounding to the nearest tenth 
+        '''
+        zoom = self.cam.getZoomLevel()
+        return 90.9 + 1597.2 * zoom
     
     def disconnect(self):
         self.stream.disconnect()

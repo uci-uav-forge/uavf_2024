@@ -7,16 +7,17 @@ from enum import Enum
 
 import torch
 
-COLORS_TO_RGB = {
-    'red': (255, 0, 0),
-    'green': (0, 255, 0),
-    'blue': (0, 0, 255),
-    'orange': (255, 165, 0),
-    'purple': (200, 0, 200),
-    'white': (255, 255, 255),
-    'black': (0, 0, 0),
-    'brown': (165, 42, 42),
+COLOR_INDICES = {
+    "red": 0,
+    "orange": 1,
+    "green": 2,
+    "blue": 3,
+    "purple": 4,
+    "white": 5,
+    "black": 6,
+    "brown": 7,
 }
+
 
 SHAPES = [
  "circle",
@@ -37,7 +38,7 @@ SHAPES = [
 # it is basically LETTER_NEW in alphabetical order (0-35)
 LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
 
-COLORS = list(COLORS_TO_RGB.keys())
+COLORS = list(COLOR_INDICES.keys())
 
 # TODO: Limit these to the types we actually use
 integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]
@@ -74,7 +75,7 @@ class ProbabilisticTargetDescriptor:
             self.shape_probs + other.shape_probs,
             self.letter_probs + other.letter_probs,
             self.shape_col_probs + other.shape_col_probs,
-            self.letter_col_probs + other.letter_col_probs
+            self.letter_col_probs + other.letter_col_probs,
         )
 
     def __truediv__(self, scalar):
@@ -101,12 +102,18 @@ class CertainTargetDescriptor:
     `shape_col` and `letter_col` are one of "red", "green", "blue", "orange", "purple", "white", "black", "brown"
     ''' 
     def __init__(self, shape_col: str, shape: str, letter_col: str, letter: str):
-        assert shape_col in COLORS
         assert shape in SHAPES
+        self.shape = shape
+        if shape == "person":
+            self.shape_col = None
+            self.letter_col = None
+            self.letter = None
+            return
+
+        assert shape_col in COLORS
         assert letter_col in COLORS
         assert letter in LETTERS
         self.shape_col = shape_col
-        self.shape = shape
         self.letter_col = letter_col
         self.letter = letter
 
@@ -126,14 +133,23 @@ class CertainTargetDescriptor:
         shape_probs = np.zeros(len(SHAPES))
         shape_probs[SHAPES.index(self.shape)] = 1.0
 
-        letter_probs = np.zeros(len(LETTERS))
-        letter_probs[LETTERS.index(self.letter)] = 1.0
+        if self.letter is None:
+            letter_probs = np.ones(len(LETTERS)) / len(LETTERS)
+        else:
+            letter_probs = np.zeros(len(LETTERS))
+            letter_probs[LETTERS.index(self.letter)] = 1.0
 
-        shape_col_probs = np.zeros(len(COLORS))
-        shape_col_probs[COLORS.index(self.shape_col)] = 1.0
-
-        letter_col_probs = np.zeros(len(COLORS))
-        letter_col_probs[COLORS.index(self.letter_col)] = 1.0
+        if self.shape_col is None:
+            shape_col_probs = np.ones(len(COLORS)) / len(COLORS)
+        else:
+            shape_col_probs = np.zeros(len(COLORS))
+            shape_col_probs[COLORS.index(self.shape_col)] = 1.0
+        
+        if self.letter_col is None:
+            letter_col_probs = np.ones(len(COLORS)) / len(COLORS)
+        else:
+            letter_col_probs = np.zeros(len(COLORS))
+            letter_col_probs[COLORS.index(self.letter_col)] = 1.0
 
         return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
 
