@@ -15,12 +15,12 @@ class ImagingNode(Node):
         self.attitude_service = self.create_service(GetAttitude, 'attitude_service', self.get_attitudes)
         self.camera = Camera()
         self.camera.setAbsoluteZoom(1)
-        self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}')
+        self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}/image_processor')
         focal_len = 1952.0 # TODO: un-hard-code this
         self.localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
         self.get_logger().info("Finished initializing imaging node")
     
-    def get_image_down(self, request, response: list[TargetDetection]):
+    def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
         '''
             autofocus, then wait till cam points down, take pic,
         
