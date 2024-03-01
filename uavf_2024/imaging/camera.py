@@ -44,8 +44,8 @@ class Camera:
 
     def getFocalLength(self):
         '''
-            calculates focal length linear regression from doing 
-            calibration at zoom levels 1-7 and 10, and using the 
+            calculates focal length using linear regression based on 
+            data from calibration at zoom levels 1-7 and 10, and using the 
             x focal length values, then rounding to the nearest tenth 
         '''
         zoom = self.cam.getZoomLevel()
