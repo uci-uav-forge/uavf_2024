@@ -3,11 +3,13 @@ import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
 import numpy as np
-from ..imaging_types import Tile, InstanceSegmentationResult, img_coord_t
+from ..imaging_types import Tile, InstanceSegmentationResult, img_coord_t, SHAPES
 import os
 from .. import profiler
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
+
+
 
 class ShapeInstanceSegmenter:
     def __init__(self, img_size):
@@ -15,6 +17,16 @@ class ShapeInstanceSegmenter:
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.shape_model.predict(list(rand_input), verbose=False)
         self.num_processed = 0
+        self.cnf_matrix = {'circle' : [0.83, 0, 0, 0, 0, .01, 0, 0, 0],
+                            'semicircle': [.01, .67, .28, .02, .05, .03, 0, 0, .01],
+                            'quartercircle': [0, .18, .43, 0, .41, .17, 0, 0, 0],
+                            'triangle': [0, .03, 0, .91, .01, 0, 0, 0, 0],
+                            'rectangle': [.01, 0, .19, 0, .46, .08, 0, 0, 0],
+                            'pentagon': [.10, .03, .08, 0, .01, .68, 0, 0, 0],
+                            'star': [0, .01, 0, .04, 0, 0, .97, .02, 0],
+                            'cross': [0, .04, 0, .01, 0, 0, 0, .96, .03],
+                            'person': [0, .01, 0, .01, .01, 0, 0, 0, .91]
+                                }
 
 
     @profiler
@@ -46,7 +58,7 @@ class ShapeInstanceSegmenter:
                         y=img_coord_t(y.item())+tiles[img_index].y,
                         width=img_coord_t(w.item()),
                         height=img_coord_t(h.item()),
-                        confidences = confidences,
+                        confidences = np.array(self.cnf_matrix[SHAPES[cls.int()]]),
                         mask = mask[y:y+h, x:x+w].unsqueeze(2).cpu().numpy(),
                         img = tiles[img_index].img.make_sub_image(x, y, w, h),
                         id = self.num_processed

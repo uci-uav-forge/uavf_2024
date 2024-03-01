@@ -190,14 +190,14 @@ def generate_confusion_matrices(true_values: list[list[FullBBoxPrediction]], pre
                 print(f"WARNING: {name} confusion matrix is not diagonal dominant (potential label mismatch)")
                 break
         conf_matrix_df = pd.DataFrame(confusion_matrix, index=list(index), columns=list(index))
-        conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics/{name}_confusion_matrix.csv")
+        conf_matrix_df.to_csv(f"{CURRENT_FILE_PATH}/visualizations/test_metrics/{name}_confusion_matrix.csv")
 
 class TestImagingFrontend(unittest.TestCase):
 
     @mem_profile
     def test_runs_without_crashing(self):
         image_processor = ImageProcessor()
-        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/1080p.png")
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
         res = image_processor.process_image(sample_input)
 
     @profiler
@@ -206,7 +206,7 @@ class TestImagingFrontend(unittest.TestCase):
             shape_batch_size=20,
             letter_batch_size=30
         )
-        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/imaging_data/fullsize_dataset/images/1080p.png")
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
         times = []
         N_runs = 10
         for i in tqdm(range(N_runs)):
@@ -221,13 +221,13 @@ class TestImagingFrontend(unittest.TestCase):
     
     def test_metrics(self, gen_confusion_matrices = True):
 
-        debug_output_folder = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_metrics"
-        debug_folder_path = f"{CURRENT_FILE_PATH}/imaging_data/visualizations/test_bounding_box"
+        debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/test_metrics"
+        debug_folder_path = f"{CURRENT_FILE_PATH}/visualizations/test_bounding_box"
 
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
         image_processor = ImageProcessor(debug_output_folder)
-        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/imaging_data/tile_dataset/labels")
+        imgs, labels = parse_dataset(f"{CURRENT_FILE_PATH}/2024_test_data/tile_dataset/images", f"{CURRENT_FILE_PATH}/2024_test_data/tile_dataset/labels")
         
         recalls = []
         precisions = []
@@ -244,6 +244,7 @@ class TestImagingFrontend(unittest.TestCase):
 
         for img, ground_truth in zip(imgs, labels):
             predictions = image_processor.process_image(img)
+            
 
             if gen_confusion_matrices:
                 prediction_list.append(predictions)
