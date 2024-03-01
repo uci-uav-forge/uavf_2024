@@ -5,7 +5,10 @@ from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
 from libuavf_2024.srv import TakePicture,GetAttitude
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
+from scipy.spatial.transform import Rotation as R
 import numpy as np
+from geometry_msgs.msg import PoseStamped, Point
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from time import strftime, time, sleep
 
 class ImagingNode(Node):
@@ -16,9 +19,32 @@ class ImagingNode(Node):
         self.camera = Camera()
         self.camera.setAbsoluteZoom(1)
         self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}/image_processor')
-        focal_len = 1952.0 # TODO: un-hard-code this
+        focal_len = self.camera.getFocalLength()
         self.localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
+
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            depth = 1
+        )
+
+        self.world_position_sub = self.create_subscription(
+            PoseStamped,
+            '/mavros/local_position/pose',
+            self.got_pose_cb,
+            qos_profile)
+
+        self.got_pose = False
         self.get_logger().info("Finished initializing imaging node")
+        
+    def got_pose_cb(self, pose: PoseStamped):
+        self.cur_pose = pose
+        self.cur_position = pose.pose.position
+        self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,])
+        self.got_pose = True
+
+    def log(self, *args, **kwargs):
+        self.get_logger().info(*args, **kwargs)
     
     def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
         '''
@@ -30,9 +56,9 @@ class ImagingNode(Node):
 
         self.camera.request_autofocus()
         self.camera.request_down()
-        while abs(self.camera.getAttitude()[1] - 90) > 2:
+        while abs(self.camera.getAttitude()[1] - -90) > 2:
 
-            self.get_logger().info(f"Waiting to point down {self.camera.getAttitude()[1] } . " )
+            self.get_logger().info(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
             sleep(0.1)
         sleep(1) # To let the autofocus finish
         
@@ -45,12 +71,9 @@ class ImagingNode(Node):
         detections = self.image_processor.process_image(img)
         self.get_logger().info("Images processed")
 
-        true_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
-        true_angles = np.array([true_angles[1],true_angles[0],true_angles[2]]) # pitch yaw, roll
-        response.attitudes = true_angles.tolist()
+        avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
 
-
-        cam_pose = np.append([0,0,0],true_angles) # formatted [x,y,z,pitch,yaw,roll]
+        cam_pose = (self.cur_position, self.camera.orientation_in_world_frame(self.cur_rot, avg_angles))
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         self.get_logger().info("Localization finished")

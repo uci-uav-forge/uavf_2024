@@ -1,8 +1,8 @@
-import numpy as np
-from time import sleep
 from siyi_sdk import SIYISTREAM,SIYISDK
 from uavf_2024.imaging.imaging_types import Image, HWC
 import matplotlib.image 
+from scipy.spatial.transform import Rotation
+import numpy as np
 
 class Camera:
     def __init__(self):
@@ -35,7 +35,7 @@ class Camera:
         return self.cam.setAbsoluteZoom(zoom_level)
     
     def getAttitude(self):
-        # Returns (yaw, pitch, roll)
+        ''' Returns (yaw, pitch, roll) '''
         return self.cam.getAttitude()
     
     def getAttitudeSpeed(self):
@@ -44,8 +44,8 @@ class Camera:
 
     def getFocalLength(self):
         '''
-            calculates focal length linear regression from doing 
-            calibration at zoom levels 1-7 and 10, and using the 
+            calculates focal length using linear regression based on 
+            data from calibration at zoom levels 1-7 and 10, and using the 
             x focal length values, then rounding to the nearest tenth 
         '''
         zoom = self.cam.getZoomLevel()
@@ -54,6 +54,22 @@ class Camera:
     def disconnect(self):
         self.stream.disconnect()
         self.cam.disconnect()
+
+    @staticmethod
+    def orientation_in_world_frame(drone_rot: Rotation, cam_attitude: np.ndarray) -> Rotation:
+        '''
+        Returns the rotation of the camera in the world frame.
+        
+        `cam_attitude` needs to be (yaw, pitch, roll) in degrees, where
+        yaw is rotation around the z-axis, pitch is rotation around the negative y-axis, and roll is rotation around the x-axis.
+
+        roll might be bugged because we aren't using it nor testing it very much.
+        '''
+        # flip the sign of pitch rotation since negative pitch is pointing down, not up
+        cam_attitude_modified = [cam_attitude[0], -cam_attitude[1], cam_attitude[2]]
+        cam_rotation = Rotation.from_euler('zyx', cam_attitude_modified, degrees=True)
+
+        return drone_rot * cam_rotation
 
 if __name__ == "__main__":
     cam = Camera()
