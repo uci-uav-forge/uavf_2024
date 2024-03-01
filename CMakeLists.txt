@@ -56,8 +56,8 @@ install(PROGRAMS
   scripts/demo_dropzone_planner.py
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
-  scripts/demo_imaging_node.py
-  scripts/perception_with_3d.py
+  scripts/perception_clients/take_one_image.py
+  scripts/perception_clients/continuous_image_taking.py
   scripts/imaging_node.py
   scripts/mock_imaging_node.py
   DESTINATION lib/${PROJECT_NAME}
