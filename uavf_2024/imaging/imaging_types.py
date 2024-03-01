@@ -197,11 +197,40 @@ class InstanceSegmentationResult:
 @dataclass
 class Target3D:
     '''
+    Class to represent our estimate of a target's 3d position and labels as well as the confidence in those labels.
+
     We might also want to incorporate information about the distance from which we've seen this target. Like, if we've only seen it from far away, and we get a new classification from a closer image, it should have more weight.
     '''
     position: np.ndarray # (x,y,z) in local frame
     descriptor: ProbabilisticTargetDescriptor
     id: str = None
+    @staticmethod
+    def from_ros(msg: ROSDetectionMessage) -> Target3D:
+        return Target3D(
+            np.array([msg.x, msg.y, msg.z]),
+            ProbabilisticTargetDescriptor(
+                np.array(msg.shape_conf),
+                np.array(msg.letter_conf),
+                np.array(msg.shape_color_conf),
+                np.array(msg.letter_color_conf)
+            )
+        )
+
+@dataclass
+class ROSDetectionMessage:
+    '''
+    Dataclass that should have the same fields as msg/TargetDetection.msg,
+    to make it easier to get type hints and convert between the message type
+    and other types.
+    '''
+    timestamp: int
+    x: float
+    y: float
+    z: float
+    shape_conf: list[float]
+    letter_conf: list[float]
+    shape_color_conf: list[float]
+    letter_color_conf: list[float]
 
 class ImageDimension(Enum):
     HEIGHT = 'h'
