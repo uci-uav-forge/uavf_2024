@@ -19,7 +19,7 @@ class ImagingNode(Node):
         self.camera = Camera()
         self.camera.setAbsoluteZoom(1)
         self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}')
-        focal_len = 1952.0 # TODO: un-hard-code this
+        focal_len = self.camera.getFocalLength()
         self.localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
 
         qos_profile = QoSProfile(
@@ -71,10 +71,9 @@ class ImagingNode(Node):
         detections = self.image_processor.process_image(img)
         self.get_logger().info("Images processed")
 
-        true_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
+        avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
 
-
-        cam_pose = (self.cur_position, self.camera.orientation_in_world_frame(self.cur_rot, true_angles))
+        cam_pose = (self.cur_position, self.camera.orientation_in_world_frame(self.cur_rot, avg_angles))
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         self.get_logger().info("Localization finished")
