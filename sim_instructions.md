@@ -55,6 +55,7 @@ Use the following commands:
 
 To load a safety geofence like we will have in real life you may open /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/plan.plan in QGC.
 
+```
 cd /PX4-Autopilot
 PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64230 PX4_HOME_LON=-117.82683 PX4_HOME_ALT=142 make px4_sitl jmavsim
 ```
