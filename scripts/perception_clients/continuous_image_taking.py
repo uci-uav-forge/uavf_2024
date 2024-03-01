@@ -4,7 +4,7 @@ from libuavf_2024.msg import TargetDetection
 import rclpy
 from rclpy.node import Node
 from time import sleep
-from uavf_2024.imaging import TargetTracker
+from uavf_2024.imaging import TargetTracker, Target3D
 
 class ContinuousImagingClient(Node):
     def __init__(self):
@@ -24,6 +24,9 @@ class ContinuousImagingClient(Node):
         self.get_logger().info("Sending request")
         while True:
             res: list[TargetDetection] = self.send_request()
+            self.tracker.update([
+                Target3D.from_ros(detection) for detection in res
+            ])
 
             sleep(1)
 
