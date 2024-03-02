@@ -6,10 +6,13 @@ from uavf_2024.imaging import Camera
 import os
 
 cam = Camera()
+cam.setAbsoluteZoom(1)
 is_recording = False
+target_zoom_level = cam.getZoomLevel()
+print(target_zoom_level)
 
-imgs_dir = "recorded_images"
-os.makedirs("", exist_ok=True)
+imgs_dir = f"recorded_images/{strftime('%Y-%m-%d_%H-%M-%S')}"
+os.makedirs(imgs_dir, exist_ok=True)
 
 pygame.init()
 pygame.joystick.init()
@@ -41,11 +44,11 @@ def joystick_control():
     
     if LEFT_AXIS_X in axis and abs(axis[LEFT_AXIS_X])>0.1:
         clamped = np.tanh(axis[LEFT_AXIS_X]) # use tanh to clamp to [-1,1]
-        slew_x = clamped*8
+        slew_x = clamped*20
     
     if LEFT_AXIS_Y in axis and abs(axis[LEFT_AXIS_Y])>0.1:
         clamped = np.tanh(axis[LEFT_AXIS_Y]) # use tanh to clamp to [-1,1]
-        slew_y = clamped*6
+        slew_y = clamped*20
 
     # duplicate for right axis
     if RIGHT_AXIS_X in axis and abs(axis[RIGHT_AXIS_X])>0.1:
@@ -56,12 +59,22 @@ def joystick_control():
         clamped = np.tanh(axis[RIGHT_AXIS_Y])
         slew_y += clamped
 
-    cam.requestGimbalSpeed(slew_x, slew_y)
+    cam.requestGimbalSpeed(int(slew_x), -int(slew_y))
 
 def handle_button_press(button: int):
-    global is_recording
+    global is_recording, target_zoom_level
     if button == BUTTON_CIRCLE:
         is_recording = not is_recording
+    
+    if button == BUTTON_RIGHT_TRIGGER:
+        if target_zoom_level < 10:
+            target_zoom_level += 1
+            cam.setAbsoluteZoom(target_zoom_level)
+    
+    if button == BUTTON_RIGHT_BUMPER:
+        if target_zoom_level > 1:
+            target_zoom_level -= 1
+            cam.setAbsoluteZoom(target_zoom_level)
 
 def main():
     global is_recording
@@ -73,29 +86,30 @@ def main():
             handle_button_press(event.button) 
 
 
-    img = cam.take_picture()
-    
-    joystick_control()
-
-    # # draw current position
-    cv.rectangle(img, (10,50), (200,0), (0,0,0), -1)
+    img = cam.take_picture().get_array()
     yaw, pitch, _roll = cam.getAttitude()
-    readout_text = ""
-    readout_text += f"\nyaw: {yaw:.2f} pitch: {pitch:.2f}"
-    for i, line in enumerate(readout_text.split('\n')):
-        cv.putText(img, line, (10,20+i*15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
-
+    
     if is_recording:
         img_num = len(os.listdir(imgs_dir))
         cv.imwrite(f"{imgs_dir}/{img_num}.jpg", img)
         with open(f"{imgs_dir}/{img_num}.txt", "w") as f:
-            f.writelines([
+            f.write("\n".join([
                 f"{yaw:.4f},{pitch:.4f}",
-                strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-            ])
+                strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                str(cam.getFocalLength())
+            ]))
+
+    joystick_control()
+
+    # # draw current position
+    cv.rectangle(img, (10,50), (200,0), (0,0,0), -1)
+    readout_text = f"\nyaw: {yaw:.2f} pitch: {pitch:.2f}\n zoom: {target_zoom_level}\n"
+    for i, line in enumerate(readout_text.split('\n')):
+        cv.putText(img, line, (10,20+i*15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
+
 
     # resize to half size
-    scale_factor = 1
+    scale_factor = 2
     img = cv.resize(img, (1920//scale_factor, 1080//scale_factor))
 
     # # draw a crosshair

@@ -57,6 +57,9 @@ class Camera:
         zoom = self.cam.getZoomLevel()
         return 90.9 + 1597.2 * zoom
     
+    def getZoomLevel(self):
+        return self.cam.getZoomLevel()
+    
     def __del__(self):
         self.disconnect()
     
