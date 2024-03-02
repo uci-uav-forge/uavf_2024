@@ -67,3 +67,18 @@ ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/d
 ```
 ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
+
+ARC upper field sim:
+
+```
+cd /PX4-Autopilot
+PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64158 PX4_HOME_LON=-117.82573 PX4_HOME_ALT=142 make px4_sitl jmavsim
+```
+
+```
+ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE 12 9
+```
+
+```
+ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9 --exit-early
+```
