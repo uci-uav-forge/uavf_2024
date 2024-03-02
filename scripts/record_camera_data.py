@@ -1,7 +1,7 @@
 import pygame
 import numpy as np
 import cv2 as cv
-from time import strftime
+from time import strftime, time
 from uavf_2024.imaging import Camera
 import os
 
@@ -9,7 +9,7 @@ cam = Camera()
 cam.setAbsoluteZoom(1)
 is_recording = False
 target_zoom_level = cam.getZoomLevel()
-print(target_zoom_level)
+speed_multiplier = 20
 
 imgs_dir = f"recorded_images/{strftime('%Y-%m-%d_%H-%M-%S')}"
 os.makedirs(imgs_dir, exist_ok=True)
@@ -44,11 +44,11 @@ def joystick_control():
     
     if LEFT_AXIS_X in axis and abs(axis[LEFT_AXIS_X])>0.1:
         clamped = np.tanh(axis[LEFT_AXIS_X]) # use tanh to clamp to [-1,1]
-        slew_x = clamped*20
+        slew_x = clamped*speed_multiplier
     
     if LEFT_AXIS_Y in axis and abs(axis[LEFT_AXIS_Y])>0.1:
         clamped = np.tanh(axis[LEFT_AXIS_Y]) # use tanh to clamp to [-1,1]
-        slew_y = clamped*20
+        slew_y = clamped*speed_multiplier
 
     # duplicate for right axis
     if RIGHT_AXIS_X in axis and abs(axis[RIGHT_AXIS_X])>0.1:
@@ -62,7 +62,7 @@ def joystick_control():
     cam.requestGimbalSpeed(int(slew_x), -int(slew_y))
 
 def handle_button_press(button: int):
-    global is_recording, target_zoom_level
+    global is_recording, target_zoom_level, speed_multiplier
     if button == BUTTON_CIRCLE:
         is_recording = not is_recording
     
@@ -75,6 +75,14 @@ def handle_button_press(button: int):
         if target_zoom_level > 1:
             target_zoom_level -= 1
             cam.setAbsoluteZoom(target_zoom_level)
+
+    if button == BUTTON_LEFT_TRIGGER:
+        if speed_multiplier < 100:
+            speed_multiplier += 10
+        
+    if button == BUTTON_LEFT_BUMPER:
+        if speed_multiplier > 10:
+            speed_multiplier -= 10
 
 def main():
     global is_recording
@@ -95,8 +103,8 @@ def main():
         with open(f"{imgs_dir}/{img_num}.txt", "w") as f:
             f.write("\n".join([
                 f"{yaw:.4f},{pitch:.4f}",
-                strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                str(cam.getFocalLength())
+                str(cam.getFocalLength()).
+                str(time())
             ]))
 
     joystick_control()
