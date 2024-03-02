@@ -16,6 +16,12 @@ os.makedirs(imgs_dir, exist_ok=True)
 
 pygame.init()
 pygame.joystick.init()
+X = 1900
+Y = 1000
+ 
+# create the display surface object
+# of specific dimension..e(X, Y).
+screen = pygame.display.set_mode((X, Y))
 print(f"Joysticks: {pygame.joystick.get_count()}")
 controller = pygame.joystick.Joystick(0)
 controller.init()
@@ -84,6 +90,7 @@ def handle_button_press(button: int):
         if speed_multiplier > 10:
             speed_multiplier -= 10
 
+@profile
 def main():
     global is_recording
     # retrieve any events ...
@@ -92,6 +99,10 @@ def main():
             axis[event.axis] = event.value
         if event.type == pygame.JOYBUTTONDOWN:
             handle_button_press(event.button) 
+        # if press q, quit
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                return False
 
 
     img = cam.take_picture().get_array()
@@ -111,14 +122,15 @@ def main():
 
     # # draw current position
     cv.rectangle(img, (10,50), (200,0), (0,0,0), -1)
-    readout_text = f"\nyaw: {yaw:.2f} pitch: {pitch:.2f}\n zoom: {target_zoom_level}\n"
+    readout_text = f"\nyaw: {yaw:.2f} pitch: {pitch:.2f}\n zoom: {target_zoom_level} speed: {speed_multiplier}\n"
     for i, line in enumerate(readout_text.split('\n')):
         cv.putText(img, line, (10,20+i*15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
 
 
-    # resize to half size
-    scale_factor = 2
-    img = cv.resize(img, (1920//scale_factor, 1080//scale_factor))
+    scale_factor = 1
+    # optionally, resize the image to make the window smaller
+    if scale_factor != 1:
+        img = cv.resize(img, (1920//scale_factor, 1080//scale_factor))
 
     # # draw a crosshair
     h,w = img.shape[:2]
@@ -128,12 +140,13 @@ def main():
     circle_thickness = -1 if is_recording else 2
     cv.circle(img, (w-30,30),20,(0,0,255),circle_thickness)
 
-    cv.imshow("Camera Image", img)
-
-    # if press q, break
-
-    if cv.waitKey(1) == ord('q'):
-        return False
+    pygame.display.flip()
+    # display image in pygame window
+    img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    img = np.rot90(img)
+    img = np.flipud(img)
+    img = pygame.surfarray.make_surface(img)
+    screen.blit(img, (0,0))
     
     return True
 
