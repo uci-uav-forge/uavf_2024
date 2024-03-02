@@ -4,8 +4,6 @@ import cv2 as cv
 from time import strftime, time
 from uavf_2024.imaging import Camera
 import os
-from OpenGL.GL import *
-from OpenGL.GLU import *
 
 cam = Camera()
 cam.setAbsoluteZoom(1)
@@ -23,7 +21,7 @@ Y = 900
  
 # create the display surface object
 # of specific dimension..e(X, Y).
-screen = pygame.display.set_mode((X, Y), pygame.DOUBLEBUF | pygame.OPENGL)
+screen = pygame.display.set_mode((X, Y), pygame.DOUBLEBUF)
 print(f"Joysticks: {pygame.joystick.get_count()}")
 controller = pygame.joystick.Joystick(0)
 controller.init()
@@ -92,27 +90,6 @@ def handle_button_press(button: int):
         if speed_multiplier > 10:
             speed_multiplier -= 10
 
-def create_texture_from_image(image):
-    height, width, channels = image.shape
-    texture_id = glGenTextures(1)
-    glBindTexture(GL_TEXTURE_2D, texture_id)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image)
-    return texture_id
-
-def draw_textured_quad(texture_id, position, size):
-    glEnable(GL_TEXTURE_2D)
-    glBindTexture(GL_TEXTURE_2D, texture_id)
-    glBegin(GL_QUADS)
-    glTexCoord2f(0, 0); glVertex3f(position[0], position[1], 0)
-    glTexCoord2f(1, 0); glVertex3f(position[0] + size[0], position[1], 0)
-    glTexCoord2f(1, 1); glVertex3f(position[0] + size[0], position[1] + size[1], 0)
-    glTexCoord2f(0, 1); glVertex3f(position[0], position[1] + size[1], 0)
-    glEnd()
-    glDisable(GL_TEXTURE_2D)
-
-@profile
 def main():
     global is_recording
     # retrieve any events ...
@@ -163,10 +140,10 @@ def main():
     pygame.display.flip()
     # display image in pygame window
     img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    img = cv.flip(img, 0)
-    texture_id = create_texture_from_image(img)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    draw_textured_quad(texture_id, (-1, -1), (2, 2))  # Cover the viewport
+    img = np.rot90(img)
+    img = np.flipud(img)
+    img = pygame.surfarray.make_surface(img)
+    screen.blit(img, (0,0))
     
     return True
 
