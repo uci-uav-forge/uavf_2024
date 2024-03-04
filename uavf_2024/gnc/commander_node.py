@@ -161,7 +161,9 @@ class CommanderNode(rclpy.node.Node):
         
         self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
 
-        self.log("Pushed waypoints, setting mode.")
+        self.log("Delaying before setting mode")
+        time.sleep(1)
+        self.log("Pushing waypoints and setting mode.")
 
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
