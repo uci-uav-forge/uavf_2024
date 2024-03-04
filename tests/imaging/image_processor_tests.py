@@ -219,7 +219,7 @@ class TestImagingFrontend(unittest.TestCase):
         # lstats = profiler.get_stats()
         # line_profiler.show_text(lstats.timings, lstats.unit)
     
-    def test_metrics(self, gen_confusion_matrices = True):
+    def test_metrics(self, gen_confusion_matrices = False):
 
         debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/test_metrics"
         debug_folder_path = f"{CURRENT_FILE_PATH}/visualizations/test_bounding_box"
