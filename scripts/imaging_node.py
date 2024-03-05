@@ -14,8 +14,6 @@ from time import strftime, time, sleep
 class ImagingNode(Node):
     def __init__(self) -> None:
         super().__init__('imaging_node')
-        self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
-        self.attitude_service = self.create_service(GetAttitude, 'attitude_service', self.get_attitudes)
         self.camera = Camera()
         self.camera.setAbsoluteZoom(1)
         self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}/image_processor')
@@ -28,13 +26,15 @@ class ImagingNode(Node):
             depth = 1
         )
 
+        self.got_pose = False
+
         self.world_position_sub = self.create_subscription(
             PoseStamped,
             '/mavros/local_position/pose',
             self.got_pose_cb,
             qos_profile)
 
-        self.got_pose = False
+        self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
         self.get_logger().info("Finished initializing imaging node")
         
     def got_pose_cb(self, pose: PoseStamped):
@@ -72,9 +72,27 @@ class ImagingNode(Node):
         self.get_logger().info("Images processed")
 
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
+        if not self.got_pose:
+            self.get_logger().error("No pose info from mavros. Hanging until we get pose")
+            for _ in range(5):
+                if self.got_pose:
+                    break
+                self.get_logger().info("Waiting for pose")
+            if not self.got_pose:
+                return
+            else:
+                self.get_logger().info("Got pose finally!")
 
-        cam_pose = (self.cur_position, self.camera.orientation_in_world_frame(self.cur_rot, avg_angles))
-        preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
+        cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
+        cam_pose = (cur_position_np, self.camera.orientation_in_world_frame(self.cur_rot, avg_angles))
+        self.get_logger().info("2")
+        try:
+            self.get_logger().info(f"{len(detections)} detections")
+            preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
+        except Exception as e:
+            self.get_logger().info("caught exception")
+            self.get_logger().info(e)
+        self.get_logger().info("3")
 
         self.get_logger().info("Localization finished")
 
