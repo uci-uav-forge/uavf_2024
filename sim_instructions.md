@@ -1,6 +1,6 @@
 # Instructions for testing using SITL
 
-You might need to run the following:
+You might need to run the following on the host machine before building the Docker image:
 ```
 git submodule init siyi_sdk && git submodule update siyi_sdk
 ```
@@ -22,6 +22,29 @@ sudo -H -u qgc /QGroundControl.AppImage
 
 Ask QGC to takeoff using the UI.
 
+## Headless remote SITL (no Docker needed!)
+
+Follow these instructions by Eric to establish a connection & SSH to the lab machine.
+
+https://docs.google.com/document/d/1yx_y53GlGXzIlb5XoCMI9oupPpIu1cXJN4InP-qLm7g/edit#heading=h.8zsd8msotkte
+
+Then run this command to start the docker container `docker run -it -v ~/uavf_2024:/home/ws/libuavf_2024 3940da8882a0`. The image ID (last argument) might be different, but you can find it by just running `docker image ls` and looking for the big ones from VS code.
+
+Once you're in the container, run `sudo apt install tmux` and then run `tmux`.
+
+
+To start jmavsim in headless mode, prepend `HEADLESS=1`.
+```
+cd /PX4-Autopilot
+HEADLESS=1 PX4_SIM_SPEED=2 PX4_HOME_LAT=38.31633 PX4_HOME_LON=-76.55578 PX4_HOME_ALT=142 make px4_sitl jmavsim
+```
+
+You can skip QGroundcontrol and just type the following in the `jmavsim` window to takeoff.
+```
+commander takeoff
+```
+
+After this you can go on to follow the rest of the instructions as normal.
 
 
 ## Start offboard control.
