@@ -41,6 +41,7 @@ set(msg_files
 )
 set(srv_files
   "srv/TakePicture.srv"
+  "srv/GetAttitude.srv"
 )
 
 rosidl_generate_interfaces(libuavf_2024
@@ -55,7 +56,8 @@ install(PROGRAMS
   scripts/demo_dropzone_planner.py
   scripts/trajectory_planner_node.py
   scripts/waypoint_tracker_node.py
-  scripts/demo_imaging_node.py
+  scripts/perception_clients/take_one_image.py
+  scripts/perception_clients/continuous_image_taking.py
   scripts/imaging_node.py
   scripts/mock_imaging_node.py
   DESTINATION lib/${PROJECT_NAME}

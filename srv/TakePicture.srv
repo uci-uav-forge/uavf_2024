@@ -1,2 +1,5 @@
 ---
 libuavf_2024/TargetDetection[] detections
+float64[3] attitudes
+# Returns 3 float values
+# [pitch, yaw, roll]

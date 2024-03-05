@@ -1,5 +1,3 @@
-from typing import List, Tuple
-from uavf_2024.gnc.util import convert_local_m_to_delta_gps
 import numpy as np
 import math
 altitude = 20.0
@@ -9,7 +7,7 @@ class DropzonePlanner:
     Handles all logic related to controlling drone motion during the payload drop.
     '''
 
-    def __init__(self, commander, image_width_m: float, image_height_m: float):
+    def __init__(self, commander: 'CommanderNode', image_width_m: float, image_height_m: float):
         self.commander = commander
         self.image_width_m = image_width_m
         self.image_height_m = image_height_m
@@ -82,13 +80,13 @@ class DropzonePlanner:
         entire drop zone.
         '''
         dropzone_plan = self.gen_dropzone_plan()
-        self.commander.log("Planned waypoints", [self.commander.local_to_gps(wp) for wp, _ in dropzone_plan])
+        self.commander.log(f"Planned waypoints {[self.commander.local_to_gps(wp) for wp, _ in dropzone_plan]}")
         self.commander.call_imaging_at_wps = True
         self.commander.execute_waypoints([np.concatenate(self.commander.local_to_gps(wp),altitude) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
         self.commander.call_imaging_at_wps = False
         self.detections = self.commander.gather_imaging_detections()
 
-        self.commander.log("Imaging detections", self.detections)
+        self.commander.log(f"Imaging detections {self.detections}")
 
     def conduct_air_drop(self):
         '''

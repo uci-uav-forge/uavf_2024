@@ -1,20 +1,20 @@
 from uavf_2024.imaging.tracker import TargetTracker
-from uavf_2024.imaging.imaging_types import Target3D, TargetDescription
+from uavf_2024.imaging.imaging_types import Target3D, CertainTargetDescriptor
 import numpy as np
 import unittest
 
 
 class TargetTrackerTests(unittest.TestCase):
     def test_puts_identical_targets_same_track(self):
-        bogus_descriptor = TargetDescription(
-                np.eye(9)[0],
-                np.eye(36)[0],
-                np.eye(8)[0],
-                np.eye(8)[0],
-            )
+        bogus_descriptor = CertainTargetDescriptor(
+                'red',
+                'circle',
+                'blue',
+                'A'
+            ).as_probabilistic()
         target = Target3D(
             position = np.array([0,0,0]),
-            description = bogus_descriptor
+            descriptor = bogus_descriptor
         )
         tracker = TargetTracker([])
 

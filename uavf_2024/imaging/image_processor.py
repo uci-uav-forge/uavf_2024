@@ -2,13 +2,11 @@ from __future__ import annotations
 import numpy as np
 import os
 import cv2 as cv
-import time
 
 from .utils import batched
-from .imaging_types import HWC, FullPrediction, Image, InstanceSegmentationResult, TargetDescription
+from .imaging_types import HWC, FullBBoxPrediction, Image, InstanceSegmentationResult, ProbabilisticTargetDescriptor
 from .letter_classification import LetterClassifier
 from .shape_detection import ShapeInstanceSegmenter
-from .color_segmentation import color_segmentation
 from .color_classification import ColorClassifier
 from . import profiler
 from memory_profiler import profile as mem_profile
@@ -75,7 +73,7 @@ class ImageProcessor:
         self.shape_batch_size = shape_batch_size
         self.letter_batch_size = letter_batch_size
 
-    def process_image(self, img: Image) -> list[FullPrediction]:
+    def process_image(self, img: Image) -> list[FullBBoxPrediction]:
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
@@ -107,39 +105,36 @@ class ImageProcessor:
 
         self.num_processed += 1
 
-        total_results: list[FullPrediction] = []
+        total_results: list[FullBBoxPrediction] = []
         # create debug directory for segmentation and classification
         for results in batched(shape_results, self.letter_batch_size):
             results: list[InstanceSegmentationResult] = results # type hinting
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
-
-
                 # Color segmentations
                 shape_conf = shape_res.confidences
-                letter_img = cv.resize(shape_res.img.get_array().astype(np.float32), (128,128))
-                letter_imgs.append(letter_img)
                 img_black_bg = shape_res.img * shape_res.mask
-                color_seg_result = color_segmentation(img_black_bg) # Can this be parallelized?
+                letter_img = cv.resize(img_black_bg.get_array().astype(np.float32), (128,128))
+                letter_imgs.append(letter_img)
 
                 if self.debug_path is not None:
                     instance_debug_path = f"{local_debug_path}/det_{shape_res.id}"
                     os.makedirs(instance_debug_path, exist_ok=True)
                     cv.imwrite(f"{instance_debug_path}/input.png", shape_res.img.get_array())
                     cv.imwrite(f"{instance_debug_path}/black_bg.png", img_black_bg.get_array())
-                    cv.imwrite(f"{instance_debug_path}/color_seg.png", color_seg_result.mask*127)
                 # Classify the colors
-                shape_color_conf = self.color_classifier.predict(color_seg_result.shape_color)
-                letter_color_conf = self.color_classifier.predict(color_seg_result.letter_color)
+
+                letter_color_conf, shape_color_conf = self.color_classifier.predict(letter_img)
+
                 # add to total_results
                 letter_conf = None
                 total_results.append(
-                FullPrediction(
+                FullBBoxPrediction(
                     shape_res.x,
                     shape_res.y,
                     shape_res.width,
                     shape_res.height,
-                    TargetDescription(
+                    ProbabilisticTargetDescriptor(
                         shape_conf,
                         letter_conf,
                         shape_color_conf,
@@ -153,11 +148,11 @@ class ImageProcessor:
             # "index math hard for grug brain" - Eric
             # Updates letter probs which were previously set to none just in the most recent batch
             for result, conf in zip(total_results[-len(results):], letter_conf):
-                result.description.letter_probs = conf
+                result.descriptor.letter_probs = conf
             
         if self.debug_path is not None:
             for result in total_results:
-                pred_descriptor_string = str(result.description)
+                pred_descriptor_string = str(result.descriptor)
                 with open(f"{local_debug_path}/det_{result.det_id}/descriptor.txt", "w") as f:
                     f.write(pred_descriptor_string)
 
