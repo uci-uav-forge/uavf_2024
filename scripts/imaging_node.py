@@ -85,14 +85,9 @@ class ImagingNode(Node):
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
         cam_pose = (cur_position_np, self.camera.orientation_in_world_frame(self.cur_rot, avg_angles))
-        self.get_logger().info("2")
-        try:
-            self.get_logger().info(f"{len(detections)} detections")
-            preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
-        except Exception as e:
-            self.get_logger().info("caught exception")
-            self.get_logger().info(e)
-        self.get_logger().info("3")
+        
+        self.get_logger().info(f"{len(detections)} detections")
+        preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         self.get_logger().info("Localization finished")
 
