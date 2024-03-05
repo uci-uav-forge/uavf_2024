@@ -156,6 +156,4 @@ class ImageProcessor:
                 with open(f"{local_debug_path}/det_{result.det_id}/descriptor.txt", "w") as f:
                     f.write(pred_descriptor_string)
 
-            
-
         return total_results
