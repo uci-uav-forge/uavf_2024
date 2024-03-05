@@ -23,3 +23,5 @@ float64[8] letter_color_conf
 # should sum to 1
 # indices in order:
 # white, black, red, blue, green, purple, brown, orange
+
+string id

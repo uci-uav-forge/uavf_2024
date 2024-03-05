@@ -40,6 +40,9 @@ class Track:
     def __repr__(self):
         return f"{self.position},{self.descriptor}"
 
+    def contributing_measurement_ids(self):
+        return [m.id for m in self._measurements]
+
 class TargetTracker:
     def __init__(self):
         self.tracks: list[Track] = []

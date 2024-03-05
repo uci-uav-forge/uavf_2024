@@ -84,7 +84,14 @@ class ImagingNode(Node):
                 self.get_logger().info("Got pose finally!")
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
-        cam_pose = (cur_position_np, self.camera.orientation_in_world_frame(self.cur_rot, avg_angles))
+        world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
+        cam_pose = (cur_position_np, world_orientation)
+
+        self.get_logger().info("Writing cam pose to file")
+        with open(f"{self.image_processor.get_last_logs_path()}/cam_pose.txt", "w") as f:
+            f.write(f"{cur_position_np[0]},{cur_position_np[1]},{cur_position_np[2]}\n")
+            rot_quat = world_orientation.as_quat()
+            f.write(f"{rot_quat[0]},{rot_quat[1]},{rot_quat[2]},{rot_quat[3]}\n")
         
         self.get_logger().info(f"{len(detections)} detections")
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
@@ -101,7 +108,8 @@ class ImagingNode(Node):
                 shape_conf = p.descriptor.shape_probs.tolist(),
                 letter_conf = p.descriptor.letter_probs.tolist(),
                 shape_color_conf = p.descriptor.shape_col_probs.tolist(),
-                letter_color_conf = p.descriptor.letter_col_probs.tolist()
+                letter_color_conf = p.descriptor.letter_col_probs.tolist(),
+                id = p.id
             )
 
             response.detections.append(t)
