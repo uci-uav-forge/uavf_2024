@@ -38,9 +38,8 @@ class Track:
         return self._measurements
 
 class TargetTracker:
-    def __init__(self, debug_path: str  = None):
+    def __init__(self):
         self.tracks: list[Track] = []
-        self.debug_path = debug_path
 
     def update(self, detections: list[Target3D]):
         for detection in detections:
