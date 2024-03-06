@@ -25,7 +25,7 @@ cd ~/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 mock_imaging_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE 12 9
 ```
 
-Launch the commander node (for now, note the `end-early` flag - this terminates the script after the mission is pushed and completed.) 
+Launch the commander node (for now, note the `end-early` flag - this terminates the script after the mission is pushed and completed.)  -
 
 ```
 cd ~/ws && colcon build --merge-install && source install/setup.bash
