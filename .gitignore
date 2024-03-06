@@ -12,4 +12,5 @@ build
 install
 log
 visualizations
+recorded_images
 .vscode
