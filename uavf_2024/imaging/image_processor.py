@@ -73,6 +73,9 @@ class ImageProcessor:
         self.shape_batch_size = shape_batch_size
         self.letter_batch_size = letter_batch_size
 
+    def get_last_logs_path(self):
+        return f"{self.debug_path}/img_{self.num_processed-1}"
+
     def process_image(self, img: Image) -> list[FullBBoxPrediction]:
         '''
         img shape should be (height, width, channels)

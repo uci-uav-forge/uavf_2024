@@ -5,7 +5,6 @@ from rclpy.node import Node
 from time import sleep
 
 class DemoImagingClient(Node):
-
     def __init__(self):
         super().__init__('demo_imaging_client')
         self.get_logger().info("Initializing Client")
@@ -23,8 +22,6 @@ class DemoImagingClient(Node):
         res = self.send_request()
         self.get_logger().info(str(res.detections))
         self.get_logger().info(str(res.attitudes))
-
-        
 
     def send_request(self):
         self.get_logger().info("Sending request")
