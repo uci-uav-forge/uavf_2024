@@ -13,7 +13,7 @@ class ColorClassificationTest(unittest.TestCase):
         This specific shade of blue was misclassified as purple
         when we first made the simple KNN color classifier with 1 example per color.
         '''
-        image_path = CURRENT_FILE_PATH + '/imaging_data/color_classification/72.jpg'
+        image_path = CURRENT_FILE_PATH + '/2024_test_data/color_classification/72.jpg'
         image = imread(image_path)
         
         classifier = ColorClassifier()

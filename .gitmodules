@@ -4,3 +4,6 @@
 [submodule "siyi_sdk"]
 	path = siyi_sdk
 	url = https://github.com/uci-uav-forge/siyi_sdk.git
+[submodule "tests/imaging/2024_test_data"]
+	path = tests/imaging/2024_test_data
+	url = https://github.com/uci-uav-forge/2024_test_data.git
