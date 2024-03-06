@@ -15,6 +15,8 @@ import logging
 from datetime import datetime
 import numpy as np
 
+TAKEOFF_ALTITUDE = 20.0
+
 class CommanderNode(rclpy.node.Node):
     '''
     Manages subscriptions to ROS2 topics and services necessary for the main GNC node. 
@@ -135,7 +137,7 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints")
 
         
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, self.last_global_pos.altitude)] +  waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] +  waypoints
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
         
@@ -230,4 +232,4 @@ class CommanderNode(rclpy.node.Node):
             self.dropzone_planner.conduct_air_drop()
 
             # Fly back to home position
-            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude)])
+            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude, TAKEOFF_ALTITUDE)])

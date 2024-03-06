@@ -100,7 +100,7 @@ class DropzonePlanner:
             self.has_scanned_dropzone = True
         
         best_match = max(self.detections, key = self.match_score)
-        self.commander.execute_waypoints([self.commander.local_to_gps((best_match.x, best_match.y),np.array([altitude]))])
+        self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps((best_match.x,best_match.y)),np.array([altitude])))])
         self.commander.release_payload()
         self.commander.payloads[self.current_payload_index].display()
         self.current_payload_index += 1
