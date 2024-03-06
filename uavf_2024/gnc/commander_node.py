@@ -43,6 +43,7 @@ class CommanderNode(rclpy.node.Node):
         self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
         self.clear_mission_client = self.create_client(mavros_msgs.srv.WaypointClear, 'mavros/mission/clear')
 
+        self.land_client = self.create_client(mavros_msgs.srv.CommandTOL, 'mavros/cmd/land')
 
         self.cur_state = None
         self.state_sub = self.create_subscription(
@@ -210,16 +211,83 @@ class CommanderNode(rclpy.node.Node):
         '''
         self.log('Waiting for takeoff')
 
+        self.takeoff_client.wait_for_service()
+
+        takeoff_request = mavros_msgs.srv.CommandTOL.Request(altitude=20.0, min_pitch=0.0, yaw=0.0, latitude=0.0, longitude=0.0)
+        takeoff_response = self.takeoff_client.call(takeoff_request)
+
+        return takeoff_response.success
+
+    def takeoff(self):
+        success = self.wait_for_takeoff()
+
+        if success:
+            self.log('Takeoff successful')
+        else:
+            self.log('Takeoff failed')
+
+        return success
+
+    def wait_for_land(self):
+        self.land_client.wait_for_service()
+
+        land_request = mavros_msgs.srv.CommandTOL.Request(altitude=0.0, min_pitch=0.0, yaw=0.0, latitude=0.0, longitude=0.0)
+        land_response = self.land_client.call(land_request)
+
+        return land_response.success
+
+    def land(self):
+        success = self.wait_for_land()
+        
+        if success:
+            self.log('Landing successful')
+        else:
+            self.log('Landing failed')
+
+        return success
+
+    def arm(self, b: bool):
+        '''
+        True for arm
+        False for disarm
+        '''
+        arm_response = self.arm_client.call(mavros_msgs.srv.CommandBool.Request(value = b))
+        arm_disarm_string = 'Arming' if b else 'Disarming'
+        if arm_response.success:
+            self.log(arm_disarm_string + ' successful')
+        else:
+            self.log(arm_disarm_string + ' failed')
+        return arm_response.success
+
+    def reload_payload(self):
+        '''
+        this will do nothing for now
+        '''
+        self.log('Nothing will happen for now')
+    
     def execute_mission_loop(self):
         while not self.got_global_pos:
             pass
 
+        arm_success = self.arm(True)
+
+        if not arm_success:
+            self.log('Mission aborted due to failed arming')
+            return
+        
         for lap in range(len(self.payloads)):
             self.log(f'Lap {lap}')
 
-            # Wait for takeoff
-            self.wait_for_takeoff()
+            # # Wait for takeoff
+            # self.wait_for_takeoff()
+            
 
+            takeoff_success = self.takeoff()
+
+            if not takeoff_success:
+                self.log('Mission aborted due to failed takeoff')
+                return
+            
             # Fly waypoint lap
             self.execute_waypoints(self.mission_wps)
 
@@ -231,3 +299,17 @@ class CommanderNode(rclpy.node.Node):
 
             # Fly back to home position
             self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude)])
+
+            self.reload_payload()
+
+            land_success = self.land()
+
+            if not land_success:
+                self.log('Mission aborted due to landing failure.')
+                return
+
+        disarm_success = self.arm(False)
+
+        if not disarm_success:
+            self.log('Mission aborted due to failed disarming')
+            return
