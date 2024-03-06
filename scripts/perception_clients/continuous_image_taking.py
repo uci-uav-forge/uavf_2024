@@ -35,7 +35,9 @@ class ContinuousImagingClient(Node):
             sleep(1)
 
         self.get_logger().info("Done with requests")
-        self.get_logger().info(str(self.tracker.estimate_positions(search_candidates)))
+        estimated_positions = self.tracker.estimate_positions(search_candidates)
+        self.get_logger().info(str(estimated_positions))
+        self.get_logger().info(str([track.contributing_measurement_ids() for track in estimated_positions]))
 
     def send_request(self):
         self.get_logger().info("Sending request")

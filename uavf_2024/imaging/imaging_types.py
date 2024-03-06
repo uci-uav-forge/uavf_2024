@@ -213,7 +213,8 @@ class Target3D:
                 np.array(msg.letter_conf),
                 np.array(msg.shape_color_conf),
                 np.array(msg.letter_color_conf)
-            )
+            ),
+            msg.id
         )
 
 @dataclass
@@ -231,6 +232,7 @@ class ROSDetectionMessage:
     letter_conf: list[float]
     shape_color_conf: list[float]
     letter_color_conf: list[float]
+    id: str
 
 class ImageDimension(Enum):
     HEIGHT = 'h'
