@@ -145,10 +145,9 @@ class CertainTargetDescriptor:
         )
     
     def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
-        assert all(
-            None not in [self.shape, self.letter, self.shape_col, self.letter_col]
-        ), '''Cannot convert to probabilistic if any of the values are None 
-            (probably trying to convert a ground truth label with missing data, which shouldn't be done'''
+        err_message = '''Cannot convert to probabilistic if any of the values are None (probably trying 
+                        to convert a ground truth label with missing data, which shouldn't be done'''
+        assert None not in [self.shape, self.letter, self.shape_col, self.letter_col], err_message
         shape_probs = np.zeros(len(SHAPES))
         shape_probs[SHAPES.index(self.shape)] = 1.0
 
