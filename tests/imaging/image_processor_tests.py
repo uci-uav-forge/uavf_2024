@@ -43,20 +43,12 @@ def calc_metrics(predictions: list[FullBBoxPrediction], ground_truth: list[FullB
             color = (0, 0, 255) 
             thickness = 2
             cv2.rectangle(debug_img, (x, y), (x1, y1), color, thickness) 
-            cv2.putText(debug_img, "truth", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
         this_target_was_detected = False
         for pred in predictions:
             pred_box = np.array([[
                 pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
             ]])
-
-            if debug_img is not None:
-                x, y, x1, y1 = pred_box.flatten()
-                color = (0, 255, 0)  
-                thickness = 2
-                cv2.rectangle(debug_img, (x, y), (x1, y1), color, thickness)  
-                cv2.putText(debug_img, "prediction", (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
             iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))
             if iou>0.5:
@@ -84,7 +76,7 @@ def calc_metrics(predictions: list[FullBBoxPrediction], ground_truth: list[FullB
     if debug_img is not None:
          local_debug_path = f"{debug_path}/img_{img_num}"
          os.makedirs(local_debug_path, exist_ok=True)
-         cv2.imwrite(f"{local_debug_path}/bounding_boxes.png", debug_img)
+         cv2.imwrite(f"{local_debug_path}/ground_truth_bboxes.png", debug_img)
 
     recall = targets_detected / len(ground_truth) if len(ground_truth)>0 else None
     precision = true_positives / len(predictions) if len(predictions)>0 else None
