@@ -260,7 +260,7 @@ class TestImagingFrontend(unittest.TestCase):
         # line_profiler.show_text(lstats.timings, lstats.unit)
     
     def test_metrics(self, gen_confusion_matrices = True):
-
+        print("\nSynthetic dataset metrics:\n")
         debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/test_metrics"
         debug_folder_path = f"{CURRENT_FILE_PATH}/visualizations/test_bounding_box"
 
@@ -310,7 +310,6 @@ class TestImagingFrontend(unittest.TestCase):
         if gen_confusion_matrices:
             generate_confusion_matrices(labels, prediction_list, out_folder)
 
-        print("Synthetic dataset metrics:")
         print(f"Recall: {np.mean(recalls)}")
         print(f"Precision: {np.mean(precisions)}")
         print(f"Shape top 1 acc: {np.mean(shape_top1s)}")
@@ -320,6 +319,7 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
 
     def test_irl_dataset(self, gen_confusion_matrices = True):
+        print("\nIRL data metrics:\n")
         debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/test_irl"
 
         if os.path.exists(debug_output_folder):
@@ -369,7 +369,6 @@ class TestImagingFrontend(unittest.TestCase):
         if gen_confusion_matrices:
             generate_confusion_matrices(labels, prediction_list, out_folder)
 
-        print("IRL data metrics:")
         print(f"Recall: {np.mean(recalls)}")
         print(f"Precision: {np.mean(precisions)}")
         print(f"Shape top 1 acc: {np.mean(shape_top1s)}")
