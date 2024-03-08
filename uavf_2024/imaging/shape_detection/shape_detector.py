@@ -50,7 +50,7 @@ class ShapeDetector:
                 x,y,w,h = box.int()
                 x-=int(w/2) # adjust to make x,y the top left
                 y-=int(h/2)
-                confidences = np.zeros(9) # TODO: change this to 8 for new model
+                confidences = np.zeros(9)
                 confidences[cls.int()] = prob
                 full_results.append(
                     DetectionResult(
