@@ -13,7 +13,7 @@ CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 class ShapeDetector:
     def __init__(self, img_size):
-        self.shape_model = YOLO(f"{CURRENT_FILE_PATH}/weights/seg-v8n-best.pt")
+        self.shape_model = YOLO(f"{CURRENT_FILE_PATH}/weights/v8n-best.pt")
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.shape_model.predict(list(rand_input), verbose=False)
         self.num_processed = 0
@@ -36,17 +36,12 @@ class ShapeDetector:
 
         full_results = []
         for img_index, single_pred in enumerate(predictions):
-            masks = single_pred.masks
-            if masks is None:
-                warnings.warn("ShapeInstanceSegmenter.predict() could not extract masks from YOLO output")
-                continue
-        
             if not isinstance(single_pred.boxes, Boxes):
                 warnings.warn("ShapeInstanceSegmenter.predict() could not extract Boxes from YOLO output")
                 continue
         
             boxes: Boxes = single_pred.boxes
-            for box, mask, prob, cls in zip(boxes.xywh, masks.data, boxes.conf, boxes.cls):
+            for box, prob, cls in zip(boxes.xywh, boxes.conf, boxes.cls):
                 x,y,w,h = box.int()
                 x-=int(w/2) # adjust to make x,y the top left
                 y-=int(h/2)
@@ -59,7 +54,6 @@ class ShapeDetector:
                         width=img_coord_t(w.item()),
                         height=img_coord_t(h.item()),
                         confidences = np.array(self.cnf_matrix[SHAPES[cls.int()]]),
-                        mask = mask[y:y+h, x:x+w].unsqueeze(2).cpu().numpy(),
                         img = tiles[img_index].img.make_sub_image(x, y, w, h),
                         id = self.num_processed
                     )
