@@ -4,14 +4,14 @@ import os
 import cv2 as cv
 
 from .utils import batched
-from .imaging_types import HWC, FullBBoxPrediction, Image, InstanceSegmentationResult, ProbabilisticTargetDescriptor
+from .imaging_types import HWC, FullBBoxPrediction, Image, DetectionResult, ProbabilisticTargetDescriptor
 from .letter_classification import LetterClassifier
-from .shape_detection import ShapeInstanceSegmenter
+from .shape_detection import ShapeDetector
 from .color_classification import ColorClassifier
 from . import profiler
 from memory_profiler import profile as mem_profile
 
-def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
+def nms_process(shape_results: DetectionResult, thresh_iou):
     #Given shape_results and some threshold iou, determines if there are intersecting bounding boxes that exceed the threshold iou and takes the
     #box that has the maximum confidence
     boxes = np.array([[shape.x, shape.y, shape.x + shape.width, shape.y + shape.height, max(shape.confidences)] for shape in shape_results])
@@ -64,7 +64,7 @@ class ImageProcessor:
         '''
         self.tile_size = 640
         self.letter_size = 128
-        self.shape_detector = ShapeInstanceSegmenter(self.tile_size)
+        self.shape_detector = ShapeDetector(self.tile_size)
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
         self.debug_path = debug_path
@@ -87,7 +87,7 @@ class ImageProcessor:
         if not img.dim_order == HWC:
             raise ValueError("img must be in HWC order")
 
-        shape_results: list[InstanceSegmentationResult] = []
+        shape_results: list[DetectionResult] = []
 
         all_tiles = img.generate_tiles(self.tile_size)
         for tiles_batch in batched(all_tiles, self.shape_batch_size):
@@ -111,7 +111,7 @@ class ImageProcessor:
         total_results: list[FullBBoxPrediction] = []
         # create debug directory for segmentation and classification
         for results in batched(shape_results, self.letter_batch_size):
-            results: list[InstanceSegmentationResult] = results # type hinting
+            results: list[DetectionResult] = results # type hinting
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
                 # Color segmentations
