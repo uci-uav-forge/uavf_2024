@@ -84,11 +84,11 @@ PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64230 PX4_HOME_LON=-117.82683 PX4_HOME_ALT=142 m
 ```
 
 ```
-ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/AIRDROP_BOUNDARY 12 9
+ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY 12 9
 ```
 
 ```
-ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9 --exit-early
 ```
 
 ARC upper field sim:
