@@ -74,6 +74,9 @@ ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc
 This will execute one lap of the mission in SITL.
 
 ## To simulate at the ARC field:
+
+### ARC club field sim:
+
 Use the following commands:
 
 To load a safety geofence like we will have in real life you may open /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/plan.plan in QGC.
