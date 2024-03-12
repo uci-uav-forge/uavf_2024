@@ -73,6 +73,8 @@ class ImageProcessor:
         self.shape_batch_size = shape_batch_size
         self.letter_batch_size = letter_batch_size
 
+    def get_last_logs_path(self):
+        return f"{self.debug_path}/img_{self.num_processed-1}"
     def _make_shape_detection(self, img : Image) -> list[InstanceSegmentationResult]:
         shape_results: list[InstanceSegmentationResult] = []
 

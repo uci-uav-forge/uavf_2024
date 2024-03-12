@@ -16,7 +16,7 @@ class TargetTrackerTests(unittest.TestCase):
             position = np.array([0,0,0]),
             descriptor = bogus_descriptor
         )
-        tracker = TargetTracker([])
+        tracker = TargetTracker()
 
         tracker.update([target])
 
