@@ -97,6 +97,7 @@ class ImagingNode(Node):
 
         return response
     
+    
     def get_attitudes(self, request, response: list[float]):
         self.get_logger().info("Received Request for attitudes")
         self.camera.request_down()
