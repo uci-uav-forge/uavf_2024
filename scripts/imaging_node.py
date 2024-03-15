@@ -117,7 +117,7 @@ class ImagingNode(Node):
         self.get_logger().info("Returning Response")
 
         return response
-
+    
     
     def get_attitudes(self, request, response: list[float]):
         self.get_logger().info("Received Request for attitudes")
