@@ -75,10 +75,11 @@ class ImageProcessor:
 
     def get_last_logs_path(self):
         return f"{self.debug_path}/img_{self.num_processed-1}"
-    def _make_shape_detection(self, img : Image) -> list[InstanceSegmentationResult]:
+
+    def _make_shape_detection(self, img : Image, tile_min_overlap = 64) -> list[InstanceSegmentationResult]:
         shape_results: list[InstanceSegmentationResult] = []
 
-        all_tiles = img.generate_tiles(self.tile_size)
+        all_tiles = img.generate_tiles(self.tile_size, tile_min_overlap)
         for tiles_batch in batched(all_tiles, self.shape_batch_size):
             temp = self.shape_detector.predict(tiles_batch)
             if temp is not None: shape_results.extend(temp)
@@ -151,7 +152,7 @@ class ImageProcessor:
                     f.write(pred_descriptor_string)
         return total_results
     
-    def process_image(self, img: Image) -> list[FullBBoxPrediction]:
+    def process_image(self, img: Image, tile_min_overlap = 64) -> list[FullBBoxPrediction]:
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
@@ -161,12 +162,12 @@ class ImageProcessor:
         if not img.dim_order == HWC:
             raise ValueError("img must be in HWC order")
         
-        shape_results = self._make_shape_detection(img)
+        shape_results = self._make_shape_detection(img, tile_min_overlap)
         self.num_processed += 1
         total_results = self._classify_color_and_char(shape_results)
         return total_results
     
-    def process_image_lightweight(self, img : Image) -> list[FullBBoxPrediction] | list[InstanceSegmentationResult]:
+    def process_image_lightweight(self, img : Image, tile_min_overlap = 64) -> list[FullBBoxPrediction]:
         '''
         Processes image and runs shape detection
         Only classifies if there is more than one detection.
@@ -177,7 +178,7 @@ class ImageProcessor:
         if not img.dim_order == HWC:
             raise ValueError("img must be in HWC order")
         
-        shape_results = self._make_shape_detection(img)
+        shape_results = self._make_shape_detection(img, tile_min_overlap)
         self.num_processed += 1
 
         if len(shape_results) == 1:
