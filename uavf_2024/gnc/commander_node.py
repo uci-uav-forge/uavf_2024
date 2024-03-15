@@ -127,6 +127,10 @@ class CommanderNode(rclpy.node.Node):
     
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
+
+    def get_cur_xy(self):
+        pose = self.cur_pose.pose
+        return np.array([pose.position.x, pose.position.y])
     
     def execute_waypoints(self, waypoints, yaws = None, altitude = 0.0):
         if yaws is None:
