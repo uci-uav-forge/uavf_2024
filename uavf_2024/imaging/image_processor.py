@@ -75,18 +75,7 @@ class ImageProcessor:
 
     def get_last_logs_path(self):
         return f"{self.debug_path}/img_{self.num_processed-1}"
-
-    def process_image(self, img: Image) -> list[FullBBoxPrediction]:
-        '''
-        img shape should be (height, width, channels)
-        (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
-        '''
-        if not isinstance(img, Image):
-            raise TypeError("img must be an Image object")
-        
-        if not img.dim_order == HWC:
-            raise ValueError("img must be in HWC order")
-
+    def _make_shape_detection(self, img : Image) -> list[InstanceSegmentationResult]:
         shape_results: list[InstanceSegmentationResult] = []
 
         all_tiles = img.generate_tiles(self.tile_size)
@@ -106,8 +95,9 @@ class ImageProcessor:
                 cv.putText(img_to_draw_on, str(res.id), (x,y), cv.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
             cv.imwrite(f"{local_debug_path}/bounding_boxes.png", img_to_draw_on)
 
-        self.num_processed += 1
-
+        return shape_results
+    
+    def _classify_color_and_char(self, shape_results : list[InstanceSegmentationResult]):
         total_results: list[FullBBoxPrediction] = []
         # create debug directory for segmentation and classification
         for results in batched(shape_results, self.letter_batch_size):
@@ -121,6 +111,7 @@ class ImageProcessor:
                 letter_imgs.append(letter_img)
 
                 if self.debug_path is not None:
+                    local_debug_path = f"{self.debug_path}/img_{self.num_processed}"
                     instance_debug_path = f"{local_debug_path}/det_{shape_res.id}"
                     os.makedirs(instance_debug_path, exist_ok=True)
                     cv.imwrite(f"{instance_debug_path}/input.png", shape_res.img.get_array())
@@ -158,7 +149,47 @@ class ImageProcessor:
                 pred_descriptor_string = str(result.descriptor)
                 with open(f"{local_debug_path}/det_{result.det_id}/descriptor.txt", "w") as f:
                     f.write(pred_descriptor_string)
+        return total_results
+    
+    def process_image(self, img: Image) -> list[FullBBoxPrediction]:
+        '''
+        img shape should be (height, width, channels)
+        (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
+        '''
+        if not isinstance(img, Image):
+            raise TypeError("img must be an Image object")
+        if not img.dim_order == HWC:
+            raise ValueError("img must be in HWC order")
+        
+        shape_results = self._make_shape_detection(img)
+        self.num_processed += 1
+        total_results = self._classify_color_and_char(shape_results)
+        return total_results
+    
+    def process_image_lightweight(self, img : Image) -> list[FullBBoxPrediction] | list[InstanceSegmentationResult]:
+        '''
+        Processes image and runs shape detection
+        Only classifies if there is more than one detection.
+        Use case: Zooming in and localizing onto a specific target.
+        '''
+        if not isinstance(img, Image):
+            raise TypeError("img must be an Image object")
+        if not img.dim_order == HWC:
+            raise ValueError("img must be in HWC order")
+        
+        shape_results = self._make_shape_detection(img)
+        self.num_processed += 1
 
-            
-
+        if len(shape_results) == 1:
+            # Returns shape_results cast as FullBBoxPrediction with no probabilistic target descriptor
+            return [FullBBoxPrediction(
+                    shape_results.x,
+                    shape_results.y,
+                    shape_results.width,
+                    shape_results.height,
+                    ProbabilisticTargetDescriptor(),
+                    img_id = self.num_processed-1, # at this point it will have been incremented already
+                    det_id = shape_results.id
+                )]
+        total_results = self._classify_color_and_char(shape_results)
         return total_results
