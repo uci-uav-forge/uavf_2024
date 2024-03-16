@@ -167,12 +167,15 @@ class CommanderNode(rclpy.node.Node):
         
         self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
 
-        self.log("Delaying before setting mode")
+        self.log("Delaying before pushing waypoints.")
         time.sleep(1)
-        self.log("Pushing waypoints and setting mode.")
+        self.log("Pushing waypoints.")
 
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
+        self.log("Delaying before setting mode.")
+        time.sleep(1)
+        self.log("Setting mode.")
         # mavros/px4 doesn't consistently set the mode the first time this function is called...
         # retry or fail the script.
         for _ in range(1000):
@@ -219,6 +222,8 @@ class CommanderNode(rclpy.node.Node):
     def execute_mission_loop(self):
         while not self.got_global_pos:
             pass
+            
+        self.dropzone_planner.gen_dropzone_plan()
 
         for lap in range(len(self.payloads)):
             self.log(f'Lap {lap}')

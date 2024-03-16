@@ -18,6 +18,7 @@ import cv2 #for debugging purposes
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
+
 def calc_metrics(predictions: list[FullBBoxPrediction], ground_truth: list[FullBBoxGroundTruth], 
                  debug_img: np.ndarray, debug_path: str, img_num: int):
     #debug_img should be receiving the image np array, img.get_array(), and visuals are provided of the bounding box'''
@@ -231,6 +232,7 @@ class TestImagingFrontend(unittest.TestCase):
         image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
         res = image_processor.process_image(sample_input)
+        res2 = image_processor.process_image_lightweight(sample_input)
 
     @profiler
     def test_benchmark_fullsize_images(self):
@@ -368,6 +370,27 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Letter top 5 acc: {np.mean(letter_top5s)}")
         print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
         print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
+    
+    def test_lightweight_process_one_image(self):
+        # run lightweight
+        # assert there is 1 instance 
+        # assert the result is list[fullbboxpred]
+        pass
+
+    def test_lightweight_process_many(self):
+        # run lightweight assert there is multiple instances
+        # assert the result is a list[fullbboxpred] and has numbers in prob_descriptors
+        image_processor = ImageProcessor()
+        sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
+        res = image_processor.process_image_lightweight(sample_input)
+        
+        assert type(res) is list
+        assert type(res[0]) is FullBBoxPrediction
+        if len(res) > 1:
+            assert np.any(res[0].descriptor.letter_probs) and np.any(res[0].descriptor.shape_col_probs)
+
+
+
 
 
 if __name__ == "__main__":

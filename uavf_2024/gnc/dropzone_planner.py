@@ -36,6 +36,9 @@ class DropzonePlanner:
 
         closest_idx = min(range(4), key = lambda i: np.linalg.norm(dropzone_coords[i] - cur_xy))
 
+        self.commander.log(f"Closest corner is {dropzone_coords[closest_idx]}")
+        self.commander.log(f"GPS: {self.commander.local_to_gps(dropzone_coords[closest_idx])}")
+
         dist_m1, dist_p1 = \
             [np.linalg.norm(dropzone_coords[closest_idx] - dropzone_coords[(closest_idx + k) % 4]) for k in (-1, 1)]
 
@@ -53,6 +56,9 @@ class DropzonePlanner:
 
         h_unit = dropzone_coords[far_idx] - dropzone_coords[closest_idx]
         h_unit /= np.linalg.norm(h_unit)
+
+        self.commander.log(f"Dropzone dimensions are {drop_h}x{drop_w}")
+        self.commander.log(f"Dropzone unit vectors are {w_unit} and {h_unit}")
 
         fwd_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), h_unit)))
         fwd_yaw += 90

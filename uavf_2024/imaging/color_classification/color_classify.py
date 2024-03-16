@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy as np
 import torch
 from torchvision import transforms
@@ -6,7 +7,6 @@ import torch.nn as nn
 from uavf_2024.imaging.imaging_types import COLOR_INDICES
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
-
 
 class ColorModel(nn.Module):
     def __init__(self, num_classes):
