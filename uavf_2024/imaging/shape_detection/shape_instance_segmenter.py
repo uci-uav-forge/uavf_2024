@@ -13,7 +13,7 @@ CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 class ShapeInstanceSegmenter:
     def __init__(self, img_size):
-        self.shape_model = YOLO(f"{CURRENT_FILE_PATH}/weights/seg-v8n-best.pt")
+        self.shape_model = YOLO(f"{CURRENT_FILE_PATH}/weights/v8n-best-isaac-7631.pt")
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.shape_model.predict(list(rand_input), verbose=False)
         self.num_processed = 0
