@@ -53,7 +53,16 @@ class ColorClassifier:
 
     def load_model(self, model_path, num_classes):
         model = ColorModel(num_classes)
-        model.load_state_dict(torch.load(model_path))
+        try:
+            model.load_state_dict(torch.load(model_path))
+        except:
+            print(
+                '''
+                Error loading color model weights. Try:
+                pip install gdown
+                gdown --id 15anDYEyC_jZ0MoSnnC30wjuWjD9FceH3 --out uavf_2024/imaging/color_classification/trained_model.pth
+                '''
+            )
         model.eval()
         return model
 
