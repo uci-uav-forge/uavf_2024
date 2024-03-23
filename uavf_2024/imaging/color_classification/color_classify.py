@@ -54,8 +54,11 @@ class ColorClassifier:
     def load_model(self, model_path, num_classes):
         model = ColorModel(num_classes)
         try:
-            model.load_state_dict(torch.load(model_path))
-        except:
+            if torch.cuda.is_available():
+                model.load_state_dict(torch.load(model_path))
+            else:
+                model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        except FileNotFoundError:
             print(
                 '''
                 Error loading color model weights. Try:
