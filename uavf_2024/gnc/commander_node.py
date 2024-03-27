@@ -92,13 +92,17 @@ class CommanderNode(rclpy.node.Node):
     
     def listen_for_commands(self):
         while True:
-            msg = self.mavlink_connection.recv_match(type='COMMAND_LONG', blocking=True)
+            msg = self.mavlink_connection.recv_match( blocking=True)
             if msg is not None:
                 self.handle_message(msg)
 
     def handle_message(self, msg):
+        # if msg:
+        #     print(f"msg: {msg}")
+
         if msg.command == mavutil.mavlink.MAV_CMD_USER_1:
             print("Received MAV_CMD_USER_1")
+
 
             # Process the command as needed.
             # Respond to the command
