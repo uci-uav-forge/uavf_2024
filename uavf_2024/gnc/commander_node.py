@@ -11,8 +11,14 @@ from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_l
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
+import logging
+from datetime import datetime
+import numpy as np
 from pymavlink import mavutil
 import threading
+
+TAKEOFF_ALTITUDE = 20.0
+
 
 class CommanderNode(rclpy.node.Node):
     '''
@@ -21,6 +27,10 @@ class CommanderNode(rclpy.node.Node):
 
     def __init__(self, args):
         super().__init__('uavf_commander_node')
+
+        np.set_printoptions(precision=8)
+        logging.basicConfig(filename='commander_node_{:%Y-%m-%d}.log'.format(datetime.now()), encoding='utf-8', level=logging.DEBUG)
+        logging.getLogger().addHandler(logging.StreamHandler())
         # Initialize the MAVLink connection
         self.mavlink_connection = mavutil.mavlink_connection('udpin:localhost:14550')
         
@@ -114,7 +124,7 @@ class CommanderNode(rclpy.node.Node):
 
 
     def log(self, *args, **kwargs):
-        print(*args, **kwargs)
+        logging.info(*args, **kwargs)
     
     def global_pos_cb(self, global_pos):
         self.got_pos = True
@@ -125,7 +135,7 @@ class CommanderNode(rclpy.node.Node):
     
     def reached_cb(self, reached):
         if reached.wp_seq > self.last_wp_seq:
-            self.log("Reached waypoint ", reached.wp_seq)
+            self.log(f"Reached waypoint {reached.wp_seq}")
             self.last_wp_seq = reached.wp_seq
 
             if self.call_imaging_at_wps:
@@ -144,14 +154,14 @@ class CommanderNode(rclpy.node.Node):
             print(self.home_global_pos)
             
             self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
-            self.log("Dropzone bounds in local coords:", self.dropzone_bounds_mlocal)
+            self.log(f"Dropzone bounds in local coords {self.dropzone_bounds_mlocal}")
 
             self.got_global_pos = True
     
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
     
-    def execute_waypoints(self, waypoints, yaws = None):
+    def execute_waypoints(self, waypoints, yaws = None, altitude = 0.0):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
@@ -160,9 +170,9 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints")
 
         
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude)] +  waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] +  waypoints
         yaws = [float('NaN')] + yaws
-        self.log(waypoints, yaws)
+        self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
         
 
         waypoint_msgs = [
@@ -179,17 +189,22 @@ class CommanderNode(rclpy.node.Node):
 
                     x_lat = wp[0],
                     y_long = wp[1],
-                    z_alt = 20.0)
+                    z_alt = wp[2])
 
                 for wp,yaw in zip(waypoints, yaws)]
 
         
         self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
 
-        self.log("Pushed waypoints, setting mode.")
+        self.log("Delaying before pushing waypoints.")
+        time.sleep(1)
+        self.log("Pushing waypoints.")
 
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
+        self.log("Delaying before setting mode.")
+        time.sleep(1)
+        self.log("Setting mode.")
         # mavros/px4 doesn't consistently set the mode the first time this function is called...
         # retry or fail the script.
         for _ in range(1000):
@@ -210,19 +225,6 @@ class CommanderNode(rclpy.node.Node):
 
         while self.last_wp_seq != len(waypoints)-1:
             pass
-        # TODO: refactor this mess into a function, and evaluate if this is actually needed.
-        for _ in range(1000):
-            self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-                base_mode = 0,
-                custom_mode = 'AUTO.LOITER'
-            ))
-            time.sleep(0.2)
-            if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
-                self.log("Success setting mode")
-                break
-        else:
-            self.log("Failure setting mode, quitting.")
-            quit()
     
     def release_payload(self):
         # mocked out for now.
@@ -236,7 +238,7 @@ class CommanderNode(rclpy.node.Node):
                 pass
             detections += future.result().detections
         self.imaging_futures = []
-        self.log("Successfully retrieved imaging detections:", detections)
+        self.log(f"Successfully retrieved imaging detections: {detections}")
         return detections
     
     def wait_for_takeoff(self):
@@ -249,9 +251,11 @@ class CommanderNode(rclpy.node.Node):
     def execute_mission_loop(self):
         while not self.got_global_pos:
             pass
+            
+        self.dropzone_planner.gen_dropzone_plan()
 
         for lap in range(len(self.payloads)):
-            self.log('Lap', lap)
+            self.log(f'Lap {lap}')
 
             # Wait for takeoff
             self.wait_for_takeoff()
@@ -266,4 +270,4 @@ class CommanderNode(rclpy.node.Node):
             self.dropzone_planner.conduct_air_drop()
 
             # Fly back to home position
-            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude)])
+            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude, TAKEOFF_ALTITUDE)])

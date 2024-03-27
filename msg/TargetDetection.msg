@@ -4,7 +4,7 @@ float64 x
 float64 y
 float64 z
 
-float64[13] shape_conf 
+float64[9] shape_conf 
 # should sum to 1
 # indices in order:
 # circle, semicircle, quarter circle, triangle, rectangle, pentagon, star, cross
@@ -23,3 +23,5 @@ float64[8] letter_color_conf
 # should sum to 1
 # indices in order:
 # white, black, red, blue, green, purple, brown, orange
+
+string id

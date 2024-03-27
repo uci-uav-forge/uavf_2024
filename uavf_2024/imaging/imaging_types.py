@@ -7,16 +7,17 @@ from enum import Enum
 
 import torch
 
-COLORS_TO_RGB = {
-    'red': (255, 0, 0),
-    'green': (0, 255, 0),
-    'blue': (0, 0, 255),
-    'orange': (255, 165, 0),
-    'purple': (200, 0, 200),
-    'white': (255, 255, 255),
-    'black': (0, 0, 0),
-    'brown': (165, 42, 42),
+COLOR_INDICES = {
+    "red": 0,
+    "orange": 1,
+    "green": 2,
+    "blue": 3,
+    "purple": 4,
+    "white": 5,
+    "black": 6,
+    "brown": 7,
 }
+
 
 SHAPES = [
  "circle",
@@ -37,11 +38,11 @@ SHAPES = [
 # it is basically LETTER_NEW in alphabetical order (0-35)
 LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
 
-COLORS = list(COLORS_TO_RGB.keys())
+COLORS = list(COLOR_INDICES.keys())
 
 # TODO: Limit these to the types we actually use
 integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]
-real = Union[float, np.float16, np.float32, np.float64, np.float128]
+real = Union[float, np.float16, np.float32, np.float64]
 number = Union[integer, real]
 
 # Can't use np.uint16 because torch doesn't support it. We're good as long as we don't have a gigapixel camera.
@@ -50,7 +51,7 @@ img_coord_t = np.int16
 NEWLINE = '\n' + ' '*16 # For use in f-strings because apparently you can't use escape characters in them
 
 @dataclass
-class TargetDescription:
+class ProbabilisticTargetDescriptor:
     shape_probs: np.ndarray
     letter_probs: np.ndarray
     shape_col_probs: np.ndarray
@@ -70,21 +71,110 @@ class TargetDescription:
         '''
 
     def __add__(self, other):
-        return TargetDescription(
+        return ProbabilisticTargetDescriptor(
             self.shape_probs + other.shape_probs,
             self.letter_probs + other.letter_probs,
             self.shape_col_probs + other.shape_col_probs,
-            self.letter_col_probs + other.letter_col_probs
+            self.letter_col_probs + other.letter_col_probs,
         )
 
     def __truediv__(self, scalar):
-        return TargetDescription(
+        return ProbabilisticTargetDescriptor(
             self.shape_probs / scalar,
             self.letter_probs / scalar,
             self.shape_col_probs / scalar,
             self.letter_col_probs / scalar
         )
+    
+    def collapse_to_certain(self) -> CertainTargetDescriptor:
+        return CertainTargetDescriptor(
+            COLORS[np.argmax(self.shape_col_probs)],
+            SHAPES[np.argmax(self.shape_probs)],
+            COLORS[np.argmax(self.letter_col_probs)],
+            LETTERS[np.argmax(self.letter_probs)]
+        )
 
+
+class CertainTargetDescriptor:
+    '''
+    `shape` is one of "circle", "semicircle", "quartercircle", "triangle", "rectangle", "pentagon", "star", "cross", "person"
+    `letter` is an uppercase letter or a number (e.g. "A" or "1")
+    `shape_col` and `letter_col` are one of "red", "green", "blue", "orange", "purple", "white", "black", "brown"
+
+    A `None` value should only be used for ground truth data that is missing labels, or the "person" shape, which doesn't have a color or letter.
+    ''' 
+    def __init__(self, shape_col: str, shape: str, letter_col: str, letter: str):
+        assert shape is None or shape in SHAPES
+        self.shape = shape
+        if shape == "person":
+            self.shape_col = None
+            self.letter_col = None
+            self.letter = None
+            return
+
+        assert shape_col is None or shape_col in COLORS
+        assert letter_col is None or letter_col in COLORS
+        assert letter is None or letter in LETTERS
+        self.shape_col = shape_col
+        self.letter_col = letter_col
+        self.letter = letter
+
+    @staticmethod
+    def from_indices(shape_index: int, letter_index: int, shape_col_index: int, letter_col_index: int) -> CertainTargetDescriptor:
+        '''
+        Using indices is unsafe because it's easy to mix them up. The __init__ constructor should be used whenever possible.
+        '''
+        return CertainTargetDescriptor(
+            COLORS[shape_col_index],
+            SHAPES[shape_index],
+            COLORS[letter_col_index],
+            LETTERS[letter_index]
+        )
+
+    def to_indices(self):
+        '''
+        Returns class indices in order (shape_col, shape, letter_col, letter)    
+
+        If a value is None, it will be returned as None in the tuple instead of an integer.
+        '''
+        return (
+            COLORS.index(self.shape_col) if self.shape_col is not None else None,
+            SHAPES.index(self.shape) if self.shape is not None else None,
+            COLORS.index(self.letter_col) if self.letter_col is not None else None,
+            LETTERS.index(self.letter) if self.letter is not None else None
+        )
+    
+    def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
+        err_message = '''Cannot convert to probabilistic if any of the values are None (probably trying 
+                        to convert a ground truth label with missing data, which shouldn't be done'''
+        assert None not in [self.shape, self.letter, self.shape_col, self.letter_col], err_message
+        shape_probs = np.zeros(len(SHAPES))
+        shape_probs[SHAPES.index(self.shape)] = 1.0
+
+        if self.letter is None:
+            letter_probs = np.ones(len(LETTERS)) / len(LETTERS)
+        else:
+            letter_probs = np.zeros(len(LETTERS))
+            letter_probs[LETTERS.index(self.letter)] = 1.0
+
+        if self.shape_col is None:
+            shape_col_probs = np.ones(len(COLORS)) / len(COLORS)
+        else:
+            shape_col_probs = np.zeros(len(COLORS))
+            shape_col_probs[COLORS.index(self.shape_col)] = 1.0
+        
+        if self.letter_col is None:
+            letter_col_probs = np.ones(len(COLORS)) / len(COLORS)
+        else:
+            letter_col_probs = np.zeros(len(COLORS))
+            letter_col_probs[COLORS.index(self.letter_col)] = 1.0
+
+        return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
+
+    def __repr__(self):
+        return f"{self.shape_col} {self.shape}, {self.letter_col} {self.letter}"
+
+CertainTargetDescriptor.from_indices(0, 0, 0, 0)
 @dataclass
 class Tile:
     img: 'Image'
@@ -92,7 +182,7 @@ class Tile:
     y: img_coord_t
 
 @dataclass
-class FullPrediction:
+class FullBBoxPrediction:
     x: img_coord_t
     y: img_coord_t
     width: img_coord_t
@@ -100,11 +190,21 @@ class FullPrediction:
     '''
     We can worry about typechecking these later, but the gist is that they're probability distributions over the possible classes.
     '''
-    description: TargetDescription
+    descriptor: ProbabilisticTargetDescriptor
     '''
     The id is a unique identifier for debugging purposes. All the debugging images will be saved with this id.
     The format is `{run_id}_{image_id}_{prediction_index}`
     '''
+    img_id: int = None
+    det_id: int = None
+
+@dataclass
+class FullBBoxGroundTruth:
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
+    descriptor: CertainTargetDescriptor
     img_id: int = None
     det_id: int = None
 
@@ -125,11 +225,42 @@ class InstanceSegmentationResult:
 @dataclass
 class Target3D:
     '''
+    Class to represent our estimate of a target's 3d position and labels as well as the confidence in those labels.
+
     We might also want to incorporate information about the distance from which we've seen this target. Like, if we've only seen it from far away, and we get a new classification from a closer image, it should have more weight.
     '''
     position: np.ndarray # (x,y,z) in local frame
-    description: TargetDescription
+    descriptor: ProbabilisticTargetDescriptor
     id: str = None
+    @staticmethod
+    def from_ros(msg: ROSDetectionMessage) -> Target3D:
+        return Target3D(
+            np.array([msg.x, msg.y, msg.z]),
+            ProbabilisticTargetDescriptor(
+                np.array(msg.shape_conf),
+                np.array(msg.letter_conf),
+                np.array(msg.shape_color_conf),
+                np.array(msg.letter_color_conf)
+            ),
+            msg.id
+        )
+
+@dataclass
+class ROSDetectionMessage:
+    '''
+    Dataclass that should have the same fields as msg/TargetDetection.msg,
+    to make it easier to get type hints and convert between the message type
+    and other types.
+    '''
+    timestamp: int
+    x: float
+    y: float
+    z: float
+    shape_conf: list[float]
+    letter_conf: list[float]
+    shape_color_conf: list[float]
+    letter_color_conf: list[float]
+    id: str
 
 class ImageDimension(Enum):
     HEIGHT = 'h'
