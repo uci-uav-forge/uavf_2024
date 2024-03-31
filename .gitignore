@@ -14,3 +14,4 @@ log
 visualizations
 recorded_images
 .vscode
+test/*.png
