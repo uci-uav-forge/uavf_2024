@@ -14,6 +14,8 @@ class DropzonePlanner:
         self.detections = []
         self.current_payload_index = 0
         self.has_scanned_dropzone = False
+
+        np.set_printoptions(precision=20)
     
     def gen_dropzone_plan(self):
         '''
@@ -27,9 +29,10 @@ class DropzonePlanner:
 
         dropzone_coords = self.commander.dropzone_bounds_mlocal
 
-        pose = self.commander.cur_pose.pose
-
-        cur_xy = np.array([pose.position.x, pose.position.y])
+        cur_xy = self.commander.get_cur_xy()
+        self.commander.log(f"bounds: {dropzone_coords}")
+        self.commander.log(f"homepos: {self.commander.home_global_pos}")
+        self.commander.log(f"current xy: {cur_xy}")
 
         closest_idx = min(range(4), key = lambda i: np.linalg.norm(dropzone_coords[i] - cur_xy))
 
@@ -86,6 +89,7 @@ class DropzonePlanner:
         entire drop zone.
         '''
         dropzone_plan = self.gen_dropzone_plan()
+        self.commander.log(f"Local coords: {dropzone_plan}")
         self.commander.log(f"Planned waypoints {[self.commander.local_to_gps(wp) for wp, _ in dropzone_plan]}")
         self.commander.call_imaging_at_wps = True
         self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp),np.array([altitude]))) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
