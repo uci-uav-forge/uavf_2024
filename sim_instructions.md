@@ -22,6 +22,16 @@ sudo -H -u qgc /QGroundControl.AppImage
 
 Ask QGC to takeoff using the UI.
 
+If QGC doesn't work the following workaround is available:
+
+You can visualize with `mavproxy`.
+
+```
+mavproxy.py --console --map --master=udp:127.0.0.1:14540
+```
+
+And in the simulation window you can type `commander takeoff` to initiate a PX4 takeoff.
+
 ## Headless remote SITL (no Docker needed!)
 
 Follow these instructions by Eric to establish a connection & SSH to the lab machine.
@@ -52,7 +62,7 @@ After this you can go on to follow the rest of the instructions as normal.
 Launch MAVROS. (It converts ROS messages sent to it into commands sent to the flight control software.)
 
 ```
-ros2 launch mavros px4.launch fcu_url:=udp://:14540@
+ros2 launch mavros px4.launch fcu_url:=udp://:14550@
 ```
 
 Build uavf_2024.
@@ -63,11 +73,13 @@ cd /home/ws && colcon build --merge-install && source install/setup.bash
 
 Launch the mock imaging node:
 ```
+cd /home/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
 ```
 
 Launch the demo commander node:
 ```
+cd /home/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
 

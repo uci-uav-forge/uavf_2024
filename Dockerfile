@@ -168,4 +168,8 @@ WORKDIR /home/ws/libuavf_2024/siyi_sdk
 COPY siyi_sdk/setup.py setup.py
 RUN python -m pip install -e .
 
+RUN sudo apt-get install python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-lxml python3-pygame -y
+RUN pip3 install PyYAML mavproxy --user
+RUN echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
+
 CMD ["/bin/bash"]
