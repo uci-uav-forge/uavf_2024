@@ -3,11 +3,12 @@ import mavros_msgs.msg
 import mavros_msgs.srv
 import rclpy
 import rclpy.node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 import sensor_msgs.msg
 import geometry_msgs.msg 
 import libuavf_2024.srv
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg, read_payload_list
+from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
+from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
@@ -32,19 +33,15 @@ class CommanderNode(rclpy.node.Node):
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
-            depth = 1
-        )
+            depth = 1)
+        
         self.got_pos = False
 
-        self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')
-        
+        self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')   
         self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
-
         self.takeoff_client = self.create_client(mavros_msgs.srv.CommandTOL, 'mavros/cmd/takeoff')
-
         self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
         self.clear_mission_client = self.create_client(mavros_msgs.srv.WaypointClear, 'mavros/mission/clear')
-
 
         self.cur_state = None
         self.state_sub = self.create_subscription(
@@ -132,7 +129,7 @@ class CommanderNode(rclpy.node.Node):
         pose = self.cur_pose.pose
         return np.array([pose.position.x, pose.position.y])
     
-    def execute_waypoints(self, waypoints, yaws = None, altitude = 0.0):
+    def execute_waypoints(self, waypoints, yaws = None):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
@@ -140,11 +137,9 @@ class CommanderNode(rclpy.node.Node):
 
         self.log("Pushing waypoints")
 
-        
         waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] +  waypoints
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
-        
 
         waypoint_msgs = [
                 mavros_msgs.msg.Waypoint(
@@ -170,7 +165,6 @@ class CommanderNode(rclpy.node.Node):
         self.log("Delaying before pushing waypoints.")
         time.sleep(1)
         self.log("Pushing waypoints.")
-
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
         self.log("Delaying before setting mode.")
@@ -181,8 +175,7 @@ class CommanderNode(rclpy.node.Node):
         for _ in range(1000):
             self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
                 base_mode = 0,
-                custom_mode = 'AUTO.MISSION'
-            ))
+                custom_mode = 'AUTO.MISSION'))
             time.sleep(0.2)
             if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
                 self.log("Success setting mode")
@@ -190,7 +183,6 @@ class CommanderNode(rclpy.node.Node):
         else:
             self.log("Failure setting mode, quitting.")
             quit()
-
 
         self.log("Waiting for mission to finish.")
 
@@ -207,7 +199,10 @@ class CommanderNode(rclpy.node.Node):
         for future in self.imaging_futures:
             while not future.done():
                 pass
-            detections += future.result().detections
+            for detection in future.result().detections:
+                detections.append(Target3D.from_ros(ROSDetectionMessage(detection.timestamp, detection.x, detection.y, detection.z,
+                                                                        detection.shape_conf, detection.letter_conf, 
+                                                                        detection.shape_color_conf, detection.letter_color_conf, detection.id)))
         self.imaging_futures = []
         self.log(f"Successfully retrieved imaging detections: {detections}")
         return detections
@@ -226,7 +221,7 @@ class CommanderNode(rclpy.node.Node):
         self.dropzone_planner.gen_dropzone_plan()
 
         for lap in range(len(self.payloads)):
-            self.log(f'Lap {lap}')
+            self.log(f"Lap {lap}")
 
             # Wait for takeoff
             self.wait_for_takeoff()
