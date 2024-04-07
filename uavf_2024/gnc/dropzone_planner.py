@@ -93,8 +93,10 @@ class DropzonePlanner:
         entire drop zone. Will update target_tracker with the new detections.
         '''
         dropzone_plan = self.gen_dropzone_plan()
+
         self.commander.log(f"Local coords: {dropzone_plan}")
-        self.commander.log(f"Planned waypoints {[self.commander.local_to_gps(wp) for wp, _ in dropzone_plan]}")
+        self.commander.log(f"Planned waypoints: {[self.commander.local_to_gps(wp) for wp, _ in dropzone_plan]}")
+
         self.commander.call_imaging_at_wps = True
         self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp), np.array([altitude]))) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
         self.commander.call_imaging_at_wps = False
@@ -135,23 +137,29 @@ class DropzonePlanner:
         Drone will navigate to the target that best matches its current 
         payload and will release the payload.
         '''
+
+        # Scan the drop zone if the drone has completed its first waypoint lap
         if self.has_scanned_dropzone == False:
             self.scan_dropzone()
             self.has_scanned_dropzone = True
         
+        # Find the target that best matches the payload
         best_match = self.target_tracker.estimate_positions(self.commander.payloads)[self.current_payload_index]
         best_match_x, best_match_y = best_match.position[0], best_match.position[1]
         self.commander.log(f"best_match_x: {best_match_x}, best_match_y: {best_match_y}")
 
+        # Generate path of waypoints to the target to take images at
         next_wps = self.generate_wps_to_target(best_match_x, best_match_y)
         self.commander.log(f"Opportunistic imaging waypoints: {next_wps}")
         
+        # Fly along the path of waypoints to the target
         self.commander.call_imaging_at_wps = True
         self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp), np.array([altitude]))) for wp in next_wps])
         self.commander.call_imaging_at_wps = False
         detections = self.commander.gather_imaging_detections()
         self.target_tracker.update(detections)
 
+        # Release the payload
         self.commander.release_payload()
         self.current_payload_index += 1
         self.commander.log(f"Released payload {self.current_payload_index}")
