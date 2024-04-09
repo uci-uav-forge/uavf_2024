@@ -182,6 +182,13 @@ class Tile:
     y: img_coord_t
 
 @dataclass
+class BoundingBox:
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
+
+@dataclass
 class FullBBoxPrediction:
     x: img_coord_t
     y: img_coord_t
