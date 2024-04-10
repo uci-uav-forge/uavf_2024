@@ -1,9 +1,9 @@
 from uavf_2024.imaging.imaging_types import BoundingBox
 from scipy.spatial.transform import Rotation
 from scipy.spatial import ConvexHull
+from scipy.optimize import linear_sum_assignment
 import numpy as np
 from filterpy.kalman import UnscentedKalmanFilter, MerweScaledSigmaPoints
-from lapjv import lapjv
 from torchvision.ops import box_iou
 from dataclasses import dataclass
 
@@ -160,8 +160,8 @@ class DroneTracker:
                 iou_matrix[i,j] = self._iou(cam_pose, track, measurement)
 
         # update tracks with measurements if iou > 0.5
-        row_ind, col_ind, _ = lapjv(-iou_matrix)
-        for i, j in enumerate(col_ind):
+        row_ind, col_ind = linear_sum_assignment(-iou_matrix)
+        for i, j in zip(row_ind, col_ind):
             if iou_matrix[i,j] > 0.5:
                 self.tracks[i].update(measurements[j])
             else:
