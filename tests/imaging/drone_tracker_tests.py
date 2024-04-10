@@ -1,16 +1,17 @@
-from uavf_2024.imaging import DroneTracker
+from uavf_2024.imaging import DroneTracker, BoundingBox
 import unittest
 import numpy as np
-from numpy import cos, pi, sin
+from numpy import cos, pi, sin, tan
 from scipy.spatial.transform import Rotation as R
 import cv2 as cv
 
 class TestDroneTracker(unittest.TestCase):
     def test_stationary_target(self):
-        filter = DroneTracker()
-
-        fov = 90
         resolution = (1920,1080)
+        fov = 90
+        focal_len_pixels = resolution[0]/(2*tan(fov/2))
+        filter = DroneTracker(resolution, focal_len_pixels)
+
         n_cam_samples = 10
         # make camera poses in a circle around the origin
         cam_positions = [np.array([cos(2*pi*i/n_cam_samples),0,sin(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
@@ -19,12 +20,12 @@ class TestDroneTracker(unittest.TestCase):
 
         debug_img = np.zeros((1080,1920,3), dtype=np.uint8)
 
-        for cam_pose, cam_rot in zip(cam_positions, cam_rotations):
+        for cam_pos, cam_rot in zip(cam_positions, cam_rotations):
             # make a measurement
             r = 20
-            measurements = [np.array([960-r,540-r,960+r,540-r])]
+            measurements = [BoundingBox(960,540,2*r,2*r)]
             filter.predict(1)
-            filter.update((cam_pose, cam_rot), fov, resolution, measurements)
+            filter.update((cam_pos, cam_rot), measurements)
             # skip predict step b/c the target is stationary
             avg_pos = np.mean([p.state[:3] for p in filter.samples], axis=0)
             pos_std = np.std([p.state[:3] for p in filter.samples], axis=0)

@@ -204,6 +204,9 @@ class DroneTracker:
 
         @staticmethod
         def compute_measurement(cam_pose: tuple[np.ndarray, Rotation], state: np.ndarray) -> BoundingBox:
+            '''
+            `state` is the state of the track, which is a 7 element array
+            '''
             cam = Camera(DroneTracker.focal_len_pixels, 
                          (DroneTracker.resolution[0]/2, DroneTracker.resolution[1]/2), 
                          cam_pose[1].as_matrix(), 
@@ -240,18 +243,20 @@ class DroneTracker:
             The returned ndarray is of shape (7,) with the following elements:
             [x,y,z, vx,vy,vz, radius]
             ''' 
-            pass
+            return self.compute_measurement(self.cam_pose, x)
         
         def simulate_measurement(self, cam_pose: tuple[np.ndarray, Rotation]) -> BoundingBox:
             '''
             Simulates a measurement with the current state of the track
             '''
             
-            pass
+            return self.compute_measurement(cam_pose, self.kf.x)
 
         @staticmethod
         def _state_transition(x: np.ndarray, dt: float) -> np.ndarray:
-            pass
+            cur_pos = x[:3]
+            cur_vel = x[3:6]
+            return np.hstack([cur_pos + cur_vel*dt, cur_vel, x[6]])
 
         def predict(self, dt: float):
             self.frames_alive += 1
