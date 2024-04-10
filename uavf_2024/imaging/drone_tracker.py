@@ -197,22 +197,24 @@ class DroneTracker:
             camera_look_vector = 0.1 * camera_look_vector / np.linalg.norm(camera_look_vector)
             box_area = box.width * box.height
 
+            initial_radius_guess = 10
+
             # This could probably be done analytically but binary search was easier
             low = 1
             high = 1000
             while low < high:
                 distance = (low + high) / 2
                 x_guess = self.cam_pose[0] + distance * camera_look_vector
-                projected_box = self.compute_measurement(self.cam_pose, np.hstack([x_guess, np.array([0,0,0,0.5])]))
+                projected_box = self.compute_measurement(self.cam_pose, np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])]))
                 projected_box_area = projected_box.width * projected_box.height
                 if abs(projected_box_area - box_area) < 1:
                     break
-                elif projected_box_area < box_area:
+                elif projected_box_area > box_area:
                     low = distance
                 else:
                     high = distance
 
-            return np.hstack([x_guess, np.array([0,0,0,0.5])]), None
+            return np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])]), None
 
 
         def _measurement_fn(self, x: np.ndarray) -> np.ndarray:
