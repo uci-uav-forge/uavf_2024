@@ -224,7 +224,7 @@ class DroneTracker:
                 projected_box_area = projected_box.width * projected_box.height
                 if abs(projected_box_area - box_area) < 1:
                     break
-                elif projected_box_area > box_area:
+                elif projected_box_area > box_area: # if box is too big we need to move further (increase lower bound on distance)
                     low = distance
                 else:
                     high = distance
