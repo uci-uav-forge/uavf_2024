@@ -235,7 +235,7 @@ class DroneTracker:
 
             projected_points = cam.project(control_points.T)
             hull = ConvexHull(projected_points.T)
-            hull_pts = projected_points[hull.vertices]
+            hull_pts = projected_points.T[hull.vertices]
 
             projected_ellipse = fit_ellipse(hull_pts[0], hull_pts[1])
 
