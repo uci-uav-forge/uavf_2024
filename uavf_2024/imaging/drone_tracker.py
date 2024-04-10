@@ -1,10 +1,10 @@
 from uavf_2024.imaging.imaging_types import BoundingBox
 from scipy.spatial.transform import Rotation
-from scipy.spatial import ConvexHull
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 from filterpy.kalman import UnscentedKalmanFilter, MerweScaledSigmaPoints
 from torchvision.ops import box_iou
+from torch import Tensor
 from dataclasses import dataclass
 
 @dataclass
@@ -184,9 +184,9 @@ class DroneTracker:
         `track` is a DroneTracker.Track object but the type annotation doesn't work
         '''
         track_box = track.simulate_measurement(cam_pose)
-        track_box_arr = np.array([track_box.x, track_box.y, track_box.width, track_box.height])
-        box_arr = np.array([box.x, box.y, box.width, box.height])
-        return box_iou(track_box_arr, box_arr)
+        track_box_arr = Tensor([track_box.x - track_box.width//2, track_box.y - track_box.height//2, track_box.x + track_box.width//2, track_box.y + track_box.height//2])
+        box_arr = Tensor([box.x - box.width//2, box.y - box.height//2, box.x + box.width//2, box.y + box.height//2])
+        return box_iou(track_box_arr.unsqueeze(0), box_arr.unsqueeze(0)).item()
         
 
     '''
