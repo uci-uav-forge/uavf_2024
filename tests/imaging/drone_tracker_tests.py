@@ -26,13 +26,11 @@ class TestDroneTracker(unittest.TestCase):
             measurements = [BoundingBox(960,540,2*r,2*r)]
             filter.predict(1)
             filter.update((cam_pos, cam_rot), measurements)
-            # skip predict step b/c the target is stationary
-            avg_pos = np.mean([p.state[:3] for p in filter.samples], axis=0)
-            pos_std = np.std([p.state[:3] for p in filter.samples], axis=0)
-            print(avg_pos, pos_std)
 
+
+        self.assertTrue(len(filter.tracks) == 1)
         # check that the filter converged to the correct position
-        self.assertTrue(np.allclose(avg_pos, [0,0,0], atol=0.1))
+        self.assertTrue(np.allclose(filter.tracks[0].kf.x[:3], [0,0,0], atol=0.1))
 
 if __name__ == '__main__':
     unittest.main()
