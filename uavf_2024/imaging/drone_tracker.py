@@ -136,6 +136,7 @@ def ellipse_to_box(ellipse: np.ndarray) -> BoundingBox:
     width = x_max - x_min
     height = y_max - y_min
 
+    # TODO: figure out how to account for when the bounding box is outside the image
     return BoundingBox(center_x, center_y, width, height)
 
 class DroneTracker:
