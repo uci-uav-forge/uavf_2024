@@ -83,6 +83,17 @@ class DroneTracker:
     def update(self, cam_pose: tuple[np.ndarray, Rotation], measurements: list[BoundingBox]):
         # construct matrix of IOU similarity between measurements and tracks
         # iou_matrix[i,j] is the iou between track i and measurement j
+
+        if len(self.tracks) == 0:
+            self.tracks.append(self.Track(Measurement(cam_pose, measurements[0])))
+        else:
+            self.tracks[0].update(Measurement(cam_pose, measurements[0]))
+        return
+        # TODO: right now we don't take into account the variance of the drone's position/radius when calculating the IOU
+        # between the track and the measurement. This means if we don't get a lucky initial guess for the drone's position or
+        # if it's moving fast, the track will never match the measurement and it won't be updated.
+        # maybe we can do something like un-projecting the bounding box into a cone and then taking the 3d intersection of
+        # that and the track's bounding sphere with variance
         iou_matrix = np.zeros((len(self.tracks), len(measurements)))
         for i, track in enumerate(self.tracks):
             for j, measurement in enumerate(measurements):
@@ -192,7 +203,8 @@ class DroneTracker:
             because I haven't figured out how to set the initial covariance yet
             One idea for this is to randomly choose lots of different radii guesses and
             figure out distance to match the box size, then add random noise to 
-            the position and velocity components and numerically calculate the covariance
+            the position and velocity components and numerically calculate the covariance.
+            WE could uniformly distribute our radii guesses or estimate the distribution based on empirical data
             '''
 
             box_center_ray = np.array([box.x - DroneTracker.resolution[0]//2, box.y - DroneTracker.resolution[1]//2, DroneTracker.focal_len_pixels])
@@ -256,4 +268,5 @@ class DroneTracker:
             box_w = measurement.box.width
             box_h = measurement.box.height
             self.kf.update(np.array([box_x, box_y, box_w, box_h]))
+            print(f"Determinant of covariance: {np.linalg.det(self.kf.P)}")
 
