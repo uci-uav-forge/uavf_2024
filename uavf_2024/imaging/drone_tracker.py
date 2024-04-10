@@ -225,27 +225,30 @@ class DroneTracker:
             state_radius = state[6]
 
             ray_to_center = state_position - cam_pose[0] 
-            # generate 4 orthogonal vectors that are perpendicular to the ray_to_center
-            # these vectors will be used to generate the control points of the bounding sphere
+            
+            # monte carlo to find the circumscribed rectangle around the sphere's projection into the camera
+            # there's probably a better way to do this but I'm not sure what it is
+            # I tried a method where we project 4 points on the boundary and fit a 2d ellipse to their projection
+            # but the ellipse fitting was not working well
+            n_samples = 100
 
-            # generate a random vector that is not parallel to ray_to_center
-            random_vector = np.random.rand(3)
-            random_vector -= random_vector.dot(ray_to_center) * ray_to_center
-            random_vector /= np.linalg.norm(random_vector)
+            # sample points on the sphere
+            random_vector = np.random.randn(3, n_samples)
+            random_vector -= np.dot(random_vector.T, ray_to_center) * np.repeat([ray_to_center / np.linalg.norm(ray_to_center)], n_samples, axis=0).T
+            random_vector = random_vector / np.linalg.norm(random_vector, axis=0) * state_radius
 
-            # generate a vector that is perpendicular to ray_to_center and random_vector
-            orthogonal_vector = np.cross(ray_to_center, random_vector)
-            orthogonal_vector /= np.linalg.norm(orthogonal_vector)
+            # project points into the camera
+            projected_points = cam.project(random_vector)
+            x_min = np.min(projected_points[0])
+            x_max = np.max(projected_points[0])
+            y_min = np.min(projected_points[1])
+            y_max = np.max(projected_points[1])
 
-            control_points = state_position + state_radius * np.array([
-                random_vector, -random_vector, orthogonal_vector, -orthogonal_vector
-            ])
+            return BoundingBox((x_min + x_max) / 2, (y_min + y_max) / 2, x_max - x_min, y_max - y_min)
 
-            projected_points = cam.project(control_points.T)
 
-            projected_ellipse = fit_ellipse(projected_points[:,0], projected_points[:,1])
 
-            return ellipse_to_box(projected_ellipse)
+
 
         def _generate_initial_state(self, box: BoundingBox) -> tuple[np.ndarray, np.ndarray]:
             '''
