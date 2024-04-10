@@ -173,7 +173,11 @@ class DroneTracker:
                 self.tracks.append(self.Track(Measurement(cam_pose, measurements[j])))
 
         # prune tracks that don't have 50% seen to alive ratio
-        self.tracks = [track for track in self.tracks if track.frames_seen/track.frames_alive > 0.5]
+        self.tracks = [
+            track for track in self.tracks 
+            if  track.frames_alive == 0 
+                or track.frames_seen/track.frames_alive > 0.5
+        ]
 
     def _iou(self, track, box: BoundingBox, cam_pose: tuple[np.ndarray,Rotation]) -> float:
         '''
