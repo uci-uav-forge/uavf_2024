@@ -144,9 +144,23 @@ class DroneTracker:
                 points = MerweScaledSigmaPoints(7, 1e-3, 2, 0)
             )
             self.cam_pose = initial_measurement.pose
-            x, _covariance = self._generate_initial_state(initial_measurement.box)
-            self.kf.x = x
-            # TODO: figure out how to set the initial covariance
+            
+            # radius_samples = np.random.uniform(0.2, 1.5, 100)
+            n_initial_state_samples = 100
+            radius_samples = np.random.normal(0.4, 0.1, n_initial_state_samples)
+            initial_states = np.array([
+                self._generate_initial_state(initial_measurement.box, radius) for radius in radius_samples
+            ])
+
+            # add random noise to position and velocity
+
+            position_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
+            velocity_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
+            initial_states[:, :3] += position_noise
+            initial_states[:, 3:6] += velocity_noise
+
+            self.kf.x = np.mean(initial_states, axis=0)
+            self.kf.P = np.cov(initial_states.T)
             
             self.frames_alive = 0
             self.frames_seen = 0
@@ -190,7 +204,7 @@ class DroneTracker:
 
 
 
-        def _generate_initial_state(self, box: BoundingBox) -> tuple[np.ndarray, np.ndarray]:
+        def _generate_initial_state(self, box: BoundingBox, initial_radius_guess = 0.35) -> tuple[np.ndarray, np.ndarray]:
             '''
             Returns the initial state and covariance for the Kalman filter.
 
@@ -212,8 +226,6 @@ class DroneTracker:
             camera_look_vector = 0.1 * camera_look_vector / np.linalg.norm(camera_look_vector)
             box_area = box.width * box.height
 
-            initial_radius_guess = 0.035 # empirically found to give our one test case a good initial guess
-
             # This could probably be done analytically but binary search was easier
             low = 1
             high = 1000
@@ -229,7 +241,7 @@ class DroneTracker:
                 else:
                     high = distance
 
-            return np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])]), None
+            return np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])])
 
 
         def _measurement_fn(self, x: np.ndarray) -> np.ndarray:
