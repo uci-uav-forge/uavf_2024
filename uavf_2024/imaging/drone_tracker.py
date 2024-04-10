@@ -78,8 +78,6 @@ def fit_ellipse(x, y):
 
     Based on the algorithm of Halir and Flusser, "Numerically stable direct
     least squares fitting of ellipses'.
-
-
     """
 
     D1 = np.vstack([x**2, x*y, y**2]).T
@@ -205,10 +203,13 @@ class DroneTracker:
                 fx=self._state_transition,
                 points = MerweScaledSigmaPoints(7, 1e-3, 2, 0)
             )
-            # TODO: set initial state and covariance
+            self.cam_pose = initial_measurement.pose
+            x, _covariance = self._generate_initial_state(initial_measurement.box)
+            self.kf.x = x
+            # TODO: figure out how to set the initial covariance
+            
             self.frames_alive = 0
             self.frames_seen = 0
-            self.cam_pose = initial_measurement.pose
 
         @staticmethod
         def compute_measurement(cam_pose: tuple[np.ndarray, Rotation], state: np.ndarray) -> BoundingBox:
@@ -241,6 +242,40 @@ class DroneTracker:
 
             return ellipse_to_box(projected_ellipse)
 
+        def _generate_initial_state(self, box: BoundingBox) -> tuple[np.ndarray, np.ndarray]:
+            '''
+            Returns the initial state and covariance for the Kalman filter.
+
+            This is done by assuming the radius of the drone's bounding sphere is 0.5 meters.
+
+            The initial state is a 7 element array with the following elements:
+            [x,y,z, vx,vy,vz, radius]
+
+            TODO: The initial covariance is a 7x7 array but rn None is returned
+            because I haven't figured out how to set the initial covariance yet
+            '''
+
+            box_center_ray = np.array([box.x - DroneTracker.resolution[0]//2, box.y - DroneTracker.resolution[1]//2, DroneTracker.focal_len_pixels])
+            camera_look_vector = self.cam_pose[1].apply(box_center_ray)
+            camera_look_vector = 0.1 * camera_look_vector / np.linalg.norm(camera_look_vector)
+            box_area = box.width * box.height
+
+            # This could probably be done analytically but binary search was easier
+            low = 1
+            high = 1000
+            while low < high:
+                distance = (low + high) / 2
+                x_guess = self.cam_pose[0] + distance * camera_look_vector
+                projected_box = self.compute_measurement(self.cam_pose, np.hstack([x_guess, np.array([0,0,0,0.5])]))
+                projected_box_area = projected_box.width * projected_box.height
+                if abs(projected_box_area - box_area) < 1:
+                    break
+                elif projected_box_area < box_area:
+                    low = distance
+                else:
+                    high = distance
+
+            return np.hstack([x_guess, np.array([0,0,0,0.5])]), None
 
 
         def _measurement_fn(self, x: np.ndarray) -> np.ndarray:
