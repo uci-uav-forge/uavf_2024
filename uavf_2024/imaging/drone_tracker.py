@@ -212,7 +212,7 @@ class DroneTracker:
             camera_look_vector = 0.1 * camera_look_vector / np.linalg.norm(camera_look_vector)
             box_area = box.width * box.height
 
-            initial_radius_guess = 10
+            initial_radius_guess = 0.035 # empirically found to give our one test case a good initial guess
 
             # This could probably be done analytically but binary search was easier
             low = 1
