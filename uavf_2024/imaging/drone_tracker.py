@@ -228,7 +228,8 @@ class DroneTracker:
             The returned ndarray is of shape (7,) with the following elements:
             [x,y,z, vx,vy,vz, radius]
             ''' 
-            return self.compute_measurement(self.cam_pose, x)
+            ret_box = self.compute_measurement(self.cam_pose, x)
+            return np.array([ret_box.x, ret_box.y, ret_box.width, ret_box.height])
         
         def simulate_measurement(self, cam_pose: tuple[np.ndarray, Rotation]) -> BoundingBox:
             '''
