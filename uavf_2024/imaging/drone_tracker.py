@@ -203,6 +203,7 @@ class DroneTracker:
                 fx=self._state_transition,
                 points = MerweScaledSigmaPoints(7, 1e-3, 2, 0)
             )
+            # TODO: set initial state and covariance
             self.frames_alive = 0
             self.frames_seen = 0
             self.cam_pose = initial_measurement.pose
