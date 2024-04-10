@@ -188,8 +188,11 @@ class DroneTracker:
             The initial state is a 7 element array with the following elements:
             [x,y,z, vx,vy,vz, radius]
 
-            TODO: The initial covariance is a 7x7 array but rn None is returned
+            TODO: The initial covariance should be a 7x7 array but rn None is returned
             because I haven't figured out how to set the initial covariance yet
+            One idea for this is to randomly choose lots of different radii guesses and
+            figure out distance to match the box size, then add random noise to 
+            the position and velocity components and numerically calculate the covariance
             '''
 
             box_center_ray = np.array([box.x - DroneTracker.resolution[0]//2, box.y - DroneTracker.resolution[1]//2, DroneTracker.focal_len_pixels])
