@@ -194,6 +194,7 @@ class DroneTracker:
             self.kf = UnscentedKalmanFilter(
                 dim_x=7,
                 dim_z=4,
+                dt=1/30, # TODO: figure out why this needs to be in the constructor since we can't guarantee the frame rate
                 hx=self._measurement_fn,
                 fx=self._state_transition,
                 points = MerweScaledSigmaPoints(7, 1e-3, 2, 0)
