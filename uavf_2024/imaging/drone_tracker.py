@@ -18,13 +18,15 @@ class Camera:
     
     The parameters describing the camera
     cam.f : float   --- camera focal length (in units of pixels)
-    cam.c : 2x1 vector  --- offset of principle point (in units of pixels)
-    cam.R : 3x3 matrix --- camera rotation (around the global origin)
-    cam.t : 3x1 vector --- camera translation (location of camera center relative to the global origin)
+    cam.c : (2,) tuple/array  --- offset of principle point (in units of pixels)
+    cam.R : (3,3) matrix --- camera rotation (around the global origin)
+    cam.t : (3,1) vector --- camera translation (location of camera center relative to the global origin)
 
     
-    """    
-    def __init__(self,f,c,R,t):
+    """ 
+    def __init__(self,f: float, c: tuple[float,float], R: np.ndarray, t: np.ndarray):
+        assert R.shape == (3,3)
+        assert t.shape == (3,1), f"t.shape = {t.shape}"
         self.f = f
         self.c = c
         self.R = R
@@ -157,7 +159,7 @@ class DroneTracker:
         iou_matrix = np.zeros((len(self.tracks), len(measurements)))
         for i, track in enumerate(self.tracks):
             for j, measurement in enumerate(measurements):
-                iou_matrix[i,j] = self._iou(cam_pose, track, measurement)
+                iou_matrix[i,j] = self._iou(track, measurement, cam_pose)
 
         # update tracks with measurements if iou > 0.5
         row_ind, col_ind = linear_sum_assignment(-iou_matrix)
@@ -214,9 +216,9 @@ class DroneTracker:
             `state` is the state of the track, which is a 7 element array
             '''
             cam = Camera(DroneTracker.focal_len_pixels, 
-                         (DroneTracker.resolution[0]/2, DroneTracker.resolution[1]/2), 
+                         [DroneTracker.resolution[0]/2, DroneTracker.resolution[1]/2], 
                          cam_pose[1].as_matrix(), 
-                         cam_pose[0])
+                         cam_pose[0].reshape(3,1))
 
             state_position = state[:3]
             state_radius = state[6]
