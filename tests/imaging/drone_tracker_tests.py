@@ -15,9 +15,9 @@ class TestDroneTracker(unittest.TestCase):
         focal_len_pixels = resolution[0]/(2*tan(fov/2))
         filter = DroneTracker(resolution, focal_len_pixels)
 
-        n_cam_samples = 10
+        n_cam_samples = 100
         # make camera poses in a circle around the origin
-        cam_positions = [np.array([sin(2*pi*i/n_cam_samples),0,-cos(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
+        cam_positions = [10*np.array([sin(2*pi*i/n_cam_samples),0,-cos(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
         # make rotations that point the camera at the origin
         cam_rotations = [R.from_euler('xyz', [0, -2*pi*i/n_cam_samples, 0]) for i in range(n_cam_samples)]
 
