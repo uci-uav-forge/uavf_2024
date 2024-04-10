@@ -223,22 +223,27 @@ class DroneTracker:
 
             state_position = state[:3]
             state_radius = state[6]
-            control_points = np.array(
-                [
-                    [state_radius, 0, 0],
-                    [-state_radius, 0, 0],
-                    [0, state_radius, 0],
-                    [0, -state_radius, 0],
-                    [0, 0, state_radius],
-                    [0, 0, -state_radius]
-                ]
-            ) + state_position
+
+            ray_to_center = state_position - cam_pose[0] 
+            # generate 4 orthogonal vectors that are perpendicular to the ray_to_center
+            # these vectors will be used to generate the control points of the bounding sphere
+
+            # generate a random vector that is not parallel to ray_to_center
+            random_vector = np.random.rand(3)
+            random_vector -= random_vector.dot(ray_to_center) * ray_to_center
+            random_vector /= np.linalg.norm(random_vector)
+
+            # generate a vector that is perpendicular to ray_to_center and random_vector
+            orthogonal_vector = np.cross(ray_to_center, random_vector)
+            orthogonal_vector /= np.linalg.norm(orthogonal_vector)
+
+            control_points = state_position + state_radius * np.array([
+                random_vector, -random_vector, orthogonal_vector, -orthogonal_vector
+            ])
 
             projected_points = cam.project(control_points.T)
-            hull = ConvexHull(projected_points.T)
-            hull_pts = projected_points.T[hull.vertices]
 
-            projected_ellipse = fit_ellipse(hull_pts[0], hull_pts[1])
+            projected_ellipse = fit_ellipse(projected_points[:,0], projected_points[:,1])
 
             return ellipse_to_box(projected_ellipse)
 
