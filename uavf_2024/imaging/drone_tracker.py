@@ -178,7 +178,7 @@ class DroneTracker:
             random_vector = random_vector / np.linalg.norm(random_vector, axis=0) * state_radius
 
             # project points into the camera
-            projected_points = cam.project(random_vector)
+            projected_points = cam.project(state_position.reshape((3,1)) + random_vector)
             x_min = np.min(projected_points[0])
             x_max = np.max(projected_points[0])
             y_min = np.min(projected_points[1])
