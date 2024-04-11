@@ -4,7 +4,8 @@ from uavf_2024.imaging.area_coverage import AreaCoverageTracker
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.tracker import TargetTracker
 from uavf_2024.imaging.imaging_types import FullBBoxPrediction, Image, ProbabilisticTargetDescriptor, Target3D, COLORS, SHAPES, LETTERS, CertainTargetDescriptor
-from uavf_2024.imaging.utils import calc_match_score
+from uavf_2024.imaging.utils import calc_match_score, sort_payload
+
 import os
 import numpy as np
 import shutil
@@ -147,14 +148,56 @@ def test_with_dataset(dataset_path: str, debug_folder_name: str = None):
 
     ground_truth: list[Target3D] = all_ground_truth
 
-    closest_tracks = tracker.estimate_positions([t.descriptor.collapse_to_certain() for t in ground_truth])
+    #insert the sorting algorithm:
+    #     names  ["shape", "letter", "shape_col", "letter_col"],
+
+    sim_root_folder = f"{CURRENT_FILE_PATH}/visualizations/test_metrics"
+    irl_root_folder = f"{CURRENT_FILE_PATH}/visualizations/test_irl"
+
+    
+    shape_matrix = np.loadtxt( os.path.join( irl_root_folder, f"shape_confusion_matrix.csv"), delimiter=",",
+                              skiprows = 1, usecols= range(1,10))
+    letter_matrix = np.genfromtxt(os.path.join( irl_root_folder, f"letter_confusion_matrix.csv"), delimiter=',', dtype=str)
+    letter_matrix = letter_matrix[1:, 1:].astype(np.float32)
+    #print(letter_matrix)
+    color_matrix = np.loadtxt(os.path.join( irl_root_folder, f"shape_col_confusion_matrix.csv"), delimiter=",",
+                              skiprows= 1, usecols= range(1,9))
+
+    #print("content", dir(all_ground_truth[0]))
+    payload_truth = []
+    for each_truth in ground_truth:
+        payload_truth.append(each_truth.descriptor)
+
+
+    resorted_payload =  sort_payload( list_payload_targets= payload_truth, shape_confusion= shape_matrix,
+                                            letter_confusion= letter_matrix, color_confusion= color_matrix, penalty= True)
+    
+    closest_resorted_tracks = tracker.estimate_positions([each_description.collapse_to_certain() for each_description in resorted_payload])
+
     scores = []
     distances = []
-    for gt_target, pred_track in zip(ground_truth, closest_tracks):
-        is_close_enough = np.linalg.norm(pred_track.position-gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND
+    payload_truth = []
+
+    for each_track in resorted_payload:
+        for each_truth in ground_truth:
+            if str(each_truth.descriptor.collapse_to_certain()) ==  str(each_track.collapse_to_certain()):
+                payload_truth.append(each_truth)
+                break
+
+    assert len(payload_truth) != 0, "Payload truth should not be empty"
+    close_detection = []
+    
+    for targ_num, (gt_target, pred_track) in enumerate(zip(payload_truth, closest_resorted_tracks)):
+        #note to self: this determines whether the is close enough is Yes or No however if multiple targets have integration test oops
+        #also need to insert the payload algorithm and verify whether the order lines up with the number of times it's getting it right
+        is_close_enough = np.linalg.norm(pred_track.position- gt_target.position) < POSITION_ERROR_ACCEPTABLE_BOUND
         scores.append(int(is_close_enough))
+
+        close_detection.append( np.linalg.norm(pred_track.position-gt_target.position))
+        
         if is_close_enough:
             distances.append(np.linalg.norm(pred_track.position-gt_target.position))
+
         if verbose: # we only want to print this extra info for the first one to not clog up the output
             print(f"Closest Match for {str(gt_target.descriptor.collapse_to_certain())}:")
             physically_closest_match = min(predictions_3d, key=lambda pred: np.linalg.norm(pred.position-gt_target.position))
@@ -178,7 +221,16 @@ def test_with_dataset(dataset_path: str, debug_folder_name: str = None):
             print(f"\tHighest descriptor match id: {closest_match.id}")
             print(f"\tHigh descriptor match distance: {np.linalg.norm(closest_match.position-gt_target.position):.3f}")
             print(f"\tClose enough? {is_close_enough}")
-    
+
+    #Reporting Results of the Payload Algorithm Plugged in
+    payload_order = [str(each_description.collapse_to_certain()) for each_description in resorted_payload]
+    print("Payload algorithm with penalty sorting results:", "\n".join(payload_order))
+    if scores !=  sorted(scores, reverse=True):
+        print("Payload algorithm did not sort them in the order that decreases in number of times it is close enough")
+
+    if close_detection != sorted(close_detection, reverse = False):
+        print ("Payload algorithm did not sort them in the order that increases in distance")
+
     return np.sum(scores), np.mean(distances), np.std(distances)
         
 class TestPipeline(unittest.TestCase):
@@ -192,10 +244,14 @@ if __name__ == "__main__":
     scores = []
     dists = []
     datasets_folder = f'{CURRENT_FILE_PATH}/2024_test_data/3d_datasets/'
+
+    #a total of 3 runs with different sets of payload targets is supposed to happen here
     for dataset_name in os.listdir(datasets_folder):
         score, dist_avg, dist_std = test_with_dataset(f'{datasets_folder}/{dataset_name}', f'integ_test_{dataset_name}')
         scores.append(score)
         dists.append(dist_avg)
+        #break #temporary patch for the test breaking when it runs into converting a person test case into non shape probabilities
+    
     scores_hist = np.histogram(scores, bins=[0,1,2,3,4,5])
     print(f"Imaging Avg Sim Score: {np.mean(scores)}/5")
     print("Distribution of scores:")
