@@ -42,7 +42,7 @@ COLORS = list(COLOR_INDICES.keys())
 
 # TODO: Limit these to the types we actually use
 integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]
-real = Union[float, np.float16, np.float32, np.float64, np.float128]
+real = Union[float, np.float16, np.float32, np.float64]
 number = Union[integer, real]
 
 # Can't use np.uint16 because torch doesn't support it. We're good as long as we don't have a gigapixel camera.

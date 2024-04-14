@@ -74,6 +74,9 @@ ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc
 This will execute one lap of the mission in SITL.
 
 ## To simulate at the ARC field:
+
+### ARC club field sim:
+
 Use the following commands:
 
 To load a safety geofence like we will have in real life you may open /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/plan.plan in QGC.
@@ -84,11 +87,13 @@ PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64230 PX4_HOME_LON=-117.82683 PX4_HOME_ALT=142 m
 ```
 
 ```
-ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/AIRDROP_BOUNDARY 12 9
+cd /home/ws && colcon build --merge-install && source install/setup.bash
+ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY 12 9
 ```
 
 ```
-ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+cd /home/ws && colcon build --merge-install && source install/setup.bash
+ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
 
 ARC upper field sim:
@@ -99,9 +104,11 @@ PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64158 PX4_HOME_LON=-117.82573 PX4_HOME_ALT=142 m
 ```
 
 ```
+cd /home/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE 12 9
 ```
 
 ```
+cd /home/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
