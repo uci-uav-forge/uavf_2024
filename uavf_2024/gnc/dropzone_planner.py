@@ -112,21 +112,24 @@ class DropzonePlanner:
         the drone should take images of the drop zone below.
         '''
         current_x, current_y = self.commander.cur_pose.pose.position.x, self.commander.cur_pose.pose.position.y
-        x_diff, y_diff = current_x - target_x, current_y - target_y
+        x_distance, y_distance = current_x - target_x, current_y - target_y
 
-        divisor = abs(x_diff) / self.dist_btwn_img_wps
-        if abs(y_diff) > abs(x_diff):
-            divisor = abs(y_diff) / self.dist_btwn_img_wps
+        divisor = abs(x_distance) / self.dist_btwn_img_wps
+        if abs(y_distance) > abs(x_distance):
+            divisor = abs(y_distance) / self.dist_btwn_img_wps
 
-        x_diff = x_diff / divisor
-        y_diff = y_diff / divisor
-        self.commander.log(f"X diff: {x_diff}, Y diff: {y_diff}")
+        x_step = x_distance / divisor
+        y_step = y_distance / divisor
+        self.commander.log(f"x_step: {x_step}, y_step: {y_step}")
+        
         waypoints = [(target_x, target_y)]
-
-        new_wp = (target_x + x_diff, target_y + y_diff)
-        while (is_inside_bounds_local(self.commander.dropzone_bounds_mlocal, new_wp)):
+        new_wp = (target_x + x_step, target_y + y_step)
+        running_x_dist, running_y_dist = abs(x_step), abs(y_step)
+        while (is_inside_bounds_local(self.commander.dropzone_bounds_mlocal, new_wp) and running_x_dist < abs(x_distance) and running_y_dist < abs(y_distance)):
             waypoints.append(new_wp)
-            new_wp = (new_wp[0] + x_diff, new_wp[1] + y_diff)
+            new_wp = (new_wp[0] + x_step, new_wp[1] + y_step)
+            running_x_dist += abs(x_step)
+            running_y_dist += abs(y_step)
 
         waypoints.reverse()
         return waypoints
