@@ -4,14 +4,14 @@ import os
 import cv2 as cv
 
 from .utils import batched
-from .imaging_types import HWC, FullBBoxPrediction, Image, InstanceSegmentationResult, ProbabilisticTargetDescriptor
+from .imaging_types import HWC, FullBBoxPrediction, Image, DetectionResult, ProbabilisticTargetDescriptor
 from .letter_classification import LetterClassifier
-from .shape_detection import ShapeInstanceSegmenter
+from .shape_detection import ShapeDetector
 from .color_classification import ColorClassifier
 from . import profiler
 from memory_profiler import profile as mem_profile
 
-def nms_process(shape_results: InstanceSegmentationResult, thresh_iou):
+def nms_process(shape_results: DetectionResult, thresh_iou):
     #Given shape_results and some threshold iou, determines if there are intersecting bounding boxes that exceed the threshold iou and takes the
     #box that has the maximum confidence
     boxes = np.array([[shape.x, shape.y, shape.x + shape.width, shape.y + shape.height, max(shape.confidences)] for shape in shape_results])
@@ -64,7 +64,7 @@ class ImageProcessor:
         '''
         self.tile_size = 640
         self.letter_size = 128
-        self.shape_detector = ShapeInstanceSegmenter(self.tile_size)
+        self.shape_detector = ShapeDetector(self.tile_size)
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
         self.debug_path = debug_path
@@ -76,8 +76,8 @@ class ImageProcessor:
     def get_last_logs_path(self):
         return f"{self.debug_path}/img_{self.num_processed-1}"
 
-    def _make_shape_detection(self, img : Image, tile_min_overlap = 64) -> list[InstanceSegmentationResult]:
-        shape_results: list[InstanceSegmentationResult] = []
+    def _make_shape_detection(self, img : Image, tile_min_overlap = 64) -> list[DetectionResult]:
+        shape_results: list[DetectionResult] = []
 
         all_tiles = img.generate_tiles(self.tile_size, tile_min_overlap)
         for tiles_batch in batched(all_tiles, self.shape_batch_size):
@@ -98,17 +98,16 @@ class ImageProcessor:
 
         return shape_results
     
-    def _classify_color_and_char(self, shape_results : list[InstanceSegmentationResult]):
+    def _classify_color_and_char(self, shape_results : list[DetectionResult]):
         total_results: list[FullBBoxPrediction] = []
         # create debug directory for segmentation and classification
         for results in batched(shape_results, self.letter_batch_size):
-            results: list[InstanceSegmentationResult] = results # type hinting
+            results: list[DetectionResult] = results # type hinting
             letter_imgs = []
             for shape_res in results: # These are all linear operations so not parallelized (yet)
                 # Color segmentations
                 shape_conf = shape_res.confidences
-                img_black_bg = shape_res.img * shape_res.mask
-                letter_img = cv.resize(img_black_bg.get_array().astype(np.float32), (128,128))
+                letter_img = cv.resize(shape_res.img.get_array().astype(np.float32), (128,128))
                 letter_imgs.append(letter_img)
 
                 if self.debug_path is not None:
@@ -116,7 +115,6 @@ class ImageProcessor:
                     instance_debug_path = f"{local_debug_path}/det_{shape_res.id}"
                     os.makedirs(instance_debug_path, exist_ok=True)
                     cv.imwrite(f"{instance_debug_path}/input.png", shape_res.img.get_array())
-                    cv.imwrite(f"{instance_debug_path}/black_bg.png", img_black_bg.get_array())
                 # Classify the colors
 
                 letter_color_conf, shape_color_conf = self.color_classifier.predict(letter_img)

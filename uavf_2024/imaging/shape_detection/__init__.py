@@ -1,1 +1,1 @@
-from .shape_instance_segmenter import ShapeInstanceSegmenter
+from .shape_detector import ShapeDetector
