@@ -222,16 +222,22 @@ def test_with_dataset(dataset_path: str, debug_folder_name: str = None):
             print(f"\tHigh descriptor match distance: {np.linalg.norm(closest_match.position-gt_target.position):.3f}")
             print(f"\tClose enough? {is_close_enough}")
 
+    avg_detection = np.zeros(len(close_detection))
     #Reporting Results of the Payload Algorithm Plugged in
     payload_order = [str(each_description.collapse_to_certain()) for each_description in resorted_payload]
     print("Payload algorithm with penalty sorting results:", "\n".join(payload_order))
-    if scores !=  sorted(scores, reverse=True):
-        print("Payload algorithm did not sort them in the order that decreases in number of times it is close enough")
 
-    if close_detection != sorted(close_detection, reverse = False):
-        print ("Payload algorithm did not sort them in the order that increases in distance")
+    truth_order = sorted(close_detection, reverse= False)
 
-    return np.sum(scores), np.mean(distances), np.std(distances)
+    #payload_results_dict = {"Average Detection" : np.zeros(len(truth_order)), "Average Distance" : np.zeros(len(truth_order)) }
+
+    for rank, detect_dist in enumerate(close_detection ):
+        if close_detection[rank] == truth_order[rank]:
+            avg_detection[rank] += 1
+
+    payload_results_dict = np.array([avg_detection, close_detection])
+
+    return np.sum(scores), np.mean(distances), np.std(distances), payload_results_dict
         
 class TestPipeline(unittest.TestCase):
     def test_with_sim_dataset(self, verbose: bool = False):
@@ -246,12 +252,33 @@ if __name__ == "__main__":
     datasets_folder = f'{CURRENT_FILE_PATH}/2024_test_data/3d_datasets/'
 
     #a total of 3 runs with different sets of payload targets is supposed to happen here
+
+    payload_dataset_results = []
+
     for dataset_name in os.listdir(datasets_folder):
-        score, dist_avg, dist_std = test_with_dataset(f'{datasets_folder}/{dataset_name}', f'integ_test_{dataset_name}')
+        score, dist_avg, dist_std, payload_results = test_with_dataset(f'{datasets_folder}/{dataset_name}', f'integ_test_{dataset_name}')
         scores.append(score)
         dists.append(dist_avg)
+        #append a payload numpy array
+        payload_dataset_results.append(payload_results)
         #break #temporary patch for the test breaking when it runs into converting a person test case into non shape probabilities
     
+    payload_report = np.sum(payload_dataset_results, axis = 0) / len ( payload_dataset_results)
+
+    payload_report_keys = ["Rank", "Average Detection", "Average Distance"]
+    max_length = max(len(word) for word in payload_report_keys)
+
+    print(f"{payload_report_keys[0]:>{10}} {payload_report_keys[1]:>{20}} {payload_report_keys[2]:>{20}}")
+
+    # Print array with row labels
+    for label, row, data in zip(range(1, len( payload_report[0])+1), payload_report[0], payload_report[1]):
+        print(f"{str(label):>{10}} {row:>{20}.{5}f} {data:>{20}.{5}f}")
+    
+
+    #max_key_length = max(len(key) for key in my_dict.keys())
+
+    
+
     scores_hist = np.histogram(scores, bins=[0,1,2,3,4,5])
     print(f"Imaging Avg Sim Score: {np.mean(scores)}/5")
     print("Distribution of scores:")
