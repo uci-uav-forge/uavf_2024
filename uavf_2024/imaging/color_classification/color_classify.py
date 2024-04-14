@@ -1,4 +1,3 @@
-from __future__ import annotations
 import numpy as np
 import torch
 from torchvision import transforms
@@ -14,35 +13,37 @@ class ColorModel(nn.Module):
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1)
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.flatten = nn.Flatten()
 
         self.letter_dense = nn.Sequential(
-            nn.Linear(128 * 32 * 32, 64),
+            nn.Linear(256 * 32 * 32, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes),
-            nn.Softmax(dim=1),
+            nn.Softmax(dim=1)
         )
 
         self.shape_dense = nn.Sequential(
-            nn.Linear(128 * 32 * 32, 64),
+            nn.Linear(256 * 32 * 32, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes),
-            nn.Softmax(dim=1),
+            nn.Softmax(dim=1)
         )
 
-    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x):
         x = self.conv1(x)
         x = self.pool1(x)
         x = self.conv2(x)
+        x = self.conv3(x)
         x = self.pool2(x)
         x = self.flatten(x)
 
         letter_output = self.letter_dense(x)
         shape_output = self.shape_dense(x)
-
+        
         return letter_output, shape_output
-
+    
 class ColorClassifier:
     def __init__(self):
         model_path = CURRENT_FILE_PATH + "/trained_model.pth"
@@ -52,7 +53,19 @@ class ColorClassifier:
 
     def load_model(self, model_path, num_classes):
         model = ColorModel(num_classes)
-        model.load_state_dict(torch.load(model_path))
+        try:
+            if torch.cuda.is_available():
+                model.load_state_dict(torch.load(model_path))
+            else:
+                model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        except FileNotFoundError:
+            print(
+                '''
+                Error loading color model weights. Try:
+                pip install gdown
+                gdown --id 15anDYEyC_jZ0MoSnnC30wjuWjD9FceH3 --out uavf_2024/imaging/color_classification/trained_model.pth
+                '''
+            )
         model.eval()
         return model
 
