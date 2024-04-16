@@ -135,13 +135,14 @@ class DroneTracker:
     class Track:
         def __init__(self, initial_measurement: Measurement):
             # x dimension is [x,y,z, vx,vy,vz, radius]
+            dim_x = 4
             self.kf = UnscentedKalmanFilter(
-                dim_x=7,
+                dim_x=4,
                 dim_z=4,
                 dt=1/30, # TODO: figure out why this needs to be in the constructor since we can't guarantee the frame rate
                 hx=self._measurement_fn,
                 fx=self._state_transition,
-                points = MerweScaledSigmaPoints(7, 1e-3, 2, 0)
+                points = MerweScaledSigmaPoints(dim_x, 1e-3, 2, 0)
             )
             self.cam_pose = initial_measurement.pose
             
@@ -155,9 +156,9 @@ class DroneTracker:
             # add random noise to position and velocity
 
             position_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
-            velocity_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
             initial_states[:, :3] += position_noise
-            initial_states[:, 3:6] += velocity_noise
+            # velocity_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
+            # initial_states[:, 3:6] += velocity_noise
 
             self.kf.x = np.mean(initial_states, axis=0)
             self.kf.P = np.cov(initial_states.T)
@@ -176,7 +177,7 @@ class DroneTracker:
                          cam_pose[0].reshape(3,1))
 
             state_position = state[:3]
-            state_radius = state[6]
+            state_radius = state[-1]
 
             ray_to_center = state_position - cam_pose[0] 
             
@@ -200,11 +201,7 @@ class DroneTracker:
 
             return BoundingBox((x_min + x_max) / 2, (y_min + y_max) / 2, x_max - x_min, y_max - y_min)
 
-
-
-
-
-        def _generate_initial_state(self, box: BoundingBox, initial_radius_guess = 0.35) -> tuple[np.ndarray, np.ndarray]:
+        def _generate_initial_state(self, box: BoundingBox, initial_radius_guess = 0.35) -> np.ndarray:
             '''
             Returns the initial state and covariance for the Kalman filter.
 
@@ -241,7 +238,7 @@ class DroneTracker:
                 else:
                     high = distance
 
-            return np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])])
+            return np.hstack([x_guess, np.array([initial_radius_guess])])
 
 
         def _measurement_fn(self, x: np.ndarray) -> np.ndarray:
@@ -264,9 +261,10 @@ class DroneTracker:
 
         @staticmethod
         def _state_transition(x: np.ndarray, dt: float) -> np.ndarray:
-            cur_pos = x[:3]
-            cur_vel = x[3:6]
-            return np.hstack([cur_pos + cur_vel*dt, cur_vel, x[6]])
+            return x
+            # cur_pos = x[:3]
+            # cur_vel = x[3:6]
+            # return np.hstack([cur_pos + cur_vel*dt, cur_vel, x[6]])
 
         def predict(self, dt: float):
             self.frames_alive += 1
@@ -280,5 +278,4 @@ class DroneTracker:
             box_w = measurement.box.width
             box_h = measurement.box.height
             self.kf.update(np.array([box_x, box_y, box_w, box_h]))
-            print(f"Determinant of covariance: {np.linalg.det(self.kf.P)}")
 

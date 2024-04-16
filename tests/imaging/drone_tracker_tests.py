@@ -17,31 +17,39 @@ class TestDroneTracker(unittest.TestCase):
 
         n_cam_samples = 100
         # make camera poses in a circle around the origin
-        cam_positions = [10*np.array([sin(2*pi*i/n_cam_samples),0,-cos(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
+        cam_pos_radius = 10
+        cam_positions = [cam_pos_radius*np.array([sin(2*pi*i/n_cam_samples),0,-cos(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
         # make rotations that point the camera at the origin
         cam_rotations = [R.from_euler('xyz', [0, -2*pi*i/n_cam_samples, 0]) for i in range(n_cam_samples)]
 
         # visualize the camera positions
         plt.figure()
         ax = plt.axes()
-        ax.set_xlim(-1,1)
-        ax.set_ylim(-1,1)
+        ax.set_xlim(-cam_pos_radius,cam_pos_radius)
+        ax.set_ylim(-cam_pos_radius,cam_pos_radius)
         ax.plot([0], [0], [0], 'ro')
         for cam_pos, cam_rot in zip(cam_positions, cam_rotations):
-            look_direction = cam_rot.apply([0,0,1]) * 0.1
+            look_direction = cam_rot.apply([0,0,1])
             ax.scatter(cam_pos[0], cam_pos[2])
             ax.plot([cam_pos[0], cam_pos[0]+look_direction[0]], [cam_pos[2], cam_pos[2]+look_direction[2]])
         plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker_test_camera_positions.png')
 
         
 
+        plt.figure()
+        covariances = []
         for cam_pos, cam_rot in zip(cam_positions, cam_rotations):
             # make a measurement
             r = 20
             measurements = [BoundingBox(960,540,2*r,2*r)]
             filter.predict(1)
             filter.update((cam_pos, cam_rot), measurements)
-            print(filter.tracks[0].kf.x)
+            covariances.append(np.diag(filter.tracks[0].kf.P))
+
+        for i in range(len(covariances[0])):
+            plt.plot([c[i] for c in covariances], label=f'covariance {i}')
+        plt.legend()
+        plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker_test_covariances.png')
 
 
         self.assertTrue(len(filter.tracks) == 1)
