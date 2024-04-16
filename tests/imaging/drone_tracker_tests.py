@@ -46,9 +46,14 @@ class TestDroneTracker(unittest.TestCase):
             filter.update((cam_pos, cam_rot), measurements)
             covariances.append(np.diag(filter.tracks[0].kf.P))
 
+        labels = [
+            'x', 'y', 'z', 'vx', 'vy', 'vz', 'r'
+        ]
+
         for i in range(len(covariances[0])):
-            plt.plot([c[i] for c in covariances], label=f'covariance {i}')
+            plt.plot([c[i] for c in covariances], label=labels[i])
         plt.legend()
+        plt.title("Covariance vs timestep")
         plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker_test_covariances.png')
 
 
