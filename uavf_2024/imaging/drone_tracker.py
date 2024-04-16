@@ -1,4 +1,5 @@
 from uavf_2024.imaging.imaging_types import BoundingBox
+from uavf_2024.imaging.camera_model import CameraModel
 from scipy.spatial.transform import Rotation
 from scipy.optimize import linear_sum_assignment
 import numpy as np
@@ -79,9 +80,9 @@ class DroneTracker:
     class Track:
         def __init__(self, initial_measurement: Measurement):
             # x dimension is [x,y,z, vx,vy,vz, radius]
-            dim_x = 4
+            dim_x = 7
             self.kf = UnscentedKalmanFilter(
-                dim_x=4,
+                dim_x,
                 dim_z=4,
                 dt=1/30, # TODO: figure out why this needs to be in the constructor since we can't guarantee the frame rate
                 hx=self._measurement_fn,
@@ -101,8 +102,8 @@ class DroneTracker:
 
             position_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
             initial_states[:, :3] += position_noise
-            # velocity_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
-            # initial_states[:, 3:6] += velocity_noise
+            velocity_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
+            initial_states[:, 3:6] += velocity_noise
 
             self.kf.x = np.mean(initial_states, axis=0)
             self.kf.P = np.cov(initial_states.T)
@@ -182,7 +183,7 @@ class DroneTracker:
                 else:
                     high = distance
 
-            return np.hstack([x_guess, np.array([initial_radius_guess])])
+            return np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])])
 
 
         def _measurement_fn(self, x: np.ndarray) -> np.ndarray:
@@ -206,9 +207,9 @@ class DroneTracker:
         @staticmethod
         def _state_transition(x: np.ndarray, dt: float) -> np.ndarray:
             return x
-            # cur_pos = x[:3]
-            # cur_vel = x[3:6]
-            # return np.hstack([cur_pos + cur_vel*dt, cur_vel, x[6]])
+            cur_pos = x[:3]
+            cur_vel = x[3:6]
+            return np.hstack([cur_pos + cur_vel*dt, cur_vel, x[6]])
 
         def predict(self, dt: float):
             self.frames_alive += 1
