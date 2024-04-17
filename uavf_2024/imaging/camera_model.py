@@ -39,10 +39,6 @@ class CameraModel:
 
         assert(pts3.shape[0]==3)
 
-        #
-        # your code goes here
-        #
-
         K = np.array([
             [self.f, 0, self.c[0]], 
             [0, self.f, self.c[1]], 
