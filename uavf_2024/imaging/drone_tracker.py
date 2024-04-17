@@ -1,5 +1,6 @@
 from uavf_2024.imaging.imaging_types import BoundingBox
 from uavf_2024.imaging.camera_model import CameraModel
+from uavf_2024.imaging.particle_filter import ParticleFilter
 from scipy.spatial.transform import Rotation
 from scipy.optimize import linear_sum_assignment
 import numpy as np
@@ -80,147 +81,16 @@ class DroneTracker:
     class Track:
         def __init__(self, initial_measurement: Measurement):
             # x dimension is [x,y,z, vx,vy,vz, radius]
-            dim_x = 7
-            self.kf = UnscentedKalmanFilter(
-                dim_x,
-                dim_z=4,
-                dt=1/30, # TODO: figure out why this needs to be in the constructor since we can't guarantee the frame rate
-                hx=self._measurement_fn,
-                fx=self._state_transition,
-                points = MerweScaledSigmaPoints(dim_x, 1e-3, 2, 0)
-            )
-            self.cam_pose = initial_measurement.pose
-            
-            # radius_samples = np.random.uniform(0.2, 1.5, 100)
-            n_initial_state_samples = 100
-            radius_samples = np.random.normal(0.4, 0.1, n_initial_state_samples)
-            initial_states = np.array([
-                self._generate_initial_state(initial_measurement.box, radius) for radius in radius_samples
-            ])
-
-            # add random noise to position and velocity
-
-            position_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
-            initial_states[:, :3] += position_noise
-            velocity_noise = np.random.normal(0, 0.01, (n_initial_state_samples, 3))
-            initial_states[:, 3:6] += velocity_noise
-
-            self.kf.x = np.mean(initial_states, axis=0)
-            self.kf.P = np.cov(initial_states.T)
+            self.filter = ParticleFilter(initial_measurement, DroneTracker.resolution, DroneTracker.focal_len_pixels)
             
             self.frames_alive = 0
             self.frames_seen = 0
 
-        @staticmethod
-        def compute_measurement(cam_pose: tuple[np.ndarray, Rotation], state: np.ndarray) -> BoundingBox:
-            '''
-            `state` is the state of the track, which is a 7 element array
-            '''
-            cam = CameraModel(DroneTracker.focal_len_pixels, 
-                         [DroneTracker.resolution[0]/2, DroneTracker.resolution[1]/2], 
-                         cam_pose[1].as_matrix(), 
-                         cam_pose[0].reshape(3,1))
-
-            state_position = state[:3]
-            state_radius = state[-1]
-
-            ray_to_center = state_position - cam_pose[0] 
-            
-            # monte carlo to find the circumscribed rectangle around the sphere's projection into the camera
-            # there's probably a better way to do this but I'm not sure what it is
-            # I tried a method where we project 4 points on the boundary and fit a 2d ellipse to their projection
-            # but the ellipse fitting was not working well
-            n_samples = 100
-
-            # sample points on the sphere
-            random_vector = np.random.randn(3, n_samples)
-            random_vector -= np.dot(random_vector.T, ray_to_center) * np.repeat([ray_to_center / np.linalg.norm(ray_to_center)], n_samples, axis=0).T
-            random_vector = random_vector / np.linalg.norm(random_vector, axis=0) * state_radius
-
-            # project points into the camera
-            projected_points = cam.project(state_position.reshape((3,1)) + random_vector)
-            x_min = np.min(projected_points[0])
-            x_max = np.max(projected_points[0])
-            y_min = np.min(projected_points[1])
-            y_max = np.max(projected_points[1])
-
-            return BoundingBox((x_min + x_max) / 2, (y_min + y_max) / 2, x_max - x_min, y_max - y_min)
-
-        def _generate_initial_state(self, box: BoundingBox, initial_radius_guess = 0.35) -> np.ndarray:
-            '''
-            Returns the initial state and covariance for the Kalman filter.
-
-            This is done by assuming the radius of the drone's bounding sphere is 0.5 meters.
-
-            The initial state is a 7 element array with the following elements:
-            [x,y,z, vx,vy,vz, radius]
-
-            TODO: The initial covariance should be a 7x7 array but rn None is returned
-            because I haven't figured out how to set the initial covariance yet
-            One idea for this is to randomly choose lots of different radii guesses and
-            figure out distance to match the box size, then add random noise to 
-            the position and velocity components and numerically calculate the covariance.
-            WE could uniformly distribute our radii guesses or estimate the distribution based on empirical data
-            '''
-
-            box_center_ray = np.array([box.x - DroneTracker.resolution[0]//2, box.y - DroneTracker.resolution[1]//2, DroneTracker.focal_len_pixels])
-            camera_look_vector = self.cam_pose[1].apply(box_center_ray)
-            camera_look_vector = 0.1 * camera_look_vector / np.linalg.norm(camera_look_vector)
-            box_area = box.width * box.height
-
-            # This could probably be done analytically but binary search was easier
-            low = 1
-            high = 1000
-            while low < high:
-                distance = (low + high) / 2
-                x_guess = self.cam_pose[0] + distance * camera_look_vector
-                projected_box = self.compute_measurement(self.cam_pose, np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])]))
-                projected_box_area = projected_box.width * projected_box.height
-                if abs(projected_box_area - box_area) < 1:
-                    break
-                elif projected_box_area > box_area: # if box is too big we need to move further (increase lower bound on distance)
-                    low = distance
-                else:
-                    high = distance
-
-            return np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])])
-
-
-        def _measurement_fn(self, x: np.ndarray) -> np.ndarray:
-            '''
-            Returns measurement of the state from self.cam_pose. 
-            self.cam_pose needs to be set before calling this function
-
-            The returned ndarray is of shape (7,) with the following elements:
-            [x,y,z, vx,vy,vz, radius]
-            ''' 
-            ret_box = self.compute_measurement(self.cam_pose, x)
-            return np.array([ret_box.x, ret_box.y, ret_box.width, ret_box.height])
-        
-        def simulate_measurement(self, cam_pose: tuple[np.ndarray, Rotation]) -> BoundingBox:
-            '''
-            Simulates a measurement with the current state of the track
-            '''
-            
-            return self.compute_measurement(cam_pose, self.kf.x)
-
-        @staticmethod
-        def _state_transition(x: np.ndarray, dt: float) -> np.ndarray:
-            return x
-            cur_pos = x[:3]
-            cur_vel = x[3:6]
-            return np.hstack([cur_pos + cur_vel*dt, cur_vel, x[6]])
-
         def predict(self, dt: float):
             self.frames_alive += 1
-            self.kf.predict(dt)
+            self.filter.predict(dt)
 
         def update(self, measurement: Measurement):
             self.frames_seen += 1
-            self.cam_pose = measurement.pose
-            box_x = measurement.box.x
-            box_y = measurement.box.y
-            box_w = measurement.box.width
-            box_h = measurement.box.height
-            self.kf.update(np.array([box_x, box_y, box_w, box_h]))
+            self.filter.update(measurement.pose, measurement)
 
