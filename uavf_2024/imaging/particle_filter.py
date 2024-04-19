@@ -50,8 +50,8 @@ class ParticleFilter:
                  focal_len_pixels: float, 
                  num_particles: int = 1000, 
                  missed_detection_weight: float = 1e-4, 
-                 pos_noise_std: float = 0.1, 
-                 vel_noise_std: float = 0, 
+                 pos_noise_std: float = 1, 
+                 vel_noise_std: float = 1, 
                  radius_noise_std: float = 0
         ):
         # not the same as len(self.samples) because we might add samples during `update` but then reduce during `resample`
@@ -115,14 +115,15 @@ class ParticleFilter:
             else:
                 high = distance
 
-        initial_velocity_xz = np.random.uniform(-10, 10, 2)
-        initial_velocity_y = np.random.uniform(-1, 1, 1)
+        horizontal_velocity = np.random.uniform(0, 10, 1)
+        vertical_velocity = np.random.uniform(-1, 1, 1)
+        angle = np.random.uniform(0, 2*np.pi, 1)
 
         return np.hstack([
             x_guess, 
-            initial_velocity_xz[0], 
-            initial_velocity_y,
-            initial_velocity_xz[1],
+            horizontal_velocity * np.cos(angle),
+            vertical_velocity,
+            horizontal_velocity * np.sin(angle),
             np.array([initial_radius_guess])]
         )
 
@@ -130,6 +131,10 @@ class ParticleFilter:
         '''
         `state` is the state of the track, which is a 7 element array
         '''
+        # if behind the camera, return a box with 0 area
+        if np.dot(state[:3] - cam_pose[0], cam_pose[1].apply([0,0,1])) < 0:
+            return BoundingBox(0, 0, 0, 0)
+
         cam = CameraModel(self.focal_len_pixels, 
                         [self.resolution[0]/2, self.resolution[1]/2], 
                         cam_pose[1].as_matrix(), 
@@ -219,13 +224,14 @@ class ParticleFilter:
         x_max = np.max([p.state[0]+p.state[-1] for p in self.samples])
         z_min = np.min([p.state[2]-p.state[-1] for p in self.samples])
         z_max = np.max([p.state[2]+p.state[-1] for p in self.samples])
+        abs_max = max(map(abs, [x_min, x_max, z_min, z_max]))
 
         for particle in self.samples:
             ax.add_patch(patches.Circle((particle.state[0], particle.state[2]), 0.1, fill=True, alpha = 0.5, color='blue'))
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(z_min, z_max)
-        # ax.set_xlim(-10, 10)
-        # ax.set_ylim(-10, 10)
+        # ax.set_xlim(-abs_max, abs_max)
+        # ax.set_ylim(-abs_max, abs_max)
+        ax.set_xlim(-10, 10)
+        ax.set_ylim(-10, 10)
         ax.set_xlabel('x')
         ax.set_ylabel('z')
 
