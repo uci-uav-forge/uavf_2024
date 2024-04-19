@@ -19,29 +19,20 @@ class Particle:
     '''
     State is [x,y,z,dx,dy,dz,radius] for a bounding sphere
     '''
-    def __init__(self, state: np.ndarray, likelihood: float, history: list[np.ndarray] = None):
+    def __init__(self, state: np.ndarray, likelihood: float):
         self.state = state
         self.likelihood = likelihood 
-        if history is None:
-            self.history = []
-        else:
-            self.history = history
 
     def step(self, dt: float, pos_noise_std: float = 0, vel_noise_std: float = 0, radius_noise_std: float = 0):
         '''
         Updates the state of the particle, adding noise to the position, velocity, and radius
         '''
-        self.history.append(self.state.copy())
         self.state[0:3] += dt*(self.state[3:6] + np.random.randn(3) * pos_noise_std)
         self.state[3:6] += dt*np.random.randn(3)* vel_noise_std
         self.state[6] += dt*np.random.randn(1)*radius_noise_std
-        if np.linalg.norm(self.state[:3]) > 300:
-            print("History:")
-            for s in self.history:
-                print(s)
 
     def copy(self):
-        return Particle(self.state.copy(), self.likelihood, [*self.history])
+        return Particle(self.state.copy(), self.likelihood)
 
 class ParticleFilter:
     def __init__(self, 
