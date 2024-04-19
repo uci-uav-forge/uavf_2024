@@ -217,21 +217,24 @@ class ParticleFilter:
         for particle in self.samples:
             particle.step(dt, self.pos_noise_std, self.vel_noise_std, self.radius_noise_std)
 
-    def visualize(self) -> Figure:
+    def visualize(self, fig_bounds = None) -> Figure:
         fig = Figure()
         ax = fig.add_subplot(111)
-        x_min = np.min([p.state[0]-p.state[-1] for p in self.samples])
-        x_max = np.max([p.state[0]+p.state[-1] for p in self.samples])
-        z_min = np.min([p.state[2]-p.state[-1] for p in self.samples])
-        z_max = np.max([p.state[2]+p.state[-1] for p in self.samples])
-        abs_max = max(map(abs, [x_min, x_max, z_min, z_max]))
 
         for particle in self.samples:
             ax.add_patch(patches.Circle((particle.state[0], particle.state[2]), 0.1, fill=True, alpha = 0.5, color='blue'))
-        # ax.set_xlim(-abs_max, abs_max)
-        # ax.set_ylim(-abs_max, abs_max)
-        ax.set_xlim(-10, 10)
-        ax.set_ylim(-10, 10)
+
+        if fig_bounds is None:
+            x_min = np.min([p.state[0]-p.state[-1] for p in self.samples])
+            x_max = np.max([p.state[0]+p.state[-1] for p in self.samples])
+            z_min = np.min([p.state[2]-p.state[-1] for p in self.samples])
+            z_max = np.max([p.state[2]+p.state[-1] for p in self.samples])
+            abs_max = max(map(abs, [x_min, x_max, z_min, z_max]))
+            ax.set_xlim(-abs_max, abs_max)
+            ax.set_ylim(-abs_max, abs_max)
+        else:
+            ax.set_xlim(-fig_bounds, fig_bounds)
+            ax.set_ylim(-fig_bounds, fig_bounds)
         ax.set_xlabel('x')
         ax.set_ylabel('z')
 

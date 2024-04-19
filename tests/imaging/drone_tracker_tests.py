@@ -41,17 +41,18 @@ class TestDroneTracker(unittest.TestCase):
 
         plt.figure()
         covariances = []
+        fig_bounds = 15
         for cam_pos, cam_rot in tqdm(zip(cam_positions, cam_rotations)):
             # make a measurement
             r = 20
             measurements = [BoundingBox(960,540,2*r,2*r)]
             filter.predict(0.5)
             if len(filter.tracks) > 0:
-                particles_fig = filter.tracks[0].filter.visualize()
+                particles_fig = filter.tracks[0].filter.visualize(fig_bounds)
                 particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}a.png')
             filter.update((cam_pos, cam_rot), measurements)
 
-            particles_fig = filter.tracks[0].filter.visualize()
+            particles_fig = filter.tracks[0].filter.visualize(fig_bounds)
             particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}b.png')
             del particles_fig
             covariances.append(np.diag(filter.tracks[0].filter.covariance()))
