@@ -64,7 +64,7 @@ class TestDroneTracker(unittest.TestCase):
         for i in range(len(covariances[0])):
             plt.plot([c[i] for c in covariances], label=labels[i])
         plt.legend()
-        plt.title("Covariance vs timestep")
+        plt.title("Variance vs timestep")
         plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/test_covariances.png')
 
 
