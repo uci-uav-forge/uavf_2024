@@ -20,9 +20,9 @@ class TestDroneTracker(unittest.TestCase):
         n_cam_samples = 20
         # make camera poses in a circle around the origin
         cam_pos_radius = 10
-        cam_positions = [cam_pos_radius*np.array([sin(2*pi*i/n_cam_samples+1),0,-cos(2*pi*i/n_cam_samples+1)]) for i in range(n_cam_samples)]
+        cam_positions = [cam_pos_radius*np.array([sin(2*pi*i/n_cam_samples),0,-cos(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
         # make rotations that point the camera at the origin
-        cam_rotations = [R.from_euler('xyz', [0, -2*pi*i/n_cam_samples-1, 0]) for i in range(n_cam_samples)]
+        cam_rotations = [R.from_euler('xyz', [0, -2*pi*i/n_cam_samples, 0]) for i in range(n_cam_samples)]
 
         # visualize the camera positions
         plt.figure()
@@ -46,11 +46,15 @@ class TestDroneTracker(unittest.TestCase):
             r = 20
             measurements = [BoundingBox(960,540,2*r,2*r)]
             filter.predict(0.5)
+            if len(filter.tracks) > 0:
+                particles_fig = filter.tracks[0].filter.visualize()
+                particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}a.png')
             filter.update((cam_pos, cam_rot), measurements)
-            covariances.append(np.diag(filter.tracks[0].filter.covariance()))
+
             particles_fig = filter.tracks[0].filter.visualize()
-            particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}.png')
+            particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}b.png')
             del particles_fig
+            covariances.append(np.diag(filter.tracks[0].filter.covariance()))
 
         labels = [
             'x', 'y', 'z', 'vx', 'vy', 'vz', 'r'
