@@ -83,7 +83,7 @@ class ParticleFilter:
         '''
         samples = []
         for _ in range(num_samples):
-            radius = np.random.uniform(0.2, 0.4)
+            radius = np.random.uniform(0.2,1.5)
             samples.append(Particle(self._generate_initial_state(cam_pose, measurement, radius), 1.0))
         return samples
 
