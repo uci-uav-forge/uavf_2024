@@ -6,7 +6,7 @@ import cv2 as cv
 from .utils import batched
 from .imaging_types import HWC, FullBBoxPrediction, Image, DetectionResult, ProbabilisticTargetDescriptor
 from .letter_classification import LetterClassifier
-from .shape_detection import ShapeDetector
+from .detection import ShapeDetector
 from .color_classification import ColorClassifier
 from . import profiler
 from memory_profiler import profile as mem_profile
