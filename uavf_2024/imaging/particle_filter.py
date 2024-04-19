@@ -19,22 +19,41 @@ class Particle:
     '''
     State is [x,y,z,dx,dy,dz,radius] for a bounding sphere
     '''
-    def __init__(self, state: np.ndarray, likelihood: float):
+    def __init__(self, state: np.ndarray, likelihood: float, history: list[np.ndarray] = None):
         self.state = state
         self.likelihood = likelihood 
+        if history is None:
+            self.history = []
+        else:
+            self.history = history
 
-    def step(self, dt: float, pos_noise_std: float = 1, vel_noise_std: float = 0.1, radius_noise_std: float = 0.01):
+    def step(self, dt: float, pos_noise_std: float = 0, vel_noise_std: float = 0, radius_noise_std: float = 0):
         '''
         Updates the state of the particle, adding noise to the position, velocity, and radius
         '''
-        self.state[3:6] += np.random.randn(3)* vel_noise_std
-        self.state[0:3] += dt*self.state[3:6] + np.random.randn(3) * pos_noise_std
-        self.state[6] += np.random.randn(1)*radius_noise_std
+        self.history.append(self.state.copy())
+        self.state[0:3] += dt*(self.state[3:6] + np.random.randn(3) * pos_noise_std)
+        self.state[3:6] += dt*np.random.randn(3)* vel_noise_std
+        self.state[6] += dt*np.random.randn(1)*radius_noise_std
+        if np.linalg.norm(self.state[:3]) > 300:
+            print("History:")
+            for s in self.history:
+                print(s)
 
-    
+    def copy(self):
+        return Particle(self.state.copy(), self.likelihood, [*self.history])
 
 class ParticleFilter:
-    def __init__(self, initial_measurement: Measurement, resolution: tuple[int,int], focal_len_pixels: float, num_particles: int = 1000, missed_detection_weight: float = 1e-4, pos_noise_std: float = 1, vel_noise_std: float = 0.1, radius_noise_std: float = 0.01):
+    def __init__(self, 
+                 initial_measurement: Measurement, 
+                 resolution: tuple[int,int], 
+                 focal_len_pixels: float, 
+                 num_particles: int = 1000, 
+                 missed_detection_weight: float = 1e-4, 
+                 pos_noise_std: float = 0.1, 
+                 vel_noise_std: float = 0, 
+                 radius_noise_std: float = 0
+        ):
         # not the same as len(self.samples) because we might add samples during `update` but then reduce during `resample`
         self.resolution = resolution
         self.focal_len_pixels = focal_len_pixels
@@ -45,8 +64,6 @@ class ParticleFilter:
         self.radius_noise_std = radius_noise_std
 
         self.samples: list[Particle] = self.gen_samples_from_measurement(initial_measurement.pose, initial_measurement.box, num_particles)
-
-        assert 1 == 1 # useless but I can put a breakpoint here to inspect samples after initialization
 
     def mean(self):
         '''
@@ -98,7 +115,16 @@ class ParticleFilter:
             else:
                 high = distance
 
-        return np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])])
+        initial_velocity_xz = np.random.uniform(-10, 10, 2)
+        initial_velocity_y = np.random.uniform(-1, 1, 1)
+
+        return np.hstack([
+            x_guess, 
+            initial_velocity_xz[0], 
+            initial_velocity_y,
+            initial_velocity_xz[1],
+            np.array([initial_radius_guess])]
+        )
 
     def compute_measurement(self, cam_pose: tuple[np.ndarray, Rotation], state: np.ndarray) -> BoundingBox:
         '''
@@ -136,14 +162,13 @@ class ParticleFilter:
 
     def update(self, cam_pose: tuple[np.ndarray, Rotation], measurement:Measurement):
         '''
-        
         measurements is a list of 2D integer bounding boxes in pixel coordinates (x1,y1,x2,y2)
         '''
 
         # add particles to `samples` that would line up with the measurements
-        self.samples.extend(
-            self.gen_samples_from_measurement(cam_pose, measurement.box, 10)
-            )
+        # self.samples.extend(
+        #     self.gen_samples_from_measurement(cam_pose, measurement.box, 10)
+        #     )
 
         for i, particle in enumerate(self.samples):
 
@@ -179,12 +204,11 @@ class ParticleFilter:
         new_samples = []
         for _ in range(self.num_samples):
             index = np.random.choice(len(self.samples), p=likelihoods)
-            new_samples.append(self.samples[index])
+            new_samples.append(self.samples[index].copy())
         self.samples = new_samples
         
         
     def predict(self, dt: float):
-        return
         for particle in self.samples:
             particle.step(dt, self.pos_noise_std, self.vel_noise_std, self.radius_noise_std)
 
@@ -197,9 +221,11 @@ class ParticleFilter:
         z_max = np.max([p.state[2]+p.state[-1] for p in self.samples])
 
         for particle in self.samples:
-            ax.add_patch(patches.Circle((particle.state[0], particle.state[2]), particle.state[-1], fill=True, alpha = 0.5, color='blue'))
+            ax.add_patch(patches.Circle((particle.state[0], particle.state[2]), 0.1, fill=True, alpha = 0.5, color='blue'))
         ax.set_xlim(x_min, x_max)
         ax.set_ylim(z_min, z_max)
+        # ax.set_xlim(-10, 10)
+        # ax.set_ylim(-10, 10)
         ax.set_xlabel('x')
         ax.set_ylabel('z')
 
