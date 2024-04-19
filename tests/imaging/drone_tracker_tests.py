@@ -5,6 +5,7 @@ from numpy import cos, pi, sin, tan
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 import os
+from tqdm import tqdm
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,7 +17,7 @@ class TestDroneTracker(unittest.TestCase):
         focal_len_pixels = resolution[0]/(2*tan(fov/2))
         filter = DroneTracker(resolution, focal_len_pixels)
 
-        n_cam_samples = 10
+        n_cam_samples = 20
         # make camera poses in a circle around the origin
         cam_pos_radius = 10
         cam_positions = [cam_pos_radius*np.array([sin(2*pi*i/n_cam_samples+1),0,-cos(2*pi*i/n_cam_samples+1)]) for i in range(n_cam_samples)]
@@ -40,11 +41,11 @@ class TestDroneTracker(unittest.TestCase):
 
         plt.figure()
         covariances = []
-        for cam_pos, cam_rot in zip(cam_positions, cam_rotations):
+        for cam_pos, cam_rot in tqdm(zip(cam_positions, cam_rotations)):
             # make a measurement
             r = 20
             measurements = [BoundingBox(960,540,2*r,2*r)]
-            filter.predict(1)
+            filter.predict(0.5)
             filter.update((cam_pos, cam_rot), measurements)
             covariances.append(np.diag(filter.tracks[0].filter.covariance()))
             particles_fig = filter.tracks[0].filter.visualize()
