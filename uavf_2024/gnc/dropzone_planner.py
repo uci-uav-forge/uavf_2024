@@ -105,13 +105,13 @@ class DropzonePlanner:
 
         self.commander.log(f"Imaging detections: {detections}")
 
-    def generate_wps_to_target(self, target_x, target_y):
+    def generate_wps_to_target(self, target_x, target_y, cur_x, cur_y):
         '''
         Will generate a path of waypoints from the drone's current position
         to the target. These waypoints represent the locations at which
         the drone should take images of the drop zone below.
         '''
-        current_x, current_y = self.commander.cur_pose.pose.position.x, self.commander.cur_pose.pose.position.y
+        current_x, current_y = cur_x, cur_y
         x_distance, y_distance = current_x - target_x, current_y - target_y
 
         divisor = abs(x_distance) / self.dist_btwn_img_wps
@@ -152,7 +152,7 @@ class DropzonePlanner:
         self.commander.log(f"best_match_x: {best_match_x}, best_match_y: {best_match_y}")
 
         # Generate path of waypoints to the target to take images at
-        next_wps = self.generate_wps_to_target(best_match_x, best_match_y)
+        next_wps = self.generate_wps_to_target(best_match_x, best_match_y, self.commander.cur_pose.pose.position.x, self.commander.cur_pose.pose.position.y)
         self.commander.log(f"Opportunistic imaging waypoints: {next_wps}")
         
         # Fly along the path of waypoints to the target
