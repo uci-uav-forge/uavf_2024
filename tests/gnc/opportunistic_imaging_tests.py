@@ -22,7 +22,7 @@ class TestOpportunisticImaging(unittest.TestCase):
         plt.clf()
 
         # Dropzone corners are blue
-        plt.scatter([p[0] for p in self.dropzone_bounds_mlocal], [p[1] for p in self.dropzone_bounds_mlocal], c = 'blue')
+        plt.scatter([p[0] for p in commander.dropzone_bounds_mlocal], [p[1] for p in commander.dropzone_bounds_mlocal], c = 'blue')
         wps = planner.generate_wps_to_target(target_x, target_y, current_x, current_y)
 
         # Imaging waypoints that are generated are red
