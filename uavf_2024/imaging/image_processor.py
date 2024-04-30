@@ -59,9 +59,9 @@ class ImageProcessor:
     debug_path: str = None, 
     shape_batch_size = 3, 
     letter_batch_size = 5,
-    tile_size = 640,
-    min_tile_overlap = 64,
-    conf = 0.25
+    tile_size = 1080,
+    min_tile_overlap = 0,
+    conf = 0.05
     ):
         '''
         Initialize all models here 
