@@ -312,13 +312,13 @@ class TestImagingFrontend(unittest.TestCase):
         print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
         print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
 
-    def test_irl_dataset(self, gen_confusion_matrices = True):
-        print("\nIRL data metrics:\n")
+    # TODO: replace shitty kwargs forwarding
+    def test_irl_dataset(self, gen_confusion_matrices = True, verbose=True, **kwargs):
         debug_output_folder = f"{CURRENT_FILE_PATH}/visualizations/test_irl"
 
         if os.path.exists(debug_output_folder):
             shutil.rmtree(debug_output_folder)
-        image_processor = ImageProcessor(debug_output_folder)
+        image_processor = ImageProcessor(debug_output_folder, **kwargs)
         imgs, labels = parse_str_dataset(f"{CURRENT_FILE_PATH}/2024_test_data/irl_dataset/images", f"{CURRENT_FILE_PATH}/2024_test_data/irl_dataset/labels")
         
         recalls = []
@@ -363,13 +363,17 @@ class TestImagingFrontend(unittest.TestCase):
         if gen_confusion_matrices:
             generate_confusion_matrices(labels, prediction_list, out_folder)
 
-        print(f"Recall: {np.mean(recalls)}")
-        print(f"Precision: {np.mean(precisions)}")
-        print(f"Shape top 1 acc: {np.mean(shape_top1s)}")
-        print(f"Letter top 1 acc: {np.mean(letter_top1s)}")
-        print(f"Letter top 5 acc: {np.mean(letter_top5s)}")
-        print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
-        print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
+        if verbose:
+            print("\nIRL data metrics:\n")
+            print(f"Recall: {np.mean(recalls)}")
+            print(f"Precision: {np.mean(precisions)}")
+            print(f"Shape top 1 acc: {np.mean(shape_top1s)}")
+            print(f"Letter top 1 acc: {np.mean(letter_top1s)}")
+            print(f"Letter top 5 acc: {np.mean(letter_top5s)}")
+            print(f"Shape color top 1 acc: {np.mean(shape_color_top1s)}")
+            print(f"Letter color top 1 acc: {np.mean(letter_color_top1s)}")
+
+        return (np.mean(recalls), np.mean(precisions))
     
     def test_lightweight_process_one_image(self):
         # run lightweight
@@ -394,4 +398,15 @@ class TestImagingFrontend(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    tester = TestImagingFrontend()
+    for tile_size in [1080]:
+        for overlap in [0]:
+            for conf in [0.01, 0.05, 0.1, 0.2, 0.25]:
+                print(conf, tile_size, overlap)
+                print(tester.test_irl_dataset(
+                    False, 
+                    False, 
+                    tile_size=tile_size, 
+                    min_tile_overlap=overlap,
+                    conf=conf
+                ))

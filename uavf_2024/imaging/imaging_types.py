@@ -364,6 +364,9 @@ class Image(Generic[_UnderlyingImageT]):
         """
         return Tile(self.make_sub_image(x_coord, y_coord, tile_size, tile_size), x_coord, y_coord)
     
+    def as_tile(self) -> Tile:
+        return Tile(self, 0, 0)
+    
     @property
     def shape(self):
         return self._array.shape

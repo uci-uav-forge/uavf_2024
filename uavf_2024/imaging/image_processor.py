@@ -55,16 +55,25 @@ def nms_process(shape_results: DetectionResult, thresh_iou):
 
 
 class ImageProcessor:
-    def __init__(self, debug_path: str = None, shape_batch_size = 3, letter_batch_size = 5):
+    def __init__(self, 
+    debug_path: str = None, 
+    shape_batch_size = 3, 
+    letter_batch_size = 5,
+    tile_size = 640,
+    min_tile_overlap = 64,
+    conf = 0.25
+    ):
         '''
         Initialize all models here 
 
         `shape_batch_size` is how many tiles we batch up for shape detection inference
         `letter_batch_size` is how many bounding box crops we batch up for letter classification
         '''
-        self.tile_size = 640
+        self.tile_size = tile_size
+        self.min_tile_overlap = min_tile_overlap
+        self.shape_det_weights = None
         self.letter_size = 128
-        self.shape_detector = ShapeDetector(self.tile_size)
+        self.shape_detector = ShapeDetector(self.tile_size, conf)
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
         self.debug_path = debug_path
@@ -76,10 +85,10 @@ class ImageProcessor:
     def get_last_logs_path(self):
         return f"{self.debug_path}/img_{self.num_processed-1}"
 
-    def _make_shape_detection(self, img : Image, tile_min_overlap = 64) -> list[DetectionResult]:
+    def _make_shape_detection(self, img : Image) -> list[DetectionResult]:
         shape_results: list[DetectionResult] = []
 
-        all_tiles = img.generate_tiles(self.tile_size, tile_min_overlap)
+        all_tiles = [img.as_tile()]#img.generate_tiles(self.tile_size, self.min_tile_overlap)
         for tiles_batch in batched(all_tiles, self.shape_batch_size):
             temp = self.shape_detector.predict(tiles_batch)
             if temp is not None: shape_results.extend(temp)
@@ -150,7 +159,7 @@ class ImageProcessor:
                     f.write(pred_descriptor_string)
         return total_results
     
-    def process_image(self, img: Image, tile_min_overlap = 64) -> list[FullBBoxPrediction]:
+    def process_image(self, img: Image) -> list[FullBBoxPrediction]:
         '''
         img shape should be (height, width, channels)
         (that tuple order is a placeholder for now and we can change it later, but it should be consistent and we need to keep the docstring updated)
@@ -160,12 +169,12 @@ class ImageProcessor:
         if not img.dim_order == HWC:
             raise ValueError("img must be in HWC order")
         
-        shape_results = self._make_shape_detection(img, tile_min_overlap)
+        shape_results = self._make_shape_detection(img)
         self.num_processed += 1
         total_results = self._classify_color_and_char(shape_results)
         return total_results
     
-    def process_image_lightweight(self, img : Image, tile_min_overlap = 64) -> list[FullBBoxPrediction]:
+    def process_image_lightweight(self, img : Image) -> list[FullBBoxPrediction]:
         '''
         Processes image and runs shape detection
         Only classifies if there is more than one detection.
@@ -176,7 +185,7 @@ class ImageProcessor:
         if not img.dim_order == HWC:
             raise ValueError("img must be in HWC order")
         
-        shape_results = self._make_shape_detection(img, tile_min_overlap)
+        shape_results = self._make_shape_detection(img)
         self.num_processed += 1
 
         if len(shape_results) == 1:
