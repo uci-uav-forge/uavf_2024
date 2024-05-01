@@ -49,11 +49,13 @@ class GeneralClassifier(nn.Module):
     """
     Custom model to classify color, shape, and character from cropped bbox.
     """
-    def __init__(self, model_path: str | None = None):
+    def __init__(self, model_path: str | None = None, device=torch.device("cuda:0")):
         """
         TODO: Design and implement model architecture.
         """
         super().__init__()
+        self.device = device
+
         # TODO: Implement model loading
         self.model_path = model_path
 
@@ -63,8 +65,8 @@ class GeneralClassifier(nn.Module):
 
         TODO: Implement this.
         """
-        batch_tensor = torch.stack([torch.tensor(img.get_array()) for img in images_batch])
-        raw: torch.Tensor = self.forward(batch_tensor)
+        gpu_batch = self.create_gpu_tensor_batch(images_batch)
+        raw: torch.Tensor = self.forward(gpu_batch)
 
         return GeneralClassifierOutput(
             torch.tensor([0.0 for _ in range(len(SHAPES))]),
@@ -72,6 +74,11 @@ class GeneralClassifier(nn.Module):
             torch.tensor([0.0 for _ in range(len(CHARACTERS))]),
             torch.tensor([0.0 for _ in range(len(COLORS))])
         )
+
+    def create_gpu_tensor_batch(self, images_batch: Iterable[Image]) -> torch.Tensor:
+        return torch.stack(
+            [torch.tensor(img.get_array()) for img in images_batch]
+        ).to(device=self.device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
