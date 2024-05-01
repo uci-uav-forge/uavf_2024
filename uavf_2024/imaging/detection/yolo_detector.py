@@ -22,9 +22,9 @@ class YOLODetector:
         self.confusion_matrix = confusion_matrix
 
     @profiler
-    def predict(self, tiles: tuple[Tile]) -> list[DetectionResult]:
+    def predict(self, tiles: tuple[Tile], confidence_threshold=0.25) -> list[DetectionResult]:
         imgs_list = [tile.img.get_array() for tile in tiles if tile is not None]
-        predictions: list[Results] = self.yolo.predict(imgs_list, verbose=False)
+        predictions: list[Results] = self.yolo(imgs_list, verbose=False, conf=confidence_threshold)
 
         full_results = []
         for img_index, single_pred in enumerate(predictions):
