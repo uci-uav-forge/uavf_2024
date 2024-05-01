@@ -15,7 +15,7 @@ class OneDetector(YOLODetector):
     def __init__(
         self,
         img_size: int = 640,
-        model_path: str = "weights/isaac_target_only.pt",
+        model_path: str = "weights/v8n-isaac-target-only.pt",
         confusion_matrix: dict[str, list[float]] | None = None,
     ):
         super().__init__(
