@@ -31,12 +31,12 @@ SHAPES = [
  "person"
 ]
 
-# LETTERS_OLD = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
-# LETTERS_NEW = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-# LETTERS is based on the letter order in letter model's raw_output[0].names
+# based on the letter order in letter model's raw_output[0].names
 # it is basically LETTER_NEW in alphabetical order (0-35)
-LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
+LEGACY_LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
+
+# New, canonical sequence of characters that actually make sense.
+CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 COLORS = list(COLOR_INDICES.keys())
 
@@ -62,7 +62,7 @@ class ProbabilisticTargetDescriptor:
             Shapes:
                 {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}f}" for i in range(len(self.shape_probs))])}
             Letters:
-                {NEWLINE.join([f"{LETTERS[i]}: {self.letter_probs[i]:.{3}f}" for i in range(len(self.letter_probs))])}
+                {NEWLINE.join([f"{LEGACY_LETTERS[i]}: {self.letter_probs[i]:.{3}f}" for i in range(len(self.letter_probs))])}
             Shape Colors:
                 {NEWLINE.join([f"{COLORS[i]}: {self.shape_col_probs[i]:.{3}f}" for i in range(len(self.shape_col_probs))])}
             Letter Colors:
@@ -91,7 +91,7 @@ class ProbabilisticTargetDescriptor:
             COLORS[np.argmax(self.shape_col_probs)],
             SHAPES[np.argmax(self.shape_probs)],
             COLORS[np.argmax(self.letter_col_probs)],
-            LETTERS[np.argmax(self.letter_probs)]
+            LEGACY_LETTERS[np.argmax(self.letter_probs)]
         )
 
 
@@ -114,7 +114,7 @@ class CertainTargetDescriptor:
 
         assert shape_col is None or shape_col in COLORS
         assert letter_col is None or letter_col in COLORS
-        assert letter is None or letter in LETTERS
+        assert letter is None or letter in LEGACY_LETTERS
         self.shape_col = shape_col
         self.letter_col = letter_col
         self.letter = letter
@@ -128,7 +128,7 @@ class CertainTargetDescriptor:
             COLORS[shape_col_index],
             SHAPES[shape_index],
             COLORS[letter_col_index],
-            LETTERS[letter_index]
+            LEGACY_LETTERS[letter_index]
         )
 
     def to_indices(self):
@@ -141,7 +141,7 @@ class CertainTargetDescriptor:
             COLORS.index(self.shape_col) if self.shape_col is not None else None,
             SHAPES.index(self.shape) if self.shape is not None else None,
             COLORS.index(self.letter_col) if self.letter_col is not None else None,
-            LETTERS.index(self.letter) if self.letter is not None else None
+            LEGACY_LETTERS.index(self.letter) if self.letter is not None else None
         )
     
     def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
@@ -152,10 +152,10 @@ class CertainTargetDescriptor:
         shape_probs[SHAPES.index(self.shape)] = 1.0
 
         if self.letter is None:
-            letter_probs = np.ones(len(LETTERS)) / len(LETTERS)
+            letter_probs = np.ones(len(LEGACY_LETTERS)) / len(LEGACY_LETTERS)
         else:
-            letter_probs = np.zeros(len(LETTERS))
-            letter_probs[LETTERS.index(self.letter)] = 1.0
+            letter_probs = np.zeros(len(LEGACY_LETTERS))
+            letter_probs[LEGACY_LETTERS.index(self.letter)] = 1.0
 
         if self.shape_col is None:
             shape_col_probs = np.ones(len(COLORS)) / len(COLORS)
