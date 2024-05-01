@@ -11,9 +11,12 @@ from .color_classification import ColorClassifier
 from . import profiler
 from memory_profiler import profile as mem_profile
 
-def nms_process(shape_results: DetectionResult, thresh_iou):
-    #Given shape_results and some threshold iou, determines if there are intersecting bounding boxes that exceed the threshold iou and takes the
-    #box that has the maximum confidence
+
+def non_max_suppress(shape_results: list[DetectionResult], thresh_iou: float):
+    """
+    Given shape_results and some threshold iou, determines if there are intersecting bounding boxes
+    that exceed the threshold iou and takes the box that has the maximum confidence
+    """
     boxes = np.array([[shape.x, shape.y, shape.x + shape.width, shape.y + shape.height, max(shape.confidences)] for shape in shape_results])
     if len(boxes) == 0:
         return shape_results
