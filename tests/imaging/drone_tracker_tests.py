@@ -17,7 +17,7 @@ class TestDroneTracker(unittest.TestCase):
         focal_len_pixels = resolution[0]/(2*tan(fov/2))
         filter = DroneTracker(resolution, focal_len_pixels)
 
-        n_cam_samples = 20
+        n_cam_samples = 50
         # make camera poses in a circle around the origin
         cam_pos_radius = 10
         cam_positions = [cam_pos_radius*np.array([sin(2*pi*i/n_cam_samples),0,-cos(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
@@ -47,13 +47,18 @@ class TestDroneTracker(unittest.TestCase):
             r = 20
             measurements = [BoundingBox(960,540,2*r,2*r)]
             filter.predict(0.5)
-            if len(filter.tracks) > 0:
-                particles_fig = filter.tracks[0].filter.visualize(fig_bounds)
-                particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}a.png')
+            # if len(filter.tracks) > 0:
+            #     particles_fig = filter.tracks[0].filter.visualize(fig_bounds)
+            #     particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}a.png')
             filter.update((cam_pos, cam_rot), measurements)
 
             particles_fig = filter.tracks[0].filter.visualize(fig_bounds)
-            particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}b.png')
+            # draw the camera position
+            ax = particles_fig.axes[0]
+            ax.plot([0], [0], [0], 'ro')
+            look_direction = cam_rot.apply([0,0,1])
+            ax.plot([cam_pos[0], cam_pos[0]+look_direction[0]], [cam_pos[2], cam_pos[2]+look_direction[2]], 'g')
+            particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}.png')
             del particles_fig
             covariances.append(np.diag(filter.tracks[0].filter.covariance()))
 
