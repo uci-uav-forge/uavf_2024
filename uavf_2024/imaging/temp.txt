@@ -1,0 +1,92 @@
+import numpy as np
+from scipy.spatial import ConvexHull
+
+def collision_prediction(drone_positions, current_pos, current_velocity, next_wp):
+    # Extract drone positions and uncertainties
+    drone_pos, drone_covariance = zip(*drone_positions)
+    drone_pos = np.array(drone_pos)
+    drone_covariance = np.array(drone_covariance)
+
+    # Calculate relative position and velocity
+    relative_pos = drone_pos - current_pos
+    relative_vel = current_velocity
+
+    # Calculate time to collision
+    time_to_collision = np.inf
+    for i in range(len(drone_pos)):
+        dist = np.linalg.norm(relative_pos[i])
+        relative_speed = np.linalg.norm(relative_vel)
+        time = dist / relative_speed
+        time_to_collision = min(time_to_collision, time)
+
+    # Calculate no-go zone
+    no_go_zone = []
+    for i in range(len(drone_pos)):
+        pos = drone_pos[i]
+        covariance = drone_covariance[i]
+        uncertainty_radius = np.sqrt(np.trace(covariance[:3, :3]))
+        no_go_zone.append(pos - uncertainty_radius)
+
+    # Convert no-go zone to a convex hull
+    no_go_zone = np.array(no_go_zone)
+    hull = ConvexHull(no_go_zone)
+    no_go_zone = no_go_zone[hull.vertices]
+
+    return time_to_collision, no_go_zone
+
+# Example usage
+drone_positions = [([10, 10, 10, 0, 0, 0, 1], np.eye(7))]  # Example drone position and covariance
+current_pos = np.array([0, 0, 0])
+current_velocity = np.array([1, 1, 1])
+next_wp = np.array([5, 5, 5])
+
+time_to_collision, no_go_zone = collision_prediction(drone_positions, current_pos, current_velocity, next_wp)
+print("Time to collision:", time_to_collision)
+print("No-go zone:", no_go_zone)
+
+
+
+
+import numpy as np
+
+
+def collision_prediction(drone_positions, current_pos, current_velocity, next_wp):
+    # Predict future positions of drone and object
+    drone_future_pos = current_pos + current_velocity
+    object_future_pos = predict_object_position(drone_positions, next_wp)
+
+    # Calculate time to collision
+    time_to_collision = calculate_time_to_collision(drone_future_pos, object_future_pos, current_velocity)
+
+    # Check if collision point falls within the no-go zone
+    no_go_zone = np.array([])  # Placeholder, replace with actual calculation
+
+    return time_to_collision, no_go_zone
+
+def predict_object_position(drone_positions, next_wp):
+    # Placeholder function, replace with actual prediction algorithm
+    # This function could use a simple kinematic model or more complex prediction methods
+    # For simplicity, let's assume the object moves towards the next waypoint
+    object_future_pos = next_wp  # Placeholder, replace with actual prediction
+    return object_future_pos
+
+def calculate_time_to_collision(drone_pos, object_pos, drone_velocity):
+    # Calculate relative position and velocity of object w.r.t drone
+    relative_pos = object_pos - drone_pos
+    relative_velocity = drone_velocity  # Assuming the object velocity is constant
+
+    # Calculate time to collision using relative position and velocity
+    # Here, we assume a simple linear model where time to collision is the time when relative distance becomes zero
+    # If relative velocity is zero, return infinity to indicate no collision
+    time_to_collision = np.linalg.norm(relative_pos) / np.linalg.norm(relative_velocity) if np.linalg.norm(relative_velocity) > 0 else np.inf
+    return time_to_collision
+
+# Example usage:
+drone_positions = [(np.array([0, 0, 0]), np.eye(7))]  # Example drone position with covariance
+current_pos = np.array([0, 0, 0])
+current_velocity = np.array([1, 1, 1])
+next_wp = np.array([5, 5, 5])
+
+time_to_collision, no_go_zone = collision_prediction(drone_positions, current_pos, current_velocity, next_wp)
+print("Time to collision:", time_to_collision)
+print("No-go zone:", no_go_zone)
