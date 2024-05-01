@@ -154,7 +154,7 @@ class NewImageProcessor:
         detection_results = self._detect_targets(img, tile_min_overlap, confidence_threshold)
         classifier_outputs = self._classify_targets(img, detection_results)
         full_bbox_results = self._create_full_bbox_results(detection_results, classifier_outputs)
-        return list(full_bbox_results)
+        return full_bbox_results
 
 
 class ImageProcessor:
