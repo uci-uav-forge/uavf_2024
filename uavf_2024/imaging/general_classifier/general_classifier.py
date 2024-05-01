@@ -3,46 +3,7 @@ from typing import NamedTuple, Iterable
 import torch
 import torch.nn as nn
 
-from ..imaging_types import SHAPES, COLORS, CHARACTERS, Image
-
-
-class GeneralClassifierOutput(NamedTuple):
-    shape_confs: torch.Tensor
-    shape_color_confs: torch.Tensor
-    character_confs: torch.Tensor
-    character_color_confs: torch.Tensor
-
-    @property
-    def shape(self):
-        return SHAPES[torch.argmax(self.shape_confs).item()]
-
-    @property
-    def shape_confidence(self):
-        return torch.max(self.shape_confs).item()
-
-    @property
-    def shape_color(self):
-        return COLORS[torch.argmax(self.shape_color_confs).item()]
-
-    @property
-    def shape_color_confidence(self):
-        return torch.max(self.shape_color_confs).item()
-
-    @property
-    def character(self):
-        return CHARACTERS[torch.argmax(self.character_confs).item()]
-
-    @property
-    def character_confidence(self):
-        return torch.max(self.character_confs).item()
-
-    @property
-    def character_color(self):
-        return COLORS[torch.argmax(self.character_color_confs).item()]
-
-    @property
-    def character_color_confidence(self):
-        return torch.max(self.character_color_confs).item()
+from ..imaging_types import SHAPES, COLORS, CHARACTERS, Image, ProbabilisticTargetDescriptor
 
 
 class GeneralClassifier(nn.Module):
@@ -59,21 +20,16 @@ class GeneralClassifier(nn.Module):
         # TODO: Implement model loading
         self.model_path = model_path
 
-    def predict(self, images_batch: Iterable[Image]) -> GeneralClassifierOutput:
+    def predict(self, images_batch: Iterable[Image]) -> list[ProbabilisticTargetDescriptor]:
         """
-        Passes the input through the model and transforms the output into a GeneralClassifierOutput.
+        Passes the input through the model and transforms the output into a ProbabilisticTargetDescriptor.
 
         TODO: Implement this.
         """
         gpu_batch = self.create_gpu_tensor_batch(images_batch)
         raw: torch.Tensor = self.forward(gpu_batch)
 
-        return GeneralClassifierOutput(
-            torch.tensor([0.0 for _ in range(len(SHAPES))]),
-            torch.tensor([0.0 for _ in range(len(COLORS))]),
-            torch.tensor([0.0 for _ in range(len(CHARACTERS))]),
-            torch.tensor([0.0 for _ in range(len(COLORS))])
-        )
+        raise NotImplemented
 
     def create_gpu_tensor_batch(self, images_batch: Iterable[Image]) -> torch.Tensor:
         return torch.stack(
