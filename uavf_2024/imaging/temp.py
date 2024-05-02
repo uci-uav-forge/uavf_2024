@@ -1,37 +1,27 @@
-# https://users.cs.utah.edu/~tch/CS6640F2020/resources/How%20to%20draw%20a%20covariance%20error%20ellipse.pdf
-# https://stackoverflow.com/questions/7819498/plotting-ellipsoid-with-matplotlib
- 
 import numpy as np
-import numpy.linalg as linalg
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
-def graph_ellipsoid(ax, covar, center):
-    # find the rotation matrix and radii of the axes
-    U, s, rotation = linalg.svd(A)
-    radii = 1.0/np.sqrt(s)
+def ellipsoid_axes_lengths(covariance_matrix, confidence_level):
+    # Compute eigenvalues and eigenvectors of the covariance matrix
+    eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
 
-    # now carry on with EOL's answer
-    u = np.linspace(0.0, 2.0 * np.pi, 100)
-    v = np.linspace(0.0, np.pi, 100)
-    x = radii[0] * np.outer(np.cos(u), np.sin(v))
-    y = radii[1] * np.outer(np.sin(u), np.sin(v))
-    z = radii[2] * np.outer(np.ones_like(u), np.cos(v))
-    for i in range(len(x)):
-        for j in range(len(x)):
-            [x[i,j],y[i,j],z[i,j]] = np.dot([x[i,j],y[i,j],z[i,j]], rotation) + center
-    ax.plot_wireframe(x, y, z,  rstride=4, cstride=4, color='b', alpha=0.2)
+    # Calculate chi square value for the given confidence level
+    dof = len(eigenvalues)  # Degrees of freedom
+    chi_square_value = np.sqrt(2 * dof) * np.sqrt(np.percentile(np.random.chisquare(dof, size=100000), 100 - confidence_level))
 
-# your ellispsoid and center in matrix form
-A = np.array([[1,0,0],[0,2,0],[0,0,2]])
-center = [0,0,0]
+    # Calculate lengths of the axes of the ellipsoid
+    axes_lengths = 2 * chi_square_value * np.sqrt(eigenvalues)
 
-# plot
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+    return axes_lengths
 
-graph_ellipsoid(ax,A,center)
+# Example usage
+# covariance_matrix = np.array([[5.6681, 4.6314],
+#                                [4.6314, 5.5951]])  # Example covariance matrix
+covariance_matrix = np.array([[1, 0, 0],
+                           [0.5, 1, 0],
+                           [0, 0, 3]])  # Example covariance matrix
+confidence_level = 95  # Confidence level in percentage
 
-plt.show()
-plt.close(fig)
-del fig
+axes_lengths = ellipsoid_axes_lengths(covariance_matrix, confidence_level)
+print("Axis lengths of the ellipsoid (at 95% confidence level):", axes_lengths)
+
+

@@ -1,4 +1,9 @@
 import numpy as np
+from visual_3d import graph_error_ellipsoid
+import numpy as np
+import numpy.linalg as linalg
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def collide_detection(pos1, vel1, radius1, pos2, vel2, radius2):
     # Calculate relative position and relative velocity
@@ -33,50 +38,74 @@ def collide_detection(pos1, vel1, radius1, pos2, vel2, radius2):
 
     return True, t_collision, collision_pos
 
-# Example usage
-pos1 = np.array([0, 0, 0])
-vel1 = np.array([1, 1, 1])
-radius1 = 1
 
-pos2 = np.array([3, 3, 3])
-vel2 = np.array([-1, -1, -1])
-radius2 = 1
+def collision_prediction(drone_positions, current_pos, current_velocity, next_wp):
+    # def collision_prediction(drone_positions: list[tuple[np.ndarray, np.ndarray], current_pos: np.ndarray, current_velocity: np.ndarray, next_wp: np.ndarray) -> tuple[time_to_collision: float, no_go_zone: np.ndarray):
+    '''
+    drone_position will have each tuple being (x, covariance) where x is [x,y,z,vx,vy,vz,radius] and covariance is a 7x7 matrix describing the covariance of those estimates.
 
-collide, t_collision, collision_pos = collide_detection(pos1, vel1, radius1, pos2, vel2, radius2)
-if collide:
-    print("Collision detected at time:", t_collision)
-    print("Collision position:", collision_pos)
-else:
-    print("No collision detected.")
+    current_pos, current_velocity and next_wp are of shape (3,)
+
+    no_go_zone should be of shape (n,3) as a list of 3d points describing a convex shape.
+    '''
+    current_xyz = current_pos[:3]
+    # current_velocity
+    current_radius = 10 # manually set
 
 
+    for i in range(len(drone_positions)):
+        drone_pos,drone_covar = drone_positions[i]
+        drone_pos_xyz = drone_pos[:3]
+        drone_vel = drone_pos[3:7]
+        drone_rad = 0 # Assume circle. So get largest axis of error ellipsoid + radius + var(radius)
+        bool_col, time_col, pos_col = collide_detection(current_xyz,current_velocity,current_radius, drone_pos_xyz, drone_vel, drone_rad)
+        if (bool_col):
+            return time_col
+    return 0
 
+    # drone_positions = [(np.array([0, 0, 0]), np.eye(7))]  # Example drone position with covariance
+    # current_pos = np.array([0, 0, 0])
+    # current_velocity = np.array([1, 1, 1])
+    # next_wp = np.array([5, 5, 5])
+    # pass
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+if __name__ == "__main__":  
+    # drones
+    
+    # self
 
-def visualize_point(point):
+    # Example usage
+    # pos1 = np.array([0, 0, 0])
+    # vel1 = np.array([1, 1, 1])
+    # radius1 = 1
+
+    # pos2 = np.array([3, 3, 3])
+    # vel2 = np.array([-1, -1, -1])
+    # radius2 = 1
+
+    # collide, t_collision, collision_pos = collide_detection(pos1, vel1, radius1, pos2, vel2, radius2)
+    # if collide:
+    #     print("Collision detected at time:", t_collision)
+    #     print("Collision position:", collision_pos)
+    # else:
+    #     print("No collision detected.")
+
+    pos1 = np.array([0, 0, 0])
+    vel1 = np.array([1, 1, 1])
+    radius1 = 1
+
+    pos2 = np.array([3, 3, 3])
+    vel2 = np.array([-1, -1, -1])
+    radius2 = 1
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    graph_error_ellipsoid(ax, pos1, np.eye(3)*radius1)
+    graph_error_ellipsoid(ax, pos2, np.eye(3)*radius2)
 
-    # Extract x, y, z coordinates of the point
-    x, y, z = point
-
-    # Plot the point
-    ax.scatter(x, y, z, color='red', s=100)  # s is the size of the point
-
-    # Set labels and title
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('3D Point Visualization')
-
-    # Show plot
     plt.show()
-
-# Example usage
-point = (1, 2, 3)
-visualize_point(point)
+    plt.close(fig)
+    del fig
 
 
 
@@ -84,7 +113,6 @@ visualize_point(point)
 
 
 
-# def collision_prediction(drone_positions, current_pos, current_velocity, next_wp):
 #     # Predict future positions of drone and object
 #     drone_future_pos = current_pos + current_velocity
 #     object_future_pos = predict_object_position(drone_positions, next_wp)
@@ -106,3 +134,9 @@ visualize_point(point)
 # time_to_collision, no_go_zone = collision_prediction(drone_positions, current_pos, current_velocity, next_wp)
 # print("Time to collision:", time_to_collision)
 # print("No-go zone:", no_go_zone)
+
+
+
+
+
+
