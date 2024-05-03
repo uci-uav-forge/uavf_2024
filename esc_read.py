@@ -50,7 +50,7 @@ first_valid_buff = True
 os.makedirs("logs_esc", exist_ok=True)
 fname = f"logs_esc/{strftime('%H:%M:%S')}.txt"
 
-print("Starting")
+print(f"Logging to {fname}")
 while 1:
     buff.append(ord(ser.read()))
     if first_byte:
