@@ -167,5 +167,6 @@ RUN python -m pip install -e .
 WORKDIR /home/ws/libuavf_2024/siyi_sdk
 COPY siyi_sdk/setup.py setup.py
 RUN python -m pip install -e .
+RUN python -m pip install av --no-binary av
 
 CMD ["/bin/bash"]
