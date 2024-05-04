@@ -43,6 +43,19 @@ class CommanderNode(rclpy.node.Node):
         self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
         self.clear_mission_client = self.create_client(mavros_msgs.srv.WaypointClear, 'mavros/mission/clear')
 
+        self.msg_sub = self.create_subscription(
+            mavros_msgs.msg.StatusText,
+            'mavros/statustext/recv',
+            self.status_text_cb,
+            qos_profile
+        )
+
+        self.msg_pub = self.create_publisher(
+            mavros_msgs.msg.StatusText,
+            'mavros/statustext/send',
+            qos_profile
+        )
+
         self.cur_state = None
         self.state_sub = self.create_subscription(
             mavros_msgs.msg.State,
@@ -121,6 +134,9 @@ class CommanderNode(rclpy.node.Node):
             self.log(f"Dropzone bounds in local coords {self.dropzone_bounds_mlocal}")
 
             self.got_global_pos = True
+    
+    def status_text_cb(self, statustext):
+        print(statustext.text)
     
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
