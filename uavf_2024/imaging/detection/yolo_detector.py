@@ -51,4 +51,5 @@ class YOLODetector:
                     )
                 )
                 self.num_processed += 1
-            return full_results
+        
+        return full_results
