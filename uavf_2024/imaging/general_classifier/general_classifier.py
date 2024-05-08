@@ -1,5 +1,6 @@
-from typing import NamedTuple, Iterable
+from typing import Iterable
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -29,7 +30,15 @@ class GeneralClassifier(nn.Module):
         gpu_batch = self.create_gpu_tensor_batch(images_batch)
         raw: torch.Tensor = self.forward(gpu_batch)
 
-        raise NotImplemented
+        # NOTE: Empty placeholder
+        return [
+            ProbabilisticTargetDescriptor(
+                np.array([0.0] * len(SHAPES)),
+                np.array([0.0] * len(COLORS)),
+                np.array([0.0] * len(CHARACTERS)),
+                np.array([0.0] * len(COLORS)),
+            ) for _ in images_batch
+        ]
 
     def create_gpu_tensor_batch(self, images_batch: Iterable[Image]) -> torch.Tensor:
         return torch.stack(

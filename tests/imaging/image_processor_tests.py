@@ -239,8 +239,8 @@ class TestImagingFrontend(unittest.TestCase):
     @profiler
     def test_benchmark_fullsize_images(self):
         image_processor = ImageProcessor(
-            shape_batch_size=20,
-            letter_batch_size=30
+            detector_batch_size=20,
+            classifier_batch_size=30
         )
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
         times = []
