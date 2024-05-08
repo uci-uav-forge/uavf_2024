@@ -108,6 +108,9 @@ class NewImageProcessor:
             cv.putText(img_to_draw_on, "target", (x, y), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         cv.imwrite(f"{debug_path}/bounding_boxes.png", img_to_draw_on)
 
+    def get_last_logs_path(self):
+        return f"{self.debug_dir}/img_{self.num_processed-1}"
+
     def _classify_targets(
         self,
         img: Image,
@@ -154,6 +157,20 @@ class NewImageProcessor:
         detection_results = self._detect_targets(img, tile_min_overlap, confidence_threshold)
         classifier_outputs = self._classify_targets(img, detection_results)
         full_bbox_results = self._create_full_bbox_results(detection_results, classifier_outputs)
+        return full_bbox_results
+
+    def process_image_lightweight(self, img: Image, tile_min_overlap=64, confidence_threshold=0.25):
+        """
+        Process an image through the detection pipeline only
+        """
+        detection_results = self._detect_targets(img, tile_min_overlap, confidence_threshold)
+        # The empty ProbabilisticTargetDescriptor is a vestige of the old processor.
+        # We should return a different class than FullBBoxPrediction, but I'm keeping it
+        # backwards-compatible for now.
+        full_bbox_results = self._create_full_bbox_results(
+            detection_results,
+            itertools.repeat(ProbabilisticTargetDescriptor())
+        )
         return full_bbox_results
 
 
