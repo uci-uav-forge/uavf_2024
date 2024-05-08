@@ -1,20 +1,22 @@
 from __future__ import annotations
-import shutil
-import torch
-from torchvision.ops import box_iou
-import unittest
-from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import HWC, FullBBoxPrediction, FullBBoxGroundTruth, Image, CertainTargetDescriptor, LEGACY_LETTERS, SHAPES, COLORS
-from uavf_2024.imaging import profiler
-import numpy as np
+
 import os
+import shutil
+import unittest
 from time import time
-from tqdm import tqdm
-import line_profiler
-from memory_profiler import profile as mem_profile
+
+import cv2  # for debugging purposes
+import numpy as np
 import pandas as pd
-import sys
-import cv2 #for debugging purposes
+import torch
+from memory_profiler import profile as mem_profile
+from torchvision.ops import box_iou
+from tqdm import tqdm
+
+from uavf_2024.imaging import profiler
+from uavf_2024.imaging.image_processor import ImageProcessor
+from uavf_2024.imaging.imaging_types import FullBBoxPrediction, FullBBoxGroundTruth, Image, CertainTargetDescriptor, \
+    LEGACY_LETTERS, SHAPES, COLORS
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
