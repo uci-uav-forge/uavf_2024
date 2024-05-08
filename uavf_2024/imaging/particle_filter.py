@@ -8,31 +8,12 @@ from matplotlib.figure import Figure
 import matplotlib.patches as patches
 from dataclasses import dataclass
 import torch
+from torch import Tensor
 
 @dataclass
 class Measurement:
     pose: tuple[np.ndarray, Rotation]
     box: BoundingBox
-
-# Note: this implementation is slow because it's object-oriented, but it's easier to understand
-class Particle:
-    '''
-    State is [x,y,z,dx,dy,dz,radius] for a bounding sphere
-    '''
-    def __init__(self, state: np.ndarray, likelihood: float):
-        self.state = state
-        self.likelihood = likelihood 
-
-    def step(self, dt: float, pos_noise_std: float = 0, vel_noise_std: float = 0, radius_noise_std: float = 0):
-        '''
-        Updates the state of the particle, adding noise to the position, velocity, and radius
-        '''
-        self.state[0:3] += dt*(self.state[3:6] + np.random.randn(3) * pos_noise_std)
-        self.state[3:6] += dt*np.random.randn(3)* vel_noise_std
-        self.state[6] += dt*np.random.randn(1)*radius_noise_std
-
-    def copy(self):
-        return Particle(self.state.copy(), self.likelihood)
 
 class ParticleFilter:
     def __init__(self, 
@@ -41,10 +22,15 @@ class ParticleFilter:
                  focal_len_pixels: float, 
                  num_particles: int = 1000, 
                  missed_detection_weight: float = 1e-4, 
-                 pos_noise_std: float = 1, 
-                 vel_noise_std: float = 1, 
+                 pos_noise_std: float = 0.1, 
+                 vel_noise_std: float = 0.1, 
                  radius_noise_std: float = 0
         ):
+
+        '''
+        self.samples is [num_particles, 7]
+        where the 7 elements are [x,y,z, vx,vy,vz, radius]
+        '''
         # not the same as len(self.samples) because we might add samples during `update` but then reduce during `resample`
         self.resolution = resolution
         self.focal_len_pixels = focal_len_pixels
@@ -54,28 +40,29 @@ class ParticleFilter:
         self.vel_noise_std = vel_noise_std
         self.radius_noise_std = radius_noise_std
 
-        self.samples: list[Particle] = self.gen_samples_from_measurement(initial_measurement.pose, initial_measurement.box, num_particles)
+        self.samples: np.ndarray = self.gen_samples_from_measurement(initial_measurement.pose, initial_measurement.box, num_particles)
 
     def mean(self):
         '''
         Returns the mean of the particles
         '''
-        return np.mean([p.state for p in self.samples], axis=0)
+        return np.mean(self.samples, axis=0)
     
     def covariance(self):
         '''
         Returns the covariance of the particles
         '''
-        return np.cov([p.state for p in self.samples], rowvar=False)
+        return np.cov(self.samples, rowvar=False)
 
     def gen_samples_from_measurement(self, cam_pose: tuple[np.ndarray, Rotation], measurement: BoundingBox, num_samples: int):
         '''
         Generates `num_samples` particles that are likely to correspond to the given measurement
         '''
-        samples = []
-        for _ in range(num_samples):
-            radius = np.random.uniform(0.2,1.5)
-            samples.append(Particle(self._generate_initial_state(cam_pose, measurement, radius), 1.0))
+        radii = np.random.uniform(0.2, 1.5, num_samples)
+        samples = np.array([
+            self._generate_initial_state(cam_pose, measurement, r)
+            for r in radii
+        ])
         return samples
 
     def _generate_initial_state(self, cam_pose, box: BoundingBox, initial_radius_guess) -> np.ndarray:
@@ -97,8 +84,16 @@ class ParticleFilter:
         while low < high:
             distance = (low + high) / 2
             x_guess = cam_pose[0] + distance * camera_look_vector
-            projected_box = self.compute_measurement(cam_pose, np.hstack([x_guess, np.array([0,0,0,initial_radius_guess])]))
-            projected_box_area = projected_box.width * projected_box.height
+            projected_box = self.compute_measurements(
+                cam_pose, 
+                np.hstack([
+                    x_guess, 
+                    [0,0,0,initial_radius_guess]]
+                )[np.newaxis,:]
+            )[0]
+            width = projected_box[2] - projected_box[0]
+            height = projected_box[3] - projected_box[1]
+            projected_box_area = width*height
             if abs(projected_box_area - box_area) < 1:
                 break
             elif projected_box_area > box_area: # if box is too big we need to move further (increase lower bound on distance)
@@ -118,23 +113,23 @@ class ParticleFilter:
             np.array([initial_radius_guess])]
         )
 
-    def compute_measurement(self, cam_pose: tuple[np.ndarray, Rotation], state: np.ndarray) -> BoundingBox:
+    def compute_measurements(self, cam_pose: tuple[np.ndarray, Rotation], states: np.ndarray) -> BoundingBox:
         '''
-        `state` is the state of the track, which is a 7 element array
+        `states` is (n, 7)
+        returns ndarray of shape (n, 4) where the 4 elements are [x1,y1,x2,y2]
         '''
-        # if behind the camera, return a box with 0 area
-        if np.dot(state[:3] - cam_pose[0], cam_pose[1].apply([0,0,1])) < 0:
-            return BoundingBox(0, 0, 0, 0)
-
         cam = CameraModel(self.focal_len_pixels, 
                         [self.resolution[0]/2, self.resolution[1]/2], 
                         cam_pose[1].as_matrix(), 
                         cam_pose[0].reshape(3,1))
 
-        state_position = state[:3]
-        state_radius = state[-1]
+        n = states.shape[0]
+        positions = states[:, :3]
+        radii = states[:, -1]
 
-        ray_to_center = state_position - cam_pose[0] 
+        # (n, 3)
+        rays_to_center = positions - cam_pose[0] 
+        normalized_rays = rays_to_center / np.linalg.norm(rays_to_center, axis=0)
         
         # monte carlo to find the circumscribed rectangle around the sphere's projection into the camera
         # there's probably a better way to do this but I'm not sure what it is
@@ -143,18 +138,35 @@ class ParticleFilter:
         n_samples = 100
 
         # sample points on the sphere
-        random_vector = np.random.randn(3, n_samples)
-        random_vector -= np.dot(random_vector.T, ray_to_center) * np.repeat([ray_to_center / np.linalg.norm(ray_to_center)], n_samples, axis=0).T
-        random_vector = random_vector / np.linalg.norm(random_vector, axis=0) * state_radius
+        random_vector = np.random.randn(n, n_samples, 3)
+        
+        # (n, n_samples,)
+        # forgive me for my sin of using a loop, I decided that the nasty tensor dot
+        # product was not worth the readability hit. If this is a performance bottleneck
+        # we can revisit it.
+        projection_scalars = np.array([
+            np.dot(normalized_rays[i], random_vector[i].T) 
+            for i in range(n)
+        ])
+
+        
+
+        # subtract the component of the random vector that is in the direction of the rays to the center, so that they all point orthogonal to the camera.
+        random_vector -=  projection_scalars[:,:,np.newaxis] * normalized_rays[:, np.newaxis, :]
+        random_vector = random_vector / (np.linalg.norm(random_vector, axis=2) * radii[:,None])[:,:,None]
+
+        pts3 = positions[:, None, :] + random_vector
+
+        pts3_flat = pts3.reshape(-1, 3) # (n*n_samples, 3)
 
         # project points into the camera
-        projected_points = cam.project(state_position.reshape((3,1)) + random_vector)
-        x_min = np.min(projected_points[0])
-        x_max = np.max(projected_points[0])
-        y_min = np.min(projected_points[1])
-        y_max = np.max(projected_points[1])
+        projected_points = cam.project(pts3_flat.T).T.reshape(n, n_samples, 2)
+        x_mins = np.min(projected_points[:,:,0], axis=1) # (n,)
+        y_mins = np.min(projected_points[:,:,1], axis=1) # (n,)
+        x_maxs = np.max(projected_points[:,:,0], axis=1) # (n,)
+        y_maxs = np.max(projected_points[:,:,1], axis=1) # (n,)
 
-        return BoundingBox((x_min + x_max) / 2, (y_min + y_max) / 2, x_max - x_min, y_max - y_min)
+        return np.vstack([x_mins, y_mins, x_maxs, y_maxs]).T # (n, 4)
 
     def update(self, cam_pose: tuple[np.ndarray, Rotation], measurement:Measurement):
         '''
@@ -166,34 +178,36 @@ class ParticleFilter:
         #     self.gen_samples_from_measurement(cam_pose, measurement.box, 10)
         #     )
 
-        for i, particle in enumerate(self.samples):
-
-            # compute the likelihood of the particle given the measurement
-            # by comparing the measurement to the particle's predicted
-            # measurement
-            predicted_measurement = self.compute_measurement(cam_pose, particle.state).to_xyxy()
-            particle.likelihood = self.compute_likelihood(predicted_measurement, measurement.box.to_xyxy())
+        measurements = self.compute_measurements(cam_pose, self.samples)
+        likelihoods = self.compute_likelihoods(measurements, measurement.box.to_xyxy())
 
         # resample the particles
-        self.resample()
+        self.resample(likelihoods)
 
-    def compute_likelihood(self, predicted_measurement: np.ndarray, measurement: np.ndarray) -> float:
+    def compute_likelihoods(self, predicted_measurements: np.ndarray, measurement: np.ndarray) -> Tensor:
         '''
+        `predicted_measurements` is (n, 4)
+        `measurement` is (4,)
         Computes the likelihood of the predicted measurement given the actual measurement
+        Returns (n,) tensor
         '''
-        assert len(predicted_measurement) == 4
-        assert len(measurement) == 4
+        n = predicted_measurements.shape[0]
         # compute the intersection over union of the two boxes
-        iou = box_iou(torch.tensor(predicted_measurement.reshape([1,4])), torch.tensor(measurement.reshape([1,4])))
-        return iou.item()
+        ious = box_iou(
+            Tensor(predicted_measurements),
+            Tensor(measurement).unsqueeze(0)
+        )
+        return ious[:,0]
 
-    def resample(self):
+    def resample(self, likelihoods: Tensor):
         '''
         Resamples the particles based on the likelihoods
+        `likelihoods` is a 1D tensor of length `num_samples`
         '''
 
-        likelihoods = np.array([p.likelihood for p in self.samples])
+        likelihoods
         likelihoods += self.missed_detection_weight
+        likelihoods = likelihoods.numpy()
         # normalize the likelihoods
         likelihoods /= np.sum(likelihoods)
         # resample the particles
@@ -201,25 +215,30 @@ class ParticleFilter:
         for _ in range(self.num_samples):
             index = np.random.choice(len(self.samples), p=likelihoods)
             new_samples.append(self.samples[index].copy())
-        self.samples = new_samples
+        self.samples = np.array(new_samples)
         
         
     def predict(self, dt: float):
-        for particle in self.samples:
-            particle.step(dt, self.pos_noise_std, self.vel_noise_std, self.radius_noise_std)
+        # move the particles according to their velocities
+        self.samples[:, :3] += self.samples[:, 3:6] * dt
 
+        # add noise
+        self.samples[:, :3] += np.random.randn(self.num_samples, 3) * self.pos_noise_std
+        self.samples[:, 3:6] += np.random.randn(self.num_samples, 3) * self.vel_noise_std
+        self.samples[:, -1] += np.random.randn(self.num_samples) * self.radius_noise_std
+    
     def visualize(self, fig_bounds = None) -> Figure:
         fig = Figure()
         ax = fig.add_subplot(111)
 
         for particle in self.samples:
-            ax.add_patch(patches.Circle((particle.state[0], particle.state[2]), 0.1, fill=True, alpha = 0.5, color='blue'))
+            ax.add_patch(patches.Circle((particle[0], particle[2]), 0.1, fill=True, alpha = 0.5, color='blue'))
 
         if fig_bounds is None:
-            x_min = np.min([p.state[0]-p.state[-1] for p in self.samples])
-            x_max = np.max([p.state[0]+p.state[-1] for p in self.samples])
-            z_min = np.min([p.state[2]-p.state[-1] for p in self.samples])
-            z_max = np.max([p.state[2]+p.state[-1] for p in self.samples])
+            x_min = np.min([p[0]-p[-1] for p in self.samples])
+            x_max = np.max([p[0]+p[-1] for p in self.samples])
+            z_min = np.min([p[2]-p[-1] for p in self.samples])
+            z_max = np.max([p[2]+p[-1] for p in self.samples])
             abs_max = max(map(abs, [x_min, x_max, z_min, z_max]))
             ax.set_xlim(-abs_max, abs_max)
             ax.set_ylim(-abs_max, abs_max)
