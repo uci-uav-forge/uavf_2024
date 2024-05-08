@@ -17,7 +17,7 @@ class TestDroneTracker(unittest.TestCase):
         focal_len_pixels = resolution[0]/(2*tan(fov/2))
         filter = DroneTracker(resolution, focal_len_pixels)
 
-        n_cam_samples = 50
+        n_cam_samples = 20
         # make camera poses in a circle around the origin
         cam_pos_radius = 10
         cam_positions = [cam_pos_radius*np.array([sin(2*pi*i/n_cam_samples),0,-cos(2*pi*i/n_cam_samples)]) for i in range(n_cam_samples)]
@@ -55,9 +55,15 @@ class TestDroneTracker(unittest.TestCase):
             particles_fig = filter.tracks[0].filter.visualize(fig_bounds)
             # draw the camera position
             ax = particles_fig.axes[0]
-            ax.plot([0], [0], [0], 'ro')
+            ax.plot([0], [0], [0], 'ro', label='actual position')
             look_direction = cam_rot.apply([0,0,1])
-            ax.plot([cam_pos[0], cam_pos[0]+look_direction[0]], [cam_pos[2], cam_pos[2]+look_direction[2]], 'g')
+            ax.plot([cam_pos[0], cam_pos[0]+look_direction[0]], [cam_pos[2], cam_pos[2]+look_direction[2]], 'g', label='camera (our drone)')
+
+            # plot mean and covariance of the filter
+            mean = filter.tracks[0].filter.mean()
+            cov = np.diag(filter.tracks[0].filter.covariance())
+            ax.plot([mean[0]], [mean[2]], 'yo', label='estimated position')
+            particles_fig.legend()
             particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}.png')
             del particles_fig
             covariances.append(np.diag(filter.tracks[0].filter.covariance()))
