@@ -31,7 +31,7 @@ class ParticleFilter:
         self.samples is [num_particles, 7]
         where the 7 elements are [x,y,z, vx,vy,vz, radius]
         '''
-        # not the same as len(self.samples) because we might add samples during `update` but then reduce during `resample`
+        self._device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.resolution = resolution
         self.focal_len_pixels = focal_len_pixels
         self.num_samples = num_particles 
@@ -40,32 +40,32 @@ class ParticleFilter:
         self.vel_noise_std = vel_noise_std
         self.radius_noise_std = radius_noise_std
 
-        self.samples: np.ndarray = self.gen_samples_from_measurement(initial_measurement.pose, initial_measurement.box, num_particles)
+        self.samples: Tensor = self.gen_samples_from_measurement(initial_measurement.pose, initial_measurement.box, num_particles)
 
     def mean(self):
         '''
         Returns the mean of the particles
         '''
-        return np.mean(self.samples, axis=0)
+        return self.samples.mean(dim=0).cpu()
     
     def covariance(self):
         '''
         Returns the covariance of the particles
         '''
-        return np.cov(self.samples, rowvar=False)
+        return self.samples.T.cov().cpu()
 
     def gen_samples_from_measurement(self, cam_pose: tuple[np.ndarray, Rotation], measurement: BoundingBox, num_samples: int):
         '''
         Generates `num_samples` particles that are likely to correspond to the given measurement
         '''
-        radii = np.random.uniform(0.2, 1.5, num_samples)
-        samples = np.array([
+        radii = torch.rand(num_samples) * (1.5-0.2) + 0.2
+        samples = torch.vstack([
             self._generate_initial_state(cam_pose, measurement, r)
             for r in radii
         ])
-        return samples
+        return samples.to(self._device)
 
-    def _generate_initial_state(self, cam_pose, box: BoundingBox, initial_radius_guess) -> np.ndarray:
+    def _generate_initial_state(self, cam_pose, box: BoundingBox, initial_radius_guess) -> Tensor:
         '''
         Returns a state that corresponds to the given cam pose, bounding box, and radius guess
 
@@ -74,8 +74,8 @@ class ParticleFilter:
         '''
 
         box_center_ray = np.array([box.x - self.resolution[0]//2, box.y - self.resolution[1]//2, self.focal_len_pixels])
-        camera_look_vector = cam_pose[1].apply(box_center_ray)
-        camera_look_vector = 0.1 * camera_look_vector / np.linalg.norm(camera_look_vector)
+        camera_look_vector = Tensor(cam_pose[1].apply(box_center_ray))
+        camera_look_vector = 0.1 * camera_look_vector / torch.linalg.norm(camera_look_vector)
         box_area = box.width * box.height
 
         # This could probably be done analytically but binary search was easier
@@ -83,13 +83,13 @@ class ParticleFilter:
         high = 1000
         while low < high:
             distance = (low + high) / 2
-            x_guess = cam_pose[0] + distance * camera_look_vector
+            x_guess = Tensor(cam_pose[0]) + distance * camera_look_vector
             projected_box = self.compute_measurements(
                 cam_pose, 
-                np.hstack([
+                torch.hstack([
                     x_guess, 
-                    [0,0,0,initial_radius_guess]]
-                )[np.newaxis,:]
+                    Tensor([0,0,0,initial_radius_guess])
+                ])[np.newaxis,:].to(self._device)
             )[0]
             width = projected_box[2] - projected_box[0]
             height = projected_box[3] - projected_box[1]
@@ -101,16 +101,16 @@ class ParticleFilter:
             else:
                 high = distance
 
-        horizontal_velocity = np.random.uniform(0, 10, 1)
-        vertical_velocity = np.random.uniform(-1, 1, 1)
-        angle = np.random.uniform(0, 2*np.pi, 1)
+        horizontal_velocity = torch.rand(1)*10
+        vertical_velocity = torch.rand(1)*2-1
+        angle = torch.rand(1)*2*torch.pi
 
-        return np.hstack([
+        return torch.hstack([
             x_guess, 
-            horizontal_velocity * np.cos(angle),
+            horizontal_velocity * torch.cos(angle),
             vertical_velocity,
-            horizontal_velocity * np.sin(angle),
-            np.array([initial_radius_guess])]
+            horizontal_velocity * torch.sin(angle),
+            Tensor([initial_radius_guess])]
         )
 
     def compute_measurements(self, cam_pose: tuple[np.ndarray, Rotation], states: np.ndarray) -> BoundingBox:
@@ -128,8 +128,10 @@ class ParticleFilter:
         radii = states[:, -1]
 
         # (n, 3)
-        rays_to_center = positions - cam_pose[0] 
-        normalized_rays = rays_to_center / np.linalg.norm(rays_to_center, axis=0)
+        cam_position_tensor = Tensor(cam_pose[0]).to(self._device)
+        rays_to_center = positions - cam_position_tensor
+        rays_lengths = torch.linalg.norm(rays_to_center, dim=1)
+        normalized_rays = rays_to_center / rays_lengths[:, None]
         
         # monte carlo to find the circumscribed rectangle around the sphere's projection into the camera
         # there's probably a better way to do this but I'm not sure what it is
@@ -138,35 +140,38 @@ class ParticleFilter:
         n_samples = 100
 
         # sample points on the sphere
-        random_vector = np.random.randn(n, n_samples, 3)
+        random_vectors = torch.normal(
+            mean = torch.zeros(n, n_samples, 3),
+            std = torch.ones(n, n_samples, 3),
+        ).to(self._device)
         
         # (n, n_samples,)
         # forgive me for my sin of using a loop, I decided that the nasty tensor dot
         # product was not worth the readability hit. If this is a performance bottleneck
         # we can revisit it.
-        projection_scalars = np.array([
-            np.dot(normalized_rays[i], random_vector[i].T) 
+        projection_scalars = torch.vstack([
+            normalized_rays[i] @ random_vectors[i].T
             for i in range(n)
         ])
 
         
 
         # subtract the component of the random vector that is in the direction of the rays to the center, so that they all point orthogonal to the camera.
-        random_vector -=  projection_scalars[:,:,np.newaxis] * normalized_rays[:, np.newaxis, :]
-        random_vector = random_vector / (np.linalg.norm(random_vector, axis=2) * radii[:,None])[:,:,None]
+        orthogonal_rays = random_vectors - projection_scalars[:,:,np.newaxis] * normalized_rays[:, np.newaxis, :]
+        orthogonal_rays_normalized = orthogonal_rays / (torch.linalg.norm(orthogonal_rays, dim=2) * radii[:,None])[:,:,None]
 
-        pts3 = positions[:, None, :] + random_vector
+        pts3 = positions[:, None, :] + orthogonal_rays_normalized
 
         pts3_flat = pts3.reshape(-1, 3) # (n*n_samples, 3)
 
         # project points into the camera
-        projected_points = cam.project(pts3_flat.T).T.reshape(n, n_samples, 2)
-        x_mins = np.min(projected_points[:,:,0], axis=1) # (n,)
-        y_mins = np.min(projected_points[:,:,1], axis=1) # (n,)
-        x_maxs = np.max(projected_points[:,:,0], axis=1) # (n,)
-        y_maxs = np.max(projected_points[:,:,1], axis=1) # (n,)
+        projected_points = cam.project(pts3_flat.T, self._device).T.reshape(n, n_samples, 2)
+        x_mins = torch.min(projected_points[:,:,0], dim=1).values # (n,)
+        y_mins = torch.min(projected_points[:,:,1], dim=1).values # (n,)
+        x_maxs = torch.max(projected_points[:,:,0], dim=1).values # (n,)
+        y_maxs = torch.max(projected_points[:,:,1], dim=1).values # (n,)
 
-        return np.vstack([x_mins, y_mins, x_maxs, y_maxs]).T # (n, 4)
+        return torch.vstack([x_mins, y_mins, x_maxs, y_maxs]).T # (n, 4)
 
     def update(self, cam_pose: tuple[np.ndarray, Rotation], measurement:Measurement):
         '''
@@ -195,7 +200,7 @@ class ParticleFilter:
         # compute the intersection over union of the two boxes
         ious = box_iou(
             Tensor(predicted_measurements),
-            Tensor(measurement).unsqueeze(0)
+            Tensor(measurement).unsqueeze(0).to(self._device)
         )
         return ious[:,0]
 
@@ -207,25 +212,33 @@ class ParticleFilter:
 
         likelihoods
         likelihoods += self.missed_detection_weight
-        likelihoods = likelihoods.numpy()
+        likelihoods = likelihoods
         # normalize the likelihoods
-        likelihoods /= np.sum(likelihoods)
         # resample the particles
-        new_samples = []
-        for _ in range(self.num_samples):
-            index = np.random.choice(len(self.samples), p=likelihoods)
-            new_samples.append(self.samples[index].copy())
-        self.samples = np.array(new_samples)
+        indices = torch.multinomial(likelihoods, self.num_samples, replacement=True)
+        new_samples = self.samples[indices].clone().detach()
+        self.samples = new_samples
         
         
     def predict(self, dt: float):
         # move the particles according to their velocities
         self.samples[:, :3] += self.samples[:, 3:6] * dt
 
-        # add noise
-        self.samples[:, :3] += np.random.randn(self.num_samples, 3) * self.pos_noise_std
-        self.samples[:, 3:6] += np.random.randn(self.num_samples, 3) * self.vel_noise_std
-        self.samples[:, -1] += np.random.randn(self.num_samples) * self.radius_noise_std
+        self.samples[:, :3] += torch.normal(
+            mean = torch.zeros(self.num_samples, 3),
+            std = self.pos_noise_std*torch.ones(self.num_samples, 3)
+        ).to(self._device)
+
+        self.samples[:, 3:6] += torch.normal(
+            mean = torch.zeros(self.num_samples, 3),
+            std = self.vel_noise_std*torch.ones(self.num_samples, 3)
+        ).to(self._device)
+
+        self.samples[:, 6] += torch.normal(
+            mean = torch.zeros(self.num_samples),
+            std = self.radius_noise_std*torch.ones(self.num_samples)
+        ).to(self._device)
+
     
     def visualize(self, fig_bounds = None) -> Figure:
         fig = Figure()
