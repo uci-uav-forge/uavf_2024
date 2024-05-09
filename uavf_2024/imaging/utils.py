@@ -1,6 +1,7 @@
 from typing import Generator, List
 
 import numpy as np
+import torch
 
 from .imaging_types import ProbabilisticTargetDescriptor, Tile
 
@@ -79,9 +80,6 @@ def sort_payload(list_payload_targets: List[ProbabilisticTargetDescriptor], shap
     payload_ordered_list = [list_payload_targets[target_order] for target_order, target_score in payload_targets_order]
 
     return payload_ordered_list
- 
-
-
 
 def batched(iterable, n):
     # batched('ABCDEFG', 3) --> ABC DEF G
@@ -91,4 +89,45 @@ def batched(iterable, n):
     while batch := tuple(islice(it, n)):
         yield batch
 
+def make_ortho_vectors(v: torch.Tensor, m: int):
+    '''
+    `v` is a (n,3) tensor
+    make m unit vectors that are orthogonal to each v_i, and evenly spaced around v_i's radial symmetry
+    
+    to visualize: imagine each v_i is the vector coinciding 
+    with a lion's face direction, and we wish to make m vectors for the lion's mane.
 
+    it does this by making a "lion's mane" around the vector (0,0,1), which is easy with parameterizing
+    with theta and using (cos(theta), sin(theta), 0). Then, it figures out the 2DOF R_x @ R_y rotation matrix
+    that would rotate (0,0,1) into v_i, and applies it to those mane vectors.
+
+    returns a tensor of shape (n,m,3)
+    '''
+    n = v.shape[0]
+    thetas = torch.linspace(0, 2*torch.pi, m)
+
+    phi_y = torch.atan2(v[:, 0], v[:, 2])
+    phi_x = torch.atan2(v[:, 1], torch.sqrt(v[:,0]**2 + v[:,2]**2))
+
+    cos_y = torch.cos(phi_y)
+    sin_y = torch.sin(phi_y)
+    cos_x = torch.cos(phi_x)
+    sin_x = torch.sin(phi_x)
+
+    R = torch.Tensor([
+        [
+            [cos_y[i], -sin_y[i]*sin_x[i], sin_y[i]*cos_x[i]],
+            [0, cos_x[i], sin_x[i]],
+            [-sin_y[i], -cos_y[i]*sin_x[i], cos_y[i]*cos_x[i]]
+        ] for i in range(n)
+    ]) # (n, 3, 3)
+
+    vectors = torch.stack(
+        [
+            torch.cos(thetas), 
+            torch.sin(thetas), 
+            torch.zeros_like(thetas)
+        ],
+    ) # (3,m)
+
+    return torch.matmul(R, vectors).permute(0, 2, 1) # (n, m, 3)
