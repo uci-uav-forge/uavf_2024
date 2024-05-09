@@ -4,7 +4,6 @@ from uavf_2024.imaging.particle_filter import ParticleFilter
 from scipy.spatial.transform import Rotation
 from scipy.optimize import linear_sum_assignment
 import numpy as np
-from filterpy.kalman import UnscentedKalmanFilter, MerweScaledSigmaPoints
 from torchvision.ops import box_iou
 from torch import Tensor
 from dataclasses import dataclass
