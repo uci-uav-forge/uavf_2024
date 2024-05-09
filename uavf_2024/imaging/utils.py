@@ -89,6 +89,7 @@ def batched(iterable, n):
     while batch := tuple(islice(it, n)):
         yield batch
 
+@profile
 def make_ortho_vectors(v: torch.Tensor, m: int):
     '''
     `v` is a (n,3) tensor
@@ -107,21 +108,22 @@ def make_ortho_vectors(v: torch.Tensor, m: int):
     thetas = torch.linspace(0, 2*torch.pi, m).to(v.device)
 
     phi_y = torch.atan2(v[:, 0], v[:, 2])
-    phi_x = torch.atan2(v[:, 1], torch.sqrt(v[:,0]**2 + v[:,2]**2))
+    square_sum = v[:,0]**2 + v[:,2]**2
+    inverted = 1/torch.sqrt(square_sum)#fast_inv_sqrt(square_sum)
+    phi_x = torch.atan(v[:, 1] * inverted) # This line is responsible for like 20-25% of the runtime of this function, so unironically if we implement fast inverse square root in pytorch we can get huge performance gains
 
     cos_y = torch.cos(phi_y)
     sin_y = torch.sin(phi_y)
     cos_x = torch.cos(phi_x)
     sin_x = torch.sin(phi_x)
 
-    R = torch.Tensor([
-        [
-            [cos_y[i], -sin_y[i]*sin_x[i], sin_y[i]*cos_x[i]],
-            [0, cos_x[i], sin_x[i]],
-            [-sin_y[i], -cos_y[i]*sin_x[i], cos_y[i]*cos_x[i]]
-        ] for i in range(n)
-    ]).to(v.device) # (n, 3, 3)
-    # TODO: remove the loop from this if we get bottlenecked
+
+    R = torch.stack(
+            [cos_y, -sin_y*sin_x, sin_y*cos_x,
+            torch.zeros_like(cos_x), cos_x, sin_x,
+            -sin_y, -cos_y*sin_x, cos_y*cos_x]
+    ).T.reshape(n,3,3)
+    # (n,3,3)
 
 
     vectors = torch.stack(
