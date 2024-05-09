@@ -70,7 +70,7 @@ class CameraModel:
         R = torch.Tensor(self.R).to(device)
         t = torch.Tensor(self.t).to(device)
         C = K @ torch.hstack([R.T, -R.T@t])
-        CP = C @ torch.vstack([pts3, torch.ones(pts3.shape[1]).to(device)])
+        CP = C @ torch.vstack([pts3, torch.ones(pts3.shape[1], device=device)])
         pts2 = CP[:2, :] / CP[2, :]
         
         assert(pts2.shape[1]==pts3.shape[1])
