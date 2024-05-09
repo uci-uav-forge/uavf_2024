@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from uavf_2024.imaging.camera_model import CameraModel
 from uavf_2024.imaging.imaging_types import BoundingBox
+from uavf_2024.imaging.utils import make_ortho_vectors
 from torchvision.ops import box_iou
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
@@ -58,7 +59,7 @@ class ParticleFilter:
         '''
         Generates `num_samples` particles that are likely to correspond to the given measurement
         '''
-        radii = torch.rand(num_samples) * (1.5-0.2) + 0.2
+        radii = torch.rand(num_samples) * (2-0.1) + 0.1
         samples = torch.vstack([
             self._generate_initial_state(cam_pose, measurement, r)
             for r in radii
@@ -127,40 +128,13 @@ class ParticleFilter:
         positions = states[:, :3]
         radii = states[:, -1]
 
-        # (n, 3)
         cam_position_tensor = Tensor(cam_pose[0]).to(self._device)
         rays_to_center = positions - cam_position_tensor
-        rays_lengths = torch.linalg.norm(rays_to_center, dim=1)
-        normalized_rays = rays_to_center / rays_lengths[:, None]
         
-        # monte carlo to find the circumscribed rectangle around the sphere's projection into the camera
-        # there's probably a better way to do this but I'm not sure what it is
-        # I tried a method where we project 4 points on the boundary and fit a 2d ellipse to their projection
-        # but the ellipse fitting was not working well
-        n_samples = 100
+        n_samples = 25
+        orthogonal_rays_normalized = make_ortho_vectors(rays_to_center, n_samples)
 
-        # sample points on the sphere
-        random_vectors = torch.normal(
-            mean = torch.zeros(n, n_samples, 3),
-            std = torch.ones(n, n_samples, 3),
-        ).to(self._device)
-        
-        # (n, n_samples,)
-        # forgive me for my sin of using a loop, I decided that the nasty tensor dot
-        # product was not worth the readability hit. If this is a performance bottleneck
-        # we can revisit it.
-        projection_scalars = torch.vstack([
-            normalized_rays[i] @ random_vectors[i].T
-            for i in range(n)
-        ])
-
-        
-
-        # subtract the component of the random vector that is in the direction of the rays to the center, so that they all point orthogonal to the camera.
-        orthogonal_rays = random_vectors - projection_scalars[:,:,np.newaxis] * normalized_rays[:, np.newaxis, :]
-        orthogonal_rays_normalized = orthogonal_rays / (torch.linalg.norm(orthogonal_rays, dim=2) * radii[:,None])[:,:,None]
-
-        pts3 = positions[:, None, :] + orthogonal_rays_normalized
+        pts3 = positions[:, None, :] + orthogonal_rays_normalized * radii[:,None,None]
 
         pts3_flat = pts3.reshape(-1, 3) # (n*n_samples, 3)
 
