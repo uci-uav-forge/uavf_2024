@@ -104,7 +104,7 @@ def make_ortho_vectors(v: torch.Tensor, m: int):
     returns a tensor of shape (n,m,3)
     '''
     n = v.shape[0]
-    thetas = torch.linspace(0, 2*torch.pi, m)
+    thetas = torch.linspace(0, 2*torch.pi, m).to(v.device)
 
     phi_y = torch.atan2(v[:, 0], v[:, 2])
     phi_x = torch.atan2(v[:, 1], torch.sqrt(v[:,0]**2 + v[:,2]**2))
@@ -120,7 +120,9 @@ def make_ortho_vectors(v: torch.Tensor, m: int):
             [0, cos_x[i], sin_x[i]],
             [-sin_y[i], -cos_y[i]*sin_x[i], cos_y[i]*cos_x[i]]
         ] for i in range(n)
-    ]) # (n, 3, 3)
+    ]).to(v.device) # (n, 3, 3)
+    # TODO: remove the loop from this if we get bottlenecked
+
 
     vectors = torch.stack(
         [
