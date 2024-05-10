@@ -1,10 +1,32 @@
 from uavf_2024.gnc.payload import Payload
 from geographiclib.geodesic import Geodesic
 import numpy as np
+from shapely.geometry import Point, Polygon
 
-def read_gps(fname):
+def is_point_within_fence(point, fence):
+    # Convert the list of tuples representing the border to a Shapely Polygon
+    fence_polygon = Polygon(fence)
+    point = Point(point)
+    return fence_polygon.contains(point)
+
+def validate_gps_data(data, geofence):
+    for point_tuple in data:
+        if not is_point_within_fence(point_tuple, geofence):
+            return False
+    return True
+
+def read_geofence(fname):
+    # Creates a list of tuples of (lat, lon) of the geofence
     with open(fname) as f:
         return [tuple(map(float, line.split(','))) for line in f]
+
+def read_gps(fname, geofence):
+    with open(fname) as f:
+        data = [tuple(map(float, line.split(','))) for line in f]
+    if validate_gps_data(data, geofence): # Passes coords to validate that they're within the geofence
+        return data
+    else:
+        raise ValueError("Invalid GPS data format or outside geofence boundaries.")
 
 def read_payload_list(fname):
     with open(fname) as f:

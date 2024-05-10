@@ -7,7 +7,8 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 import sensor_msgs.msg
 import geometry_msgs.msg 
 import libuavf_2024.srv
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, calculate_turn_angles_deg, read_payload_list
+from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, \
+    calculate_turn_angles_deg, read_payload_list, read_geofence, is_point_within_fence
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
@@ -69,10 +70,12 @@ class CommanderNode(rclpy.node.Node):
         self.imaging_client = self.create_client(
             libuavf_2024.srv.TakePicture,
             '/imaging_service')
-        
-        self.mission_wps = read_gps(args.mission_file)
-        self.dropzone_bounds = read_gps(args.dropzone_file)
+
+        self.geofence = read_geofence(args.geofence_points)
+        self.mission_wps = read_gps(args.mission_file, self.geofence)
+        self.dropzone_bounds = read_gps(args.dropzone_file, self.geofence)
         self.payloads = read_payload_list(args.payload_list)
+
 
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
         self.args = args
@@ -119,7 +122,7 @@ class CommanderNode(rclpy.node.Node):
     
     def local_to_gps(self, local):
         return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
-    
+
     def execute_waypoints(self, waypoints, yaws = None):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
@@ -128,8 +131,13 @@ class CommanderNode(rclpy.node.Node):
 
         self.log("Pushing waypoints")
 
-        
+
         waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude)] +  waypoints
+
+        # Validates that the waypoints are within the geofence
+        for waypoint in waypoints:
+            assert is_point_within_fence(waypoint, self.geofence), "ERROR: Waypoint is not within the geofence"
+
         yaws = [float('NaN')] + yaws
         self.log(waypoints, yaws)
         
