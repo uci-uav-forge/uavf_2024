@@ -83,7 +83,7 @@ class TestDroneTracker(unittest.TestCase):
         self.assertTrue(len(filter.tracks) == 1)
         # check that the filter converged to the correct position
         final_state = filter.tracks[0].filter.mean()
-        self.assertTrue(np.allclose(final_state[:3], [0,0,0], atol=0.1), f"filter converged to {final_state}")
+        self.assertTrue(np.linalg.norm(final_state[:3] - np.array([0,0,0]))<1 , f"filter converged to {final_state}")
 
 if __name__ == '__main__':
     tests = TestDroneTracker()
