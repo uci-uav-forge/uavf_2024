@@ -166,6 +166,7 @@ class DropzonePlanner:
 
         # Release the payload
         self.commander.release_payload()
+        self.commander.log(f"Released payload {self.current_payload_index}")
     
     def advance_current_payload_index(self):
         self.dropped_payloads.append(self.current_payload_index)
