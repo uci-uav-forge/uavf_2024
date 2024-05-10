@@ -89,7 +89,6 @@ def batched(iterable, n):
     while batch := tuple(islice(it, n)):
         yield batch
 
-@profile
 def make_ortho_vectors(v: torch.Tensor, m: int):
     '''
     `v` is a (n,3) tensor
