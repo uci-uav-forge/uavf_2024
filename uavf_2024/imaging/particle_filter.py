@@ -22,7 +22,7 @@ class ParticleFilter:
                  resolution: tuple[int,int], 
                  focal_len_pixels: float, 
                  num_particles: int = 1000, 
-                 missed_detection_weight: float = 1e-4, 
+                 missed_detection_weight: float = 1e-6, 
                  pos_noise_std: float = 0.1, 
                  vel_noise_std: float = 0.1, 
                  radius_noise_std: float = 0
@@ -32,7 +32,7 @@ class ParticleFilter:
         self.samples is [num_particles, 7]
         where the 7 elements are [x,y,z, vx,vy,vz, radius]
         '''
-        self._device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self._device = 'cpu'#'cuda' if torch.cuda.is_available() else 'cpu'
         self.resolution = resolution
         self.focal_len_pixels = focal_len_pixels
         self.num_samples = num_particles 
@@ -66,7 +66,8 @@ class ParticleFilter:
         ])
         return samples.to(self._device)
 
-    def _generate_initial_state(self, cam_pose, box: BoundingBox, initial_radius_guess) -> Tensor:
+    @profile
+    def _generate_initial_state(self, cam_pose, box: BoundingBox, initial_radius_guess: float) -> Tensor:
         '''
         Returns a state that corresponds to the given cam pose, bounding box, and radius guess
 
@@ -76,12 +77,13 @@ class ParticleFilter:
 
         box_center_ray = np.array([box.x - self.resolution[0]//2, box.y - self.resolution[1]//2, self.focal_len_pixels])
         camera_look_vector = Tensor(cam_pose[1].apply(box_center_ray))
-        camera_look_vector = 0.1 * camera_look_vector / torch.linalg.norm(camera_look_vector)
+        camera_look_vector = camera_look_vector / torch.linalg.norm(camera_look_vector)
         box_area = box.width * box.height
 
         # This could probably be done analytically but binary search was easier
-        low = 1
-        high = 1000
+        # low and high are lower and upper bounds on the distance away the object we see is.
+        low = initial_radius_guess * self.focal_len_pixels / max(box.width, box.height)
+        high = 2 * initial_radius_guess * self.focal_len_pixels / max(box.width, box.height) * 2
         while low < high:
             distance = (low + high) / 2
             x_guess = Tensor(cam_pose[0]) + distance * camera_look_vector
@@ -95,7 +97,7 @@ class ParticleFilter:
             width = projected_box[2] - projected_box[0]
             height = projected_box[3] - projected_box[1]
             projected_box_area = width*height
-            if abs(projected_box_area - box_area) < 1:
+            if 0.95 * box_area <= projected_box_area <= 1.05 * box_area:
                 break
             elif projected_box_area > box_area: # if box is too big we need to move further (increase lower bound on distance)
                 low = distance
@@ -131,7 +133,7 @@ class ParticleFilter:
         cam_position_tensor = Tensor(cam_pose[0]).to(self._device)
         rays_to_center = positions - cam_position_tensor
         
-        n_samples = 25
+        n_samples = 4
         orthogonal_rays_normalized = make_ortho_vectors(rays_to_center, n_samples)
 
         pts3 = positions[:, None, :] + orthogonal_rays_normalized * radii[:,None,None]
