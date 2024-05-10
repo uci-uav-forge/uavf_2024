@@ -66,7 +66,6 @@ class ParticleFilter:
         ])
         return samples.to(self._device)
 
-    @profile
     def _generate_initial_state(self, cam_pose, box: BoundingBox, initial_radius_guess: float) -> Tensor:
         '''
         Returns a state that corresponds to the given cam pose, bounding box, and radius guess
