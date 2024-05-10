@@ -41,7 +41,7 @@ class TestDroneTracker(unittest.TestCase):
             plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/test_camera_positions.png')
 
             plt.figure()
-        covariances = []
+        variances = []
         fig_bounds = 15
         for cam_pos, cam_rot in tqdm(zip(cam_positions, cam_rotations)):
             # make a measurement
@@ -65,16 +65,16 @@ class TestDroneTracker(unittest.TestCase):
                 mean = filter.tracks[0].filter.mean()
                 ax.plot([mean[0]], [mean[2]], 'yo', label='estimated position')
                 particles_fig.legend()
-                particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(covariances)}.png')
+                particles_fig.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/particles/particles_{len(variances)}.png')
                 del particles_fig
-            covariances.append(np.diag(filter.tracks[0].filter.covariance()))
+            variances.append(np.diag(filter.tracks[0].filter.covariance()))
 
         labels = [
             'x', 'y', 'z', 'vx', 'vy', 'vz', 'r'
         ]
 
-        for i in range(len(covariances[0])):
-            plt.plot([c[i] for c in covariances], label=labels[i])
+        for i in range(len(variances[0])):
+            plt.plot([c[i] for c in variances], label=labels[i])
         plt.legend()
         plt.title("Variance vs timestep")
         plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/test_covariances.png')
@@ -83,8 +83,10 @@ class TestDroneTracker(unittest.TestCase):
         self.assertTrue(len(filter.tracks) == 1)
         # check that the filter converged to the correct position
         final_state = filter.tracks[0].filter.mean()
-        self.assertTrue(np.linalg.norm(final_state[:3] - np.array([0,0,0]))<1 , f"filter converged to {final_state}")
+        final_variances = variances[-1]
+        for i in range(3):
+            assert abs(final_state[i] - 0) < np.sqrt(final_variances[i]), f"Dimension {i} position > 1 std absolute error, {final_state[i]}, {final_variances[i]}"
 
 if __name__ == '__main__':
     tests = TestDroneTracker()
-    tests.test_stationary_target(save_figs = True)
+    tests.test_stationary_target(save_figs = False)
