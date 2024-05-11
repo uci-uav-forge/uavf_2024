@@ -212,7 +212,7 @@ class CommanderNode(rclpy.node.Node):
                 )
             )
 
-            time.sleep(.015)
+            time.sleep(.1)
         
     
     def gather_imaging_detections(self):
