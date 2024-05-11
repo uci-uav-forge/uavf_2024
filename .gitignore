@@ -17,3 +17,4 @@ recorded_images
 test/*.png
 trained_model.pth
 logs_esc
+gpx/
