@@ -191,12 +191,14 @@ class CommanderNode(rclpy.node.Node):
             pass
     
     def release_payload(self):
-        deg1 = 30
-        deg2 = 75
+        deg1 = 180
+        deg2 = 100
 
         deg_to_actuation = lambda x: (x/180)*2 - 1
-
-        for t_deg in list(range(deg1,deg2+1)) + list(range(deg2,deg1-1, -1)):
+        self.log("waiting for cmd long client...")
+        self.cmd_long_client.wait_for_service()
+        for t_deg in list(range(deg1+1,deg2-1,-1)) + list(range(deg2,deg1)):
+            self.log(f"setting to {t_deg}") 
             a = deg_to_actuation(t_deg)
             self.cmd_long_client.call(
                 mavros_msgs.srv.CommandLong.Request(
