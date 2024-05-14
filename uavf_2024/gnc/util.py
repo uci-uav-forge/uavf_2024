@@ -1,6 +1,5 @@
 from uavf_2024.imaging import CertainTargetDescriptor
 from geographiclib.geodesic import Geodesic
-from shapely.geometry import Point, Polygon
 import numpy as np
 import math
 
@@ -16,12 +15,6 @@ def read_payload_list(fname):
             payload_list.append(CertainTargetDescriptor(shape_col, shape, letter_col, letter))
     
     return payload_list
-
-def is_inside_bounds_local(bounds, pt):
-    p = Point(pt[0], pt[1])
-    boundary = Polygon(bounds)
-
-    return p.within(boundary)
 
 def convert_delta_gps_to_local_m(gp1, gp2):
 

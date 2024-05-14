@@ -1,7 +1,7 @@
-import numpy as np
 import math
+import numpy as np
+from shapely.geometry import Point, Polygon
 from uavf_2024.imaging.tracker import TargetTracker
-from uavf_2024.gnc.util import is_inside_bounds_local
 altitude = 20.0
 
 class DropzonePlanner:
@@ -10,6 +10,9 @@ class DropzonePlanner:
     '''
 
     def __init__(self, commander: 'CommanderNode', image_width_m: float, image_height_m: float):
+        '''
+        Initialize variables to store important information needed to navigate the drop zone.
+        '''
         self.commander = commander
         self.image_width_m = image_width_m
         self.image_height_m = image_height_m
@@ -23,9 +26,8 @@ class DropzonePlanner:
     
     def gen_dropzone_plan(self):
         '''
-        Generates dropzone plan with yaws included, in meters.
+        Generate dropzone plan with yaws included (in meters).
         '''
-
         # Step 1: Find closest corner of dropzone.
         # Set up some helpers to reorient relative to that.
         while not self.commander.got_global_pos or not self.commander.got_pose:
@@ -88,9 +90,9 @@ class DropzonePlanner:
 
     def scan_dropzone(self):
         '''
-        Will be executed after the drone completes the first waypoint lap. 
-        Drone will move to drop zone from its current position and scan the
-        entire drop zone. Will update target_tracker with the new detections.
+        Move to drop zone from current position and scan the entire drop zone. 
+        Update self.target_tracker with the new detections. Drop zone should only
+        be scanned after the very first waypoint lap.
         '''
         dropzone_plan = self.gen_dropzone_plan()
 
@@ -105,11 +107,11 @@ class DropzonePlanner:
 
         self.commander.log(f"Imaging detections: {detections}")
 
-    def generate_wps_to_target(self, target_x, target_y, cur_x, cur_y):
+    def generate_wps_to_target(self, target_x: float, target_y: float, cur_x: float, cur_y: float):
         '''
-        Will generate a path of waypoints from the drone's current position
-        to the target. These waypoints represent the locations at which
-        the drone should take images of the drop zone below.
+        Generate a path of waypoints from the current position to the target. 
+        These waypoints represent the locations at which the drone should take 
+        images of the drop zone below.
         '''
         current_x, current_y = cur_x, cur_y
         x_distance, y_distance = current_x - target_x, current_y - target_y
@@ -125,20 +127,25 @@ class DropzonePlanner:
         waypoints = [(target_x, target_y)]
         new_wp = (target_x + x_step, target_y + y_step)
         running_x_dist, running_y_dist = abs(x_step), abs(y_step)
-        while (is_inside_bounds_local(self.commander.dropzone_bounds_mlocal, new_wp) and running_x_dist < abs(x_distance) and running_y_dist < abs(y_distance)):
+
+        p = Point(new_wp[0], new_wp[1])
+        boundary = Polygon(self.commander.dropzone_bounds_mlocal)
+
+        while (p.within(boundary) and running_x_dist < abs(x_distance) and running_y_dist < abs(y_distance)):
             waypoints.append(new_wp)
             new_wp = (new_wp[0] + x_step, new_wp[1] + y_step)
             running_x_dist += abs(x_step)
             running_y_dist += abs(y_step)
+            p = Point(new_wp[0], new_wp[1])
 
         waypoints.reverse()
         return waypoints
 
     def conduct_air_drop(self):
         '''
-        Will be executed each time the drone completes a waypoint lap.
-        Drone will navigate to the target that best matches its current 
-        payload and will release the payload.
+        Navigate to the target that best matches the current payload and
+        release the payload. Payload drop should be conducted after completing 
+        a waypoint lap.
         '''
 
         # Scan the drop zone if the drone has completed its first waypoint lap
