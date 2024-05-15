@@ -48,6 +48,11 @@ class Camera:
         # Returns (yaw_speed, pitch_speed, roll_speed)
         return self.cam.getAttitudeSpeed()
 
+    @staticmethod
+    def focalLengthFromZoomLevel(level: int):
+        assert 1<= level <=10
+        return 90.9 + 1597.2 * level
+
     def getFocalLength(self):
         '''
             calculates focal length using linear regression based on 
@@ -55,8 +60,8 @@ class Camera:
             x focal length values, then rounding to the nearest tenth 
         '''
         zoom = self.cam.getZoomLevel()
-        return 90.9 + 1597.2 * zoom
-    
+        return Camera.focalLengthFromZoomLevel(zoom)
+
     def getZoomLevel(self):
         return self.cam.getZoomLevel()
     
@@ -78,8 +83,8 @@ class Camera:
         roll might be bugged because we aren't using it nor testing it very much.
         '''
         # flip the sign of pitch rotation since negative pitch is pointing down, not up
-        cam_attitude_modified = [cam_attitude[0], -cam_attitude[1], cam_attitude[2]]
-        cam_rotation = Rotation.from_euler('zyx', cam_attitude_modified, degrees=True)
+        cam_attitude_modified = [cam_attitude[0], cam_attitude[1], cam_attitude[2]]
+        cam_rotation = Rotation.from_euler('xyz', cam_attitude_modified, degrees=True)
 
         return drone_rot * cam_rotation
 
