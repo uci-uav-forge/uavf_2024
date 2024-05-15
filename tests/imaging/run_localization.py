@@ -25,7 +25,7 @@ for i in range(len(os.listdir(files_dir))):
         start_angles = tuple(map(float, lines[3][1:-2].split(', ')))
         end_angles = tuple(map(float, lines[4][1:-2].split(', ')))
 
-        for x,y in product(np.linspace(-10, 10, 21), np.linspace(-10, 10, 21)):
+        for x,y in product(np.linspace(-20, 20, 41), np.linspace(-20, 20, 41)):
             coords_2d = localizer.coords_to_2d(np.array([x,y,0]), (position, R.from_quat(cam_orientation)))
             coords_2d_int = tuple(map(int, coords_2d))
             if 0<=coords_2d[0]<1920 and 0<=coords_2d[1]<1080:
