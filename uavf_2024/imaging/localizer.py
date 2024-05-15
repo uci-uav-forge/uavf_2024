@@ -46,9 +46,10 @@ class Localizer:
         rotated_vector = rot_transform.as_matrix() @ initial_direction_vector
 
         # solve camera_pose + t*rotated_vector = [x,0,z] = target_position
-        t = -camera_position[1]/rotated_vector[1]
+        ground_axis = 2
+        t = -camera_position[ground_axis]/rotated_vector[ground_axis]
         target_position = camera_position + t*rotated_vector
-        assert abs(target_position[1])<1e-3
+        assert abs(target_position[ground_axis])<1e-3
 
         return Target3D(target_position, pred.descriptor, id=f"img_{pred.img_id}/det_{pred.det_id}")
         
