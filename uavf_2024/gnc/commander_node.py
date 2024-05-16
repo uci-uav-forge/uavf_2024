@@ -85,7 +85,8 @@ class CommanderNode(rclpy.node.Node):
         self.mission_wps = read_gps(args.mission_file)
         self.dropzone_bounds = read_gps(args.dropzone_file)
         self.payloads = read_payload_list(args.payload_list)
-
+        self.geofence = read_gps(args.geofence_file)
+        
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
         self.args = args
 
@@ -95,8 +96,6 @@ class CommanderNode(rclpy.node.Node):
         self.left_intermediate_waypoint_global = (38.31605966, -76.55154921)
         self.right_intermediate_waypoint_global = (38.31542867, -76.54548898)
         self.geofence_middle_pt = (38.31470980862425, -76.54936361414539)
-
-        self.geofence = []
         
         self.turn_angle_limit = 170
     

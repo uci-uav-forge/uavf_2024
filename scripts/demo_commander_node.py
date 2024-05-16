@@ -9,18 +9,18 @@ import argparse
 from threading import Thread
 import sys
 
-# Command to run: ros2 run libuavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+# Command to run: ros2 run libuavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9 /home/ws/uavf_2024/uavf_2024/gnc/data/FLIGHT_BOUNDARY
 
 if __name__ == '__main__':
     rclpy.init()
     
-
     parser = argparse.ArgumentParser()
     parser.add_argument('mission_file')
     parser.add_argument('dropzone_file')
     parser.add_argument('payload_list')
     parser.add_argument('image_width_m', type = float)
     parser.add_argument('image_height_m', type = float)
+    parser.add_argument('geofence_file')
     parser.add_argument('--exit-early', action='store_true')
     parser.add_argument('--servo-test', action='store_true')
     args = parser.parse_args()
@@ -31,7 +31,6 @@ if __name__ == '__main__':
     spinner.start()
 
     node.execute_mission_loop()
-
 
     node.destroy_node()
     rclpy.shutdown()
