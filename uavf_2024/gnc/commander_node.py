@@ -246,7 +246,7 @@ class CommanderNode(rclpy.node.Node):
             pass
             
         self.dropzone_planner.gen_dropzone_plan()
-
+        self.request_load_payload(self.payloads[0])
         for lap in range(len(self.payloads)):
             self.log(f"Lap {lap}")
 
