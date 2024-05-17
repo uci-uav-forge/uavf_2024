@@ -24,13 +24,13 @@ class Localizer:
         hfov = 2*np.arctan(w/(2*cam_focal_len))
         return Localizer(np.rad2deg(hfov), cam_res)
 
-    def prediction_to_coords(self, pred: FullBBoxPrediction, camera_pose: tuple[np.ndarray, Rotation]) -> Target3D:
+    def prediction_to_coords(self, pred: FullBBoxPrediction, camera_pose: tuple[np.ndarray, Rotation], cam_initial_directions: tuple[np.ndarray, np.ndarray], ground_axis: int) -> Target3D:
         '''
-            `camera_pose` is [x,y,z, qx, qy, qz, qw]
-
-            currently, the code assumes that for quaternion [0,0,0,1],
-            the camera is pointed at the negative z axis,
-            with positive x to the right of the image, and positive y up from the image
+            `camera_pose` is [x,y,z, R]
+            `cam_initial_direction` is a tuple of two vectors. the first vector is
+            the direction the camera is facing when R is the identity, in world frame,
+            and the second is the direction toward the right of the frame when R is the identity, in the world frame. Both
+            need to be unit vectors.
         '''
 
 
@@ -40,26 +40,35 @@ class Localizer:
 
         camera_position, rot_transform = camera_pose
         # the vector pointing out the camera at the target, if the camera was facing positive Z
-        initial_direction_vector = np.array([x-w/2,h/2-y,-focal_len])
+
+        positive_y_direction = np.cross(cam_initial_directions[0], cam_initial_directions[1])
+
+        initial_direction_vector = focal_len * cam_initial_directions[0] + (x-w/2)*cam_initial_directions[1] + (y - h/2)*positive_y_direction
 
         # rotate the vector to match the camera's rotation
-        rotated_vector = rot_transform.as_matrix() @ initial_direction_vector
+        rotated_vector = rot_transform.apply(initial_direction_vector)
 
         # solve camera_pose + t*rotated_vector = [x,0,z] = target_position
-        ground_axis = 2
         t = -camera_position[ground_axis]/rotated_vector[ground_axis]
         target_position = camera_position + t*rotated_vector
         assert abs(target_position[ground_axis])<1e-3
 
         return Target3D(target_position, pred.descriptor, id=f"img_{pred.img_id}/det_{pred.det_id}")
         
-    def coords_to_2d(self, coords: tuple[float,float,float], camera_pose: tuple[np.ndarray, Rotation]) -> tuple[int, int]:
-        cam_position, rot_transform = camera_pose[:3]
+    def coords_to_2d(self, coords: tuple[float,float,float], camera_pose: tuple[np.ndarray, Rotation], cam_initial_directions: tuple[np.ndarray, np.ndarray]) -> tuple[int, int]:
+        cam_position, rot_transform = camera_pose
 
         relative_coords = coords - cam_position 
 
         # apply inverse rotation
-        rotated_vector = rot_transform.inv().as_matrix() @ relative_coords
+        rotated_vector = rot_transform.inv().apply(relative_coords)
+
+        # find transformation that maps camera frame to initial directions
+        cam_y_direction = np.cross(cam_initial_directions[0], cam_initial_directions[1])
+        cam_initial_rot = Rotation.align_vectors([*cam_initial_directions, cam_y_direction], [
+            np.array([0,0,-1], [1,0,0], [0,-1,0])
+        ])
+
 
         w,h = self.camera_resolution
         focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
