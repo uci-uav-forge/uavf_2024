@@ -10,6 +10,7 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped, Point
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from time import strftime, time, sleep
+import cv2 as cv
 
 class ImagingNode(Node):
     def __init__(self) -> None:
@@ -69,6 +70,8 @@ class ImagingNode(Node):
         self.log("Picture taken")
 
         detections = self.image_processor.process_image(img)
+
+        cv.imwrite(f"{self.image_processor.get_last_logs_path()}/image.png", img.get_array())
         self.log("Images processed")
 
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
@@ -84,6 +87,13 @@ class ImagingNode(Node):
                 self.log("Got pose finally!")
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
+
+        with open(f"{self.image_processor.get_last_logs_path()}/cam_angles.txt", "w") as f:
+            f.write(f"{start_angles}\n")
+            f.write(f"{end_angles}")
+            drone_quat = self.cur_rot.as_quat()
+            f.write(f"{[drone_quat[0], drone_quat[1], drone_quat[2], drone_quat[3]]}")
+
         world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
         cam_pose = (cur_position_np, world_orientation)
 
@@ -99,20 +109,20 @@ class ImagingNode(Node):
         self.log("Localization finished")
 
         response.detections = []
-        for i, p in enumerate(preds_3d):
-            t = TargetDetection(
-                timestamp = int(timestamp*1000),
-                x = p.position[0],
-                y = p.position[1],
-                z = p.position[2],
-                shape_conf = p.descriptor.shape_probs.tolist(),
-                letter_conf = p.descriptor.letter_probs.tolist(),
-                shape_color_conf = p.descriptor.shape_col_probs.tolist(),
-                letter_color_conf = p.descriptor.letter_col_probs.tolist(),
-                id = p.id
-            )
+        # for i, p in enumerate(preds_3d):
+        #     t = TargetDetection(
+        #         timestamp = int(timestamp*1000),
+        #         x = p.position[0],
+        #         y = p.position[1],
+        #         z = p.position[2],
+        #         shape_conf = p.descriptor.shape_probs.tolist(),
+        #         letter_conf = p.descriptor.letter_probs.tolist(),
+        #         shape_color_conf = p.descriptor.shape_col_probs.tolist(),
+        #         letter_color_conf = p.descriptor.letter_col_probs.tolist(),
+        #         id = p.id
+        #     )
 
-            response.detections.append(t)
+        #     response.detections.append(t)
 
         self.log("Returning Response")
 

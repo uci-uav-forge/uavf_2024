@@ -18,7 +18,7 @@ fan side    o o   edge of board
 '''
 
 ser = serial.Serial(
-        '/dev/ttyTHS0', 
+        '/dev/ttyTHS1', 
         baudrate = 115200, 
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
@@ -47,8 +47,8 @@ first_byte = True
 first_buff = True
 first_valid_buff = True
 
-os.makedirs("logs_esc", exist_ok=True)
-fname = f"logs_esc/{strftime('%H:%M:%S')}.txt"
+os.makedirs("/home/forge/logs_esc", exist_ok=True)
+fname = f"/home/forge/logs_esc/{strftime('%H:%M:%S')}.txt"
 
 print(f"Logging to {fname}")
 while 1:

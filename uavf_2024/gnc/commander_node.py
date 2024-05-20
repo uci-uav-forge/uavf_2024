@@ -42,6 +42,7 @@ class CommanderNode(rclpy.node.Node):
         self.takeoff_client = self.create_client(mavros_msgs.srv.CommandTOL, 'mavros/cmd/takeoff')
         self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
         self.clear_mission_client = self.create_client(mavros_msgs.srv.WaypointClear, 'mavros/mission/clear')
+        self.cmd_long_client = self.create_client(mavros_msgs.srv.CommandLong, 'mavros/cmd/command')
 
         self.cur_state = None
         self.state_sub = self.create_subscription(
@@ -190,8 +191,31 @@ class CommanderNode(rclpy.node.Node):
             pass
     
     def release_payload(self):
-        # mocked out for now.
-        self.log("WOULD RELEASE PAYLOAD")
+        deg1 = 180
+        deg2 = 100
+
+        deg_to_actuation = lambda x: (x/180)*2 - 1
+        self.log("waiting for cmd long client...")
+        self.cmd_long_client.wait_for_service()
+        for t_deg in list(range(deg1+1,deg2-1,-1)) + list(range(deg2,deg1)):
+            self.log(f"setting to {t_deg}") 
+            a = deg_to_actuation(t_deg)
+            self.cmd_long_client.call(
+                mavros_msgs.srv.CommandLong.Request(
+                    command = 187,
+                    confirmation = 1,
+                    param1 = a,
+                    param2 = a,
+                    param3 = a,
+                    param4 = a,
+                    param5 = a,
+                    param6 = 0.0,
+                    param7 = 0.0
+                )
+            )
+
+            time.sleep(.1)
+        
     
     def gather_imaging_detections(self):
         detections = []
@@ -217,6 +241,10 @@ class CommanderNode(rclpy.node.Node):
     def execute_mission_loop(self):
         while not self.got_global_pos:
             pass
+
+        if self.args.servo_test:
+            self.release_payload()
+            return
             
         self.dropzone_planner.gen_dropzone_plan()
 
