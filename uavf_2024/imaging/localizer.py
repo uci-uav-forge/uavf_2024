@@ -6,31 +6,33 @@ from scipy.spatial.transform import Rotation
 class Localizer:
     def __init__(self, 
                  camera_hfov: float,
-                 camera_resolution: tuple[int,int]
-                 ):
+                 camera_resolution: tuple[int,int],
+                 cam_initial_directions: tuple[np.ndarray, np.ndarray],
+                 ground_axis: int):
         '''
         `camera_fov` is the horizontal FOV, in degrees
         `camera_resolution` (w,h) in pixels
+
+        `cam_initial_directions` is a tuple of two vectors. the first vector is the direction the camera is facing when R is the identity, in world frame,
+        and the second is the direction toward the right of the frame when R is the identity, in the world frame. Both need to be unit vectors.
         '''
         self.camera_hfov = camera_hfov
         self.camera_resolution = camera_resolution
+        self.cam_initial_directions = cam_initial_directions
+        self.ground_axis = ground_axis
 
     @staticmethod
-    def from_focal_length(cam_focal_len: float, cam_res: tuple[int,int]):
+    def from_focal_length(cam_focal_len: float, cam_res: tuple[int,int], cam_initial_directions: tuple[np.ndarray, np.ndarray], ground_axis: int):
         '''
         Create a Localizer from a focal length and resolution
         '''
         w,h = cam_res
         hfov = 2*np.arctan(w/(2*cam_focal_len))
-        return Localizer(np.rad2deg(hfov), cam_res)
+        return Localizer(np.rad2deg(hfov), cam_res, cam_initial_directions, ground_axis)
 
-    def prediction_to_coords(self, pred: FullBBoxPrediction, camera_pose: tuple[np.ndarray, Rotation], cam_initial_directions: tuple[np.ndarray, np.ndarray], ground_axis: int) -> Target3D:
+    def prediction_to_coords(self, pred: FullBBoxPrediction, camera_pose: tuple[np.ndarray, Rotation]) -> Target3D:
         '''
             `camera_pose` is [x,y,z, R]
-            `cam_initial_direction` is a tuple of two vectors. the first vector is
-            the direction the camera is facing when R is the identity, in world frame,
-            and the second is the direction toward the right of the frame when R is the identity, in the world frame. Both
-            need to be unit vectors.
         '''
 
 
@@ -41,21 +43,21 @@ class Localizer:
         camera_position, rot_transform = camera_pose
         # the vector pointing out the camera at the target, if the camera was facing positive Z
 
-        positive_y_direction = np.cross(cam_initial_directions[0], cam_initial_directions[1])
+        positive_y_direction = np.cross(self.cam_initial_directions[0], self.cam_initial_directions[1])
 
-        initial_direction_vector = focal_len * cam_initial_directions[0] + (x-w/2)*cam_initial_directions[1] + (y - h/2)*positive_y_direction
+        initial_direction_vector = focal_len * self.cam_initial_directions[0] + (x-w/2)*self.cam_initial_directions[1] + (y - h/2)*positive_y_direction
 
         # rotate the vector to match the camera's rotation
         rotated_vector = rot_transform.apply(initial_direction_vector)
 
         # solve camera_pose + t*rotated_vector = [x,0,z] = target_position
-        t = -camera_position[ground_axis]/rotated_vector[ground_axis]
+        t = -camera_position[self.ground_axis]/rotated_vector[self.ground_axis]
         target_position = camera_position + t*rotated_vector
-        assert abs(target_position[ground_axis])<1e-3
+        assert abs(target_position[self.ground_axis])<1e-3
 
         return Target3D(target_position, pred.descriptor, id=f"img_{pred.img_id}/det_{pred.det_id}")
         
-    def coords_to_2d(self, coords: tuple[float,float,float], camera_pose: tuple[np.ndarray, Rotation], cam_initial_directions: tuple[np.ndarray, np.ndarray]) -> tuple[int, int]:
+    def coords_to_2d(self, coords: tuple[float,float,float], camera_pose: tuple[np.ndarray, Rotation]) -> tuple[int, int]:
         cam_position, rot_transform = camera_pose
 
         relative_coords = coords - cam_position 
@@ -64,10 +66,10 @@ class Localizer:
         rotated_vector = rot_transform.inv().apply(relative_coords)
 
         # find transformation that maps camera frame to initial directions
-        cam_y_direction = np.cross(cam_initial_directions[0], cam_initial_directions[1])
-        cam_initial_rot = Rotation.align_vectors([*cam_initial_directions, cam_y_direction], [
-            np.array([0,0,-1], [1,0,0], [0,-1,0])
-        ])
+        cam_y_direction = np.cross(self.cam_initial_directions[0], self.cam_initial_directions[1])
+        cam_initial_rot = Rotation.align_vectors([*self.cam_initial_directions, cam_y_direction], np.array([
+            [0,0,-1], [1,0,0], [0,-1,0]
+        ]))
 
 
         w,h = self.camera_resolution
