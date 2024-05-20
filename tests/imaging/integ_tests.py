@@ -46,7 +46,9 @@ def test_with_dataset(dataset_path: str, debug_folder_name: str = None):
     RES = (1920, 1080)
     target_localizer = Localizer(
         FOV,
-        RES
+        RES,
+        (np.array([0,0,-1], np.array([1,0,0]))),
+        1
     )
     area_tracker = AreaCoverageTracker(
         FOV,
