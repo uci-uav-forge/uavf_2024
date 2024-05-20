@@ -67,15 +67,14 @@ class Localizer:
 
         # find transformation that maps camera frame to initial directions
         cam_y_direction = np.cross(self.cam_initial_directions[0], self.cam_initial_directions[1])
-        cam_initial_rot = Rotation.align_vectors([*self.cam_initial_directions, cam_y_direction], np.array([
-            [0,0,-1], [1,0,0], [0,-1,0]
-        ]))
-
 
         w,h = self.camera_resolution
         focal_len = w/(2*np.tan(np.deg2rad(self.camera_hfov/2)))
 
-        # divide by the z component to get the 2d position
-        x = -rotated_vector[0]*focal_len/rotated_vector[2] + w/2
-        y = h/2 + rotated_vector[1]*focal_len/rotated_vector[2]
+        scale_factor = focal_len/np.dot(rotated_vector, self.cam_initial_directions[0])
+        x_component = np.dot(rotated_vector, self.cam_initial_directions[1])
+        y_component = np.dot(rotated_vector, cam_y_direction)
+
+        x = w/2 + x_component*scale_factor
+        y = h/2 + y_component*scale_factor
         return (x,y)
