@@ -175,6 +175,7 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints")
 
         waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] +  waypoints
+        waypoints = self.generate_legal_waypoints(waypoints)
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
 
@@ -291,7 +292,7 @@ class CommanderNode(rclpy.node.Node):
     def generate_legal_waypoints(self, waypoints):
         '''
         Check if the given waypoints produces a flight path that will violate the geofence
-        and return a "legal" set of waypoints that ensures the drone will stay within the
+        and return a legal set of waypoints that ensures the drone will stay within the
         geofence when it travels to each waypoint.
         '''
         legal_waypoints = []
