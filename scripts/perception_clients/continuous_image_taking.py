@@ -24,7 +24,7 @@ class ContinuousImagingClient(Node):
         self.req = TakePicture.Request()
 
         sleep(10)
-        num_requests = 10
+        num_requests = 1000
         for i in range(num_requests):
             self.get_logger().info(f"Sending request {i+1}/{num_requests}")
             res: list[TargetDetection] = self.send_request().detections

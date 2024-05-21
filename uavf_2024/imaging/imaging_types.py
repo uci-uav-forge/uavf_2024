@@ -182,6 +182,24 @@ class Tile:
     y: img_coord_t
 
 @dataclass
+class BoundingBox:
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
+
+    def to_ndarray(self):
+        return np.array([self.x, self.y, self.width, self.height])
+
+    def to_xyxy(self):
+        return np.array([self.x-self.width//2, self.y-self.height//2, self.x+self.width//2, self.y+self.height//2])
+
+    @staticmethod
+    def from_ndarray(arr: np.ndarray):
+        '''Takes ndarray of shape (4,) [x,y,width,height] and returns a BoundingBox object'''
+        return BoundingBox(*arr)
+
+@dataclass
 class FullBBoxPrediction:
     x: img_coord_t
     y: img_coord_t
@@ -363,6 +381,9 @@ class Image(Generic[_UnderlyingImageT]):
         Does not copy the underlying array.
         """
         return Tile(self.make_sub_image(x_coord, y_coord, tile_size, tile_size), x_coord, y_coord)
+    
+    def as_tile(self) -> Tile:
+        return Tile(self, 0, 0)
     
     @property
     def shape(self):

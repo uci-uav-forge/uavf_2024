@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('image_width_m', type = float)
     parser.add_argument('image_height_m', type = float)
     parser.add_argument('--exit-early', action='store_true')
+    parser.add_argument('--servo-test', action='store_true')
     args = parser.parse_args()
 
     node = CommanderNode(args)
