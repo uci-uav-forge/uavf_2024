@@ -115,12 +115,7 @@ ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc
 
 
 ## Steps to test mavlink radio messaging:
-* Turn on mavlink forwarding in QGC (Under `Application Settings > MAVLink`)
+* Run `mavlink_console.py` to send statustext on GCS.
 
-* Set MAV_1_FORWARD and MAV_2_FORWARD to 1 in PX4.
- (Edit /PX4-Autopilot/build/px4_sitl_default/etc/init.d-posix/px4-rc.params; you need to run the SITL once before first so this file exists)
-
-* Run mavlink_sender.py to send statustext on GCS.
-
-* `commander_node.py` now uses MAVROS to send/recieve statustext.
+* `commander_node.py` now uses MAVROS to send statustext.
 
