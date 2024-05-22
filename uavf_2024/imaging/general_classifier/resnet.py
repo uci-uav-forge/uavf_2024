@@ -4,7 +4,7 @@ General implementation of Resnet.
 Adapted from: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py
 """
 
-from typing import Any, Callable, Optional, Sequence, Type, Union
+from typing import Any, Callable, Iterable, Optional, Sequence, Type, Union
 
 import torch
 import torch.nn as nn
@@ -142,7 +142,7 @@ class ResNet(nn.Module):
         self,
         block: Type[BasicBlock | Bottleneck],
         layers: Sequence[int],
-        num_classes: int = 1000,
+        num_classes: Sequence[int],
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
@@ -155,8 +155,9 @@ class ResNet(nn.Module):
         self.debug = debug
         
         if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
-        self._norm_layer = norm_layer
+            self._norm_layer = nn.BatchNorm2d
+        else:
+            self._norm_layer = norm_layer
 
         self.inplanes = 64
         self.dilation = 1
@@ -174,42 +175,46 @@ class ResNet(nn.Module):
         self.groups = groups
         self.base_width = width_per_group
         
-        self.components = nn.ModuleDict({
+        self.backbone = nn.ModuleDict({
             "conv1": nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False),
-            "bn1": norm_layer(self.inplanes),
+            "bn1": self._norm_layer(self.inplanes),
             "relu": nn.ReLU(inplace=True),
             "maxpool": nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
             "layer1": self._make_layer(block, 64, layers[0]),
             "layer2": self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0]),
             "layer3": self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1]),
             "layer4": self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2]),
-            "avgpool": nn.AdaptiveAvgPool2d((1, 1)),
-            "fc": nn.Linear(512 * block.expansion, num_classes)
+            "avgpool": nn.AdaptiveAvgPool2d((1, 1))
         })
         
-        ResNet._init_weights(self.components, zero_init_residual)
+        self.heads = nn.ModuleList([
+            nn.Linear(512 * block.expansion, num)
+            for num in num_classes
+        ])
+        
+        ResNet._init_weights(self.backbone.values(), zero_init_residual)
+        ResNet._init_weights(self.heads)
                     
     @staticmethod
-    def _init_weights(modules: nn.ModuleDict, zero_init_residual: bool = False) -> None:
+    def _init_weights(modules: Iterable[nn.Module], zero_init_residual: bool = False) -> None:
         """
         Initialize weights of modules in the passed-in ModuleDict.
         """
-        for m in modules.values():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-
-        # Zero-initialize the last BN in each residual branch,
-        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
-        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
-        if zero_init_residual:
-            for m in modules.values():
-                if isinstance(m, Bottleneck) and m.bn3.weight is not None:
-                    nn.init.constant_(m.bn3.weight, 0)
-                elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
-                    nn.init.constant_(m.bn2.weight, 0)
+        for module in modules:
+            if isinstance(module, nn.Conv2d):
+                nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
+            elif isinstance(module, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(module.weight, 1)
+                nn.init.constant_(module.bias, 0)
+                
+            # Zero-initialize the last BN in each residual branch,
+            # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+            # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+            if zero_init_residual:
+                if isinstance(module, Bottleneck) and module.bn3.weight is not None:
+                    nn.init.constant_(module.bn3.weight, 0)
+                elif isinstance(module, BasicBlock) and module.bn2.weight is not None:
+                    nn.init.constant_(module.bn2.weight, 0)
     
     def _make_layer(
         self,
@@ -252,13 +257,19 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> list[Tensor]:
         if self.debug:
             print(f"Input shape: {x.shape}")
             
-        for name, module in self.components.items():
+        for name, module in self.backbone.items():
             x = module(x)
             if self.debug:
                 print(f"After {name} shape: {x.shape}")
                 
-        return x
+        outputs = [head(x) for head in self.heads]
+
+        if self.debug:
+            for i, output in enumerate(outputs):
+                print(f"Output {i} shape: {output.shape}")
+        
+        return outputs
