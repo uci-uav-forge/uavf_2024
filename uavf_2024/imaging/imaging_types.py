@@ -7,28 +7,37 @@ from enum import Enum
 
 import torch
 
+
+class Color(Enum):
+    RED = 0
+    ORANGE = 1
+    GREEN = 2
+    BLUE = 3
+    PURPLE = 4
+    WHITE = 5
+    BLACK = 6
+    BROWN = 7
+
+
 COLOR_INDICES = {
-    "red": 0,
-    "orange": 1,
-    "green": 2,
-    "blue": 3,
-    "purple": 4,
-    "white": 5,
-    "black": 6,
-    "brown": 7,
+    color.name.lower(): color.value for color in Color
 }
 
 
+class Shape(Enum):
+    CIRCLE = 0
+    SEMICIRCLE = 1
+    QUARTER_CIRCLE = 2
+    TRIANGLE = 3
+    RECTANGLE = 4
+    PENTAGON = 5
+    STAR = 6
+    CROSS = 7
+    PERSON = 8
+
+
 SHAPES = [
- "circle",
- "semicircle",
- "quartercircle",
- "triangle",
- "rectangle",
- "pentagon",
- "star",
- "cross",
- "person"
+    shape.name.lower() for shape in Shape
 ]
 
 # based on the letter order in letter model's raw_output[0].names
