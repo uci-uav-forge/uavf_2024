@@ -273,3 +273,14 @@ class ResNet(nn.Module):
                 print(f"Output {i} shape: {output.shape}")
         
         return outputs
+
+
+def resnet18(num_classes: Sequence[int], **kwargs: Any) -> ResNet:
+    return ResNet(BasicBlock, [2, 2, 2, 2], num_classes, **kwargs)
+
+
+def resnet34(num_classes: Sequence[int], **kwargs: Any) -> ResNet:
+    return ResNet(BasicBlock, [3, 4, 6, 3], num_classes, **kwargs)
+
+def resnet50(num_classes: Sequence[int], **kwargs: Any) -> ResNet:
+    return ResNet(Bottleneck, [3, 4, 6, 3], num_classes, **kwargs)
