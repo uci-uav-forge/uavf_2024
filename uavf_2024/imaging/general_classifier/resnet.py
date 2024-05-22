@@ -4,7 +4,7 @@ General implementation of Resnet.
 Adapted from: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py
 """
 
-from typing import Callable, Optional, Sequence, Type, Union
+from typing import Any, Callable, Optional, Sequence, Type, Union
 
 import torch
 import torch.nn as nn
@@ -146,20 +146,26 @@ class ResNet(nn.Module):
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
-        replace_stride_with_dilation: Optional[list[bool]] = None,
-        norm_layer: Optional[Callable[..., nn.Module]] = None,
+        replace_stride_with_dilation: tuple[bool, bool, bool] | None = None,
+        norm_layer: Callable[..., nn.Module] | None = None,
+        debug: bool = False
     ) -> None:
         super().__init__()
+        
+        self.debug = debug
+        
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
         self.inplanes = 64
         self.dilation = 1
+        
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
             # the 2x2 stride with a dilated convolution instead
-            replace_stride_with_dilation = [False, False, False]
+            replace_stride_with_dilation = (False, False, False)
+        
         if len(replace_stride_with_dilation) != 3:
             raise ValueError(
                 "replace_stride_with_dilation should be None "
@@ -167,18 +173,28 @@ class ResNet(nn.Module):
             )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn1 = norm_layer(self.inplanes)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
-
-        for m in self.modules():
+        
+        self.components = nn.ModuleDict({
+            "conv1": nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False),
+            "bn1": norm_layer(self.inplanes),
+            "relu": nn.ReLU(inplace=True),
+            "maxpool": nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            "layer1": self._make_layer(block, 64, layers[0]),
+            "layer2": self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0]),
+            "layer3": self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1]),
+            "layer4": self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2]),
+            "avgpool": nn.AdaptiveAvgPool2d((1, 1)),
+            "fc": nn.Linear(512 * block.expansion, num_classes)
+        })
+        
+        ResNet._init_weights(self.components, zero_init_residual)
+                    
+    @staticmethod
+    def _init_weights(modules: nn.ModuleDict, zero_init_residual: bool = False) -> None:
+        """
+        Initialize weights of modules in the passed-in ModuleDict.
+        """
+        for m in modules.values():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
@@ -189,12 +205,12 @@ class ResNet(nn.Module):
         # so that the residual branch starts with zeros, and each residual block behaves like an identity.
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         if zero_init_residual:
-            for m in self.modules():
+            for m in modules.values():
                 if isinstance(m, Bottleneck) and m.bn3.weight is not None:
-                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+                    nn.init.constant_(m.bn3.weight, 0)
                 elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
-                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
-
+                    nn.init.constant_(m.bn2.weight, 0)
+    
     def _make_layer(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -236,23 +252,13 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x: Tensor) -> Tensor:
-        # See note [TorchScript super()]
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
-
-        return x
-
     def forward(self, x: Tensor) -> Tensor:
-        return self._forward_impl(x)
+        if self.debug:
+            print(f"Input shape: {x.shape}")
+            
+        for name, module in self.components.items():
+            x = module(x)
+            if self.debug:
+                print(f"After {name} shape: {x.shape}")
+                
+        return x
