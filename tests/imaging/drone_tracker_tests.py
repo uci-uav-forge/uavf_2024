@@ -73,11 +73,12 @@ class TestDroneTracker(unittest.TestCase):
             'x', 'y', 'z', 'vx', 'vy', 'vz', 'r'
         ]
 
-        for i in range(len(variances[0])):
-            plt.plot([c[i] for c in variances], label=labels[i])
-        plt.legend()
-        plt.title("Variance vs timestep")
-        plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/test_covariances.png')
+        if save_figs:
+            for i in range(len(variances[0])):
+                plt.plot([c[i] for c in variances], label=labels[i])
+            plt.legend()
+            plt.title("Variance vs timestep")
+            plt.savefig(f'{CURRENT_DIR}/visualizations/drone_tracker/test_covariances.png')
 
 
         self.assertTrue(len(filter.tracks) == 1)
