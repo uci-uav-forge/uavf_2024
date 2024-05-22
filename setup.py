@@ -4,7 +4,7 @@ setup(
     name='uavf_2024',
     version='0.0.1',
     packages=find_packages(include=[
-        'uavf_2024', 'uavf_2024.*'
+        'uavf_2024', 'uavf_2024.*', 'siyi_sdk'
     ]),
     install_requires=[
         'numpy',
