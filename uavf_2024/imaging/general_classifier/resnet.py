@@ -184,7 +184,8 @@ class ResNet(nn.Module):
             "layer2": self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0]),
             "layer3": self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1]),
             "layer4": self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2]),
-            "avgpool": nn.AdaptiveAvgPool2d((1, 1))
+            "avgpool": nn.AdaptiveAvgPool2d((1, 1)),
+            "flatten": nn.Flatten()
         })
         
         self.heads = nn.ModuleList([
@@ -284,3 +285,12 @@ def resnet34(num_classes: Sequence[int], **kwargs: Any) -> ResNet:
 
 def resnet50(num_classes: Sequence[int], **kwargs: Any) -> ResNet:
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes, **kwargs)
+
+
+if __name__ == '__main__':
+    model = resnet50([10, 20], debug=True)
+    x = torch.randn(1, 3, 224, 224)
+    y = model(x)
+    
+    print(y[0].shape, y[1].shape)
+    
