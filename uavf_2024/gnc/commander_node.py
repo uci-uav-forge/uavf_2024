@@ -153,7 +153,7 @@ class CommanderNode(rclpy.node.Node):
         pose = self.cur_pose.pose
         return np.array([pose.position.x, pose.position.y])
     
-    def execute_waypoints(self, waypoints, yaws = None):
+    def execute_waypoints(self, waypoints, yaws = None, do_set_mode=True):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
@@ -189,23 +189,27 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints.")
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
-        self.log("Delaying before setting mode.")
-        time.sleep(1)
-        self.log("Setting mode.")
-        # mavros/px4 doesn't consistently set the mode the first time this function is called...
-        # retry or fail the script.
-        for _ in range(1000):
-            self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
-                base_mode = 0,
-                custom_mode = 'AUTO.MISSION'))
-            self.last_wp_seq = -1
-            time.sleep(0.2)
-            if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
-                self.log("Success setting mode")
-                break
+
+        if do_set_mode:
+            self.log("Delaying before setting mode.")
+            time.sleep(1)
+            self.log("Setting mode.")
+            # mavros/px4 doesn't consistently set the mode the first time this function is called...
+            # retry or fail the script.
+            for _ in range(1000):
+                self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+                    base_mode = 0,
+                    custom_mode = 'AUTO.MISSION'))
+                self.last_wp_seq = -1
+                time.sleep(0.2)
+                if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
+                    self.log("Success setting mode")
+                    break
+            else:
+                self.log("Failure setting mode, quitting.")
+                quit()
         else:
-            self.log("Failure setting mode, quitting.")
-            quit()
+            self.log("Didn't set mode, waiting for manual flip to MISSION mode.")
 
         self.log("Waiting for mission to finish.")
 
@@ -253,17 +257,12 @@ class CommanderNode(rclpy.node.Node):
         self.log(f"Successfully retrieved imaging detections: {detections}")
         return detections
     
-    def wait_for_takeoff(self, lap_idx):
-        self.log("Waiting for next lap signal.")
-        while self.cur_lap < lap_idx:
-            pass
-        self.log("Got next lap signal")
-    
     def request_load_payload(self, payload):
         payload_request = RequestPayload(shape=payload.shape, shape_col=payload.shape_col, letter=payload.letter, letter_col=payload.letter_col)
         request_msg = payload_request.to_string()
         self.log(f"Requesting {request_msg}.")
-        self.msg_pub.publish(mavros_msgs.msg.StatusText(severity=mavros_msgs.msg.StatusText.NOTICE, text=request_msg))
+        for chunk in [request_msg[i:i+30] for i in range(0,len(request_msg),30)]:
+            self.msg_pub.publish(mavros_msgs.msg.StatusText(severity=mavros_msgs.msg.StatusText.NOTICE, text=chunk))
 
     def execute_mission_loop(self):
         while not self.got_global_pos:
@@ -281,12 +280,9 @@ class CommanderNode(rclpy.node.Node):
             if lap > 0:
                 self.dropzone_planner.advance_current_payload_index()
                 self.request_load_payload(self.payloads[self.dropzone_planner.current_payload_index])
-
-            # Wait for takeoff
-            self.wait_for_takeoff(lap)
-
+            
             # Fly waypoint lap
-            self.execute_waypoints(self.mission_wps)
+            self.execute_waypoints(self.mission_wps, do_set_mode=False)
 
             if self.args.exit_early:
                 return
