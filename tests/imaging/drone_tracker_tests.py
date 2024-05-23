@@ -173,6 +173,31 @@ class TestDroneTracker(unittest.TestCase):
         final_state = self.filter.tracks[0].filter.mean()
         expected_final_position = initial_state[:3] + initial_state[3:6] * (n_cam_samples - 1) * 0.5
         self.assertTrue(np.allclose(final_state[:3], expected_final_position, atol=0.1), f"filter converged to {final_state}")
+
+    def test_bounding_box_prediction(self):
+        num_steps = 100
+        center = [0, 0, 10]
+        radius = 10
+# 
+        observer_path = self.circular_path(center, radius, num_steps)
+        target_path = self.linear_path(np.array([0, -10, 10]), np.array([20, 10, 10]), num_steps)
+# 
+        total_loss = 0
+# 
+        for i in range(num_steps):
+            cam_position = observer_path[i]
+            direction_to_target = target_path[i] - cam_position
+            cam_rotation = R.from_rotvec(np.cross([0, 0, 1], direction_to_target))
+            bbox = self.compute_measurement((cam_position, cam_rotation), target_path[i])
+            self.filter.update((cam_position, cam_rotation), [bbox])
+# 
+            estimated_state = self.filter.tracks[0].filter.mean()
+            error = np.linalg.norm(estimated_state[:3] - target_path[i])
+            total_loss += error**2  # Sum of squared errors
+# 
+        mean_squared_error = total_loss / num_steps
+        acceptable_mse = 1.0  # Define an acceptable mean squared error
+        self.assertLess(mean_squared_error, acceptable_mse, f"Mean squared error too high: {mean_squared_error}")
     
     @staticmethod
     def linear_path(start_point, end_point, num_steps):
