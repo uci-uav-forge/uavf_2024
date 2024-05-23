@@ -54,26 +54,37 @@ def sort_payload(list_payload_targets: List[ProbabilisticTargetDescriptor], shap
     for target_position, payload_target in enumerate(list_payload_targets):
         payload_targets_order[target_position] = 1
         shape_class_index = np.where(payload_target.shape_probs == 1)[0][0]
-        letter_class_index = np.where(payload_target.letter_probs == 1)[0][0]
-        shape_col_class_index = np.where(payload_target.shape_col_probs == 1)[0][0]
-        letter_col_class_index = np.where(payload_target.letter_col_probs == 1)[0][0]
+        arr = payload_target.letter_probs
+        if np.all(arr.flatten() == arr.flatten()[0]):
+            print("letter" )
+            letter_class_index = -1
+            shape_col_class_index = -1
+            letter_col_class_index = -1
+
+        else: 
+            letter_class_index = np.where(payload_target.letter_probs == 1)[0][0]
+            shape_col_class_index = np.where(payload_target.shape_col_probs == 1)[0][0]
+            letter_col_class_index = np.where(payload_target.letter_col_probs == 1)[0][0]
 
         # Iterate through confusion matrices and corresponding description indices
         for confusion_matrix, class_index in zip([shape_confusion, letter_confusion, color_confusion, color_confusion],
                                                         [shape_class_index, letter_class_index, shape_col_class_index, letter_col_class_index]):
-            descrp_truth_row = confusion_matrix[class_index]
-            descrp_pos_truth = descrp_truth_row[class_index]
-
-            # Computes the penalty by summing the squares of each negative truth probability
-            descrp_neg_truth_penalty = (descrp_truth_row[descrp_truth_row != descrp_pos_truth])**2
-            descrp_score = descrp_pos_truth - np.sum(descrp_neg_truth_penalty)
-            descrp_score = max(descrp_score, 0.0001) # Ensure non-negative score after the penalty
+            
+            if class_index == -1:
+                print( " ") #place holder, i don't know how to handle person for confusion matrix brb
+            else:
+                descrp_truth_row = confusion_matrix[class_index]
+                descrp_pos_truth = descrp_truth_row[class_index]
+                # Computes the penalty by summing the squares of each negative truth probability
+                descrp_neg_truth_penalty = (descrp_truth_row[descrp_truth_row != descrp_pos_truth])**2
+                descrp_score = descrp_pos_truth - np.sum(descrp_neg_truth_penalty)
+                descrp_score = max(descrp_score, 0.0001) # Ensure non-negative score after the penalty
 
             # Computes the target's confidence score by multiplying with the confidence values for the four descriptions
-            if penalty:
-                payload_targets_order[target_position] *= descrp_score
-            else:
-                payload_targets_order[target_position] *= descrp_pos_truth
+                if penalty:
+                    payload_targets_order[target_position] *= descrp_score
+                else:
+                    payload_targets_order[target_position] *= descrp_pos_truth
 
     #Reorder the payload target list based on the confidence values
     payload_targets_order =  sorted(payload_targets_order.items(), key=lambda item: item[1], reverse=True)
