@@ -170,8 +170,8 @@ class ImageProcessor:
             raise ValueError("img must be in HWC order")
         
         shape_results = self._make_shape_detection(img)
-        self.num_processed += 1
         total_results = self._classify_color_and_char(shape_results)
+        self.num_processed += 1
         return total_results
     
     def process_image_lightweight(self, img : Image) -> list[FullBBoxPrediction]:
