@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Generator, Generic, NamedTuple, TypeVar, Union
+from itertools import chain
+from typing import Generator, Generic, Literal, NamedTuple, TypeVar, Union
 import cv2
 import numpy as np
 from enum import Enum
@@ -45,7 +46,25 @@ SHAPES = [
 LEGACY_LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
 
 # New, canonical sequence of characters that actually make sense.
-CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+character_literal = Literal["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9"]
+
+class Character:
+    @staticmethod
+    def values():
+        yield from CHARACTERS
+    
+    def __init__(self, value: character_literal):
+        self.value = value
+        
+    def __eq__(self, other: Character):
+        return self.value == other.value
+    
+    @staticmethod
+    def __len__():
+        return len(CHARACTERS)
+
 
 COLORS = list(COLOR_INDICES.keys())
 
