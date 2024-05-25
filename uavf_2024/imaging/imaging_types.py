@@ -51,6 +51,8 @@ CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 character_literal = Literal["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9"]
 
 class Character:
+    __members__: dict[character_literal, character_literal] = {char: char for char in CHARACTERS} # type: ignore
+    
     @staticmethod
     def values():
         yield from CHARACTERS
