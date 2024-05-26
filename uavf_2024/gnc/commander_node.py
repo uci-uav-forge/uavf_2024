@@ -76,8 +76,8 @@ class CommanderNode(rclpy.node.Node):
             libuavf_2024.srv.TakePicture,
             '/imaging_service')
         
-        self.mission_wps = read_gps(args.mission_file)
-        self.dropzone_bounds = read_gps(args.dropzone_file)
+        self.gpx_track_map = read_gpx_file(args.gpx_file)
+        self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
         self.payloads = read_payload_list(args.payload_list)
 
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
