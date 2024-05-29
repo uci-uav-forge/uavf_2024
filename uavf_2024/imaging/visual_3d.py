@@ -3,83 +3,74 @@ import numpy.linalg as linalg
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-
-# https://users.cs.utah.edu/~tch/CS6640F2020/resources/How%20to%20draw%20a%20covariance%20error%20ellipse.pdf
-# https://stackoverflow.com/questions/7819498/plotting-ellipsoid-with-matplotlib
-def graph_ellipsoid(ax, ellipsoid_matrix, center):
-    # find the rotation matrix and radii of the axes
-    U, s, rotation = linalg.svd(ellipsoid_matrix)
-    radii = 1.0/np.sqrt(s)
-
-    # now carry on with EOL's answer
-    u = np.linspace(0.0, 2.0 * np.pi, 100)
-    v = np.linspace(0.0, np.pi, 100)
-    x = radii[0] * np.outer(np.cos(u), np.sin(v))
-    y = radii[1] * np.outer(np.sin(u), np.sin(v))
-    z = radii[2] * np.outer(np.ones_like(u), np.cos(v))
-    for i in range(len(x)):
-        for j in range(len(x)):
-            [x[i,j],y[i,j],z[i,j]] = np.dot([x[i,j],y[i,j],z[i,j]], rotation) + center
-    ax.plot_wireframe(x, y, z,  rstride=4, cstride=4, color='b', alpha=0.2)
-
-# from numpy.linalg import svd
-def error_ellipsoid_matrix(point, covariance_matrix):
-    # Compute eigenvectors and eigenvalues of the covariance matrix
-    eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
-
-    # Construct diagonal matrix with eigenvalues on the diagonal
-    diagonal_matrix = np.diag(eigenvalues)
-
-    # Form error ellipsoid matrix using eigenvectors and diagonal matrix
-    error_ellipsoid = np.dot(np.dot(eigenvectors, diagonal_matrix), np.linalg.inv(eigenvectors))
-
-    return error_ellipsoid
+from filterpy.stats import plot_3d_covariance
+from filterpy.kalman import predict
 
 
-def graph_error_ellipsoid(ax, point, covar):
-    eigenvalues, eigenvectors = np.linalg.eigh(covar)
-    axes_lengths = np.sqrt(eigenvalues)
-    ellipsoid = np.array([[axes_lengths[0], 0, 0],
-                        [0, axes_lengths[1], 0],
-                        [0, 0, axes_lengths[2]]])
-    graph_error_axes(ax, point, covar)
-    graph_ellipsoid(ax,covar,point)
+def collision_prediction(drone_positions, current_pos, current_velocity, next_wp):
+    # def collision_prediction(drone_positions: list[tuple[np.ndarray, np.ndarray], current_pos: np.ndarray, current_velocity: np.ndarray, next_wp: np.ndarray) -> tuple[time_to_collision: float, no_go_zone: np.ndarray):
+    '''
+    drone_position will have each tuple being (x, covariance) where x is [x,y,z,vx,vy,vz,radius] and covariance is a 7x7 matrix describing the covariance of those estimates.
 
+    current_pos, current_velocity and next_wp are of shape (3,)
 
-def graph_error_axes(ax, point, covariance):
-    x, y, z = point
-    ax.scatter(x, y, z, color='blue', label='Point Cloud')
+    no_go_zone should be of shape (n,3) as a list of 3d points describing a convex shape.
+    '''
 
-    # Calculate eigenvalues and eigenvectors of covariance matrix
-    eigenvalues, eigenvectors = np.linalg.eigh(covariance)
-    radii = np.sqrt(eigenvalues)
-    for i in range(3):
-        ax.plot([x, x + radii[i] * eigenvectors[i, 0]],
-                [y, y + radii[i] * eigenvectors[i, 1]],
-                [z, z + radii[i] * eigenvectors[i, 2]],
-                color='red')
+    dt = 0.1
+    # P = covar
+    # F = state transition
 
-    # Set labels and title
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('3D Point Cloud with Covariance Visualization')
-    ax.legend()
+    F = np.eye(7)
+    F[0,3] = dt
+    F[1,4] = dt
+    F[2,5] = dt
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for drone_pos, drone_covar in drone_positions:
+        time = 0
+        while (time < 2):
+            drone_pos, drone_covar = predict(x=drone_pos, P=drone_covar, F=F, Q=0)
+            
+            plot_3d_covariance(pos1[:3],P[:3,:3], ax=ax)
+            
+
+            time += dt
+            # print("hi")
+    plt.show()
+    plt.close(fig)
+
 
 if __name__ == "__main__":
-    import filterpy
-    # Example usage
-    point = np.array([1, 2, 3])  # Example point
-    covariance = np.array([[1, 0.5, 0],
-                           [0.5, 1, 0],
-                           [0, 0, 3]])  # Example covariance matrix
+    # drone_position will have each tuple being (x, covariance) where x is [x,y,z,vx,vy,vz,radius] and covariance is a 7x7 matrix describing the covariance of those estimates.
+
+    dt = 0.2
+    pos1 = np.array([0, 0, 0, 1, 1, 1, 1]) # xyz(0,0,0) vel(1,1,1) rad=1
+    # pos2 = np.array([3, 3, 3, -1, -1, -1, 1]) # xyz(3,3,3) vel(-1,-1,-1) rad=1
+
+    P = np.eye(7)*1
+    P[2,2] = 1
+    P[5,5] = 0
+    F = np.eye(7)
+    F[0,3] = dt
+    F[1,4] = dt
+    F[2,5] = dt
+
+
+    # collision_prediction(drone_positions, current_pos, current_velocity, next_wp):
+
+    # det = collision_prediction([(pos1,P)], np.array([3, 3, 3]), np.array([-1, -1, -1]), None)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    graph_error_ellipsoid(ax, point, covariance)
-    # filterpy.plot_3d_covariance(point,covariance)
+    for _ in range(10):
+        pos1, P = predict(x=pos1, P=P, F=F, Q=0)
+        print('x =', pos1)
+        print('P =', P)
 
+        plot_3d_covariance(pos1[:3],P[:3,:3], ax=ax)
     plt.show()
     plt.close(fig)
-    del fig
+

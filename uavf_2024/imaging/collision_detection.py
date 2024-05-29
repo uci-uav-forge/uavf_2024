@@ -39,35 +39,6 @@ def collide_detection(pos1, vel1, radius1, pos2, vel2, radius2):
     return True, t_collision, collision_pos
 
 
-def collision_prediction(drone_positions, current_pos, current_velocity, next_wp):
-    # def collision_prediction(drone_positions: list[tuple[np.ndarray, np.ndarray], current_pos: np.ndarray, current_velocity: np.ndarray, next_wp: np.ndarray) -> tuple[time_to_collision: float, no_go_zone: np.ndarray):
-    '''
-    drone_position will have each tuple being (x, covariance) where x is [x,y,z,vx,vy,vz,radius] and covariance is a 7x7 matrix describing the covariance of those estimates.
-
-    current_pos, current_velocity and next_wp are of shape (3,)
-
-    no_go_zone should be of shape (n,3) as a list of 3d points describing a convex shape.
-    '''
-    current_xyz = current_pos[:3]
-    # current_velocity
-    current_radius = 10 # manually set
-
-
-    for i in range(len(drone_positions)):
-        drone_pos,drone_covar = drone_positions[i]
-        drone_pos_xyz = drone_pos[:3]
-        drone_vel = drone_pos[3:7]
-        drone_rad = 0 # Assume circle. So get largest axis of error ellipsoid + radius + var(radius)
-        bool_col, time_col, pos_col = collide_detection(current_xyz,current_velocity,current_radius, drone_pos_xyz, drone_vel, drone_rad)
-        if (bool_col):
-            return time_col
-    return 0
-
-    # drone_positions = [(np.array([0, 0, 0]), np.eye(7))]  # Example drone position with covariance
-    # current_pos = np.array([0, 0, 0])
-    # current_velocity = np.array([1, 1, 1])
-    # next_wp = np.array([5, 5, 5])
-    # pass
 
 if __name__ == "__main__":  
     # drones
@@ -75,13 +46,13 @@ if __name__ == "__main__":
     # self
 
     # Example usage
-    # pos1 = np.array([0, 0, 0])
-    # vel1 = np.array([1, 1, 1])
-    # radius1 = 1
+    pos1 = np.array([0, 0, 0])
+    vel1 = np.array([1, 1, 1])
+    radius1 = 1
 
-    # pos2 = np.array([3, 3, 3])
-    # vel2 = np.array([-1, -1, -1])
-    # radius2 = 1
+    pos2 = np.array([3, 3, 3])
+    vel2 = np.array([-1, -1, -1])
+    radius2 = 1
 
     # collide, t_collision, collision_pos = collide_detection(pos1, vel1, radius1, pos2, vel2, radius2)
     # if collide:
@@ -110,8 +81,6 @@ if __name__ == "__main__":
 
 
 # Kalman filter predict step
-
-
 
 #     # Predict future positions of drone and object
 #     drone_future_pos = current_pos + current_velocity
