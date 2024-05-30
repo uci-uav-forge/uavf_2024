@@ -14,6 +14,7 @@ import time
 import logging
 from datetime import datetime
 import numpy as np
+from std_srvs.srv import Empty
 
 class CommanderNode(rclpy.node.Node):
     '''
@@ -75,6 +76,10 @@ class CommanderNode(rclpy.node.Node):
         self.imaging_client = self.create_client(
             libuavf_2024.srv.TakePicture,
             '/imaging_service')
+        
+        self.payload_client = self.create_client(
+            Empty,
+            '/payload_drop_service')
         
         self.mission_wps = read_gps(args.mission_file)
         self.dropzone_bounds = read_gps(args.dropzone_file)
@@ -191,7 +196,10 @@ class CommanderNode(rclpy.node.Node):
     
     def release_payload(self):
         # mocked out for now.
-        self.log("WOULD RELEASE PAYLOAD")
+        self.payload_client(libuavf_2024.srv.TakePicture.Request())
+        request = Empty.Request()
+        self.payload_client.call(request)
+        self.log("Payload release requested")
     
     def gather_imaging_detections(self):
         detections = []

@@ -24,6 +24,7 @@ from sensor_msgs.msg import NavSatFix
 import numpy as np
 import random
 import time
+from std_srvs.srv import Empty
 
 
 def sample_point(dropzone_bounds):
@@ -60,10 +61,11 @@ class MockImagingNode(Node):
         self.got_global_pos = False
         self.global_position_sub = self.create_subscription(NavSatFix, '/mavros/global_position/global', self.got_global_pos_cb, qos_profile)
         self.imaging_service = self.create_service(TakePicture, '/imaging_service', self.imaging_callback)
-
-        self.dropzone_bounds = read_gps(args.dropzone_file)
+        self.payload_service = self.create_service(Empty, '/payload_drop_service', self.draw)
+        self.dropzone_bounds = read_gps(args.dropzone_file) 
         self.img_w_m = args.img_w_m
         self.img_h_m = args.img_h_m
+        self.payload_coordinates = []
 
     def got_pose_cb(self, pose):
         self.cur_pose = pose
@@ -87,7 +89,11 @@ class MockImagingNode(Node):
         response.detections = []
 
         cur_xy = np.array([self.cur_pose.pose.position.x, self.cur_pose.pose.position.y])
-
+        target_boxes = []
+        w = self.img_w_m
+        h = self.img_h_m
+        #target coordinations (x,y)??  use above array cur_xy?
+        # [self.cur_pose.pose.position.x, self.cur_pose.pose.position.y]
         for target in self.targets:
             delta = target[1] - cur_xy
             heading = np.array([np.cos(self.cur_rot[-1]), np.sin(self.cur_rot[-1])])
@@ -98,6 +104,10 @@ class MockImagingNode(Node):
 
             print(cur_xy, target[1], delta, amt_fwd, amt_side)
 
+            x = target[1][0]
+            y = target[1][1]
+            target_boxes.append([x - (w/2), y + (h/2), x + (w/2), y + (h/2), x - (w/2), y - (h/2), x + (w/2), y - (h/2)])
+            
             if abs(amt_fwd) < self.img_w_m/2 and abs(amt_side) < self.img_h_m/2:
                 print("target hit!")
                 response.detections.append(TargetDetection(
@@ -110,7 +120,44 @@ class MockImagingNode(Node):
                     shape_color_conf = [int(i == target[0][2]) for i in range(8)],
                     letter_color_conf = [int(i == target[0][3]) for i in range(8)],
                 ))
+
+        self.draw(cur_xy, target_boxes)
+        
         return response
+    
+    def dropzone_playload(self, request, response ):
+        x = self.cur_pose.pose.position.x 
+        y = self.cur_pose.pose.position.y
+        self.payload_coordinates.append((x, y))
+        return response
+    
+    def draw(self, cur_xy, targets): 
+        #maps out the targets, payload, dropzone using matplot
+
+        import matplotlib.pyplot as plt #??
+        plt.xlabel('X-Axis')
+        plt.ylabel('Y-Axis')
+
+        xpoint_target = [target[0][0] for target in targets]
+        ypoint_target = [target[0][1] for target in targets]
+        plt.plot(xpoint_target, ypoint_target, color= 'r')
+
+        # Plot the bounding boxes
+        for box in targets:
+            plt.plot([box[0][0], box[1][0], box[2][0], box[3][0], box[0][0]], 
+                 [box[0][1], box[1][1], box[2][1], box[3][1], box[0][1]])
+       
+        #xpoint_images = np.array([])
+        #ypoint_images = np.array([])
+
+        xpoint_paydrop = np.array([target[0] for target in targets])
+        ypoint_paydrop = np.array([target[1] for target in targets])
+        plt.plot(xpoint_paydrop, ypoint_paydrop)
+
+        x1, x2, y1, y2 =  self.dropzone_bounds
+        plt.plot([x1, x2, y1, y2])
+
+        plt.show()
 
 def main(args=None) -> None:
     ap = argparse.ArgumentParser('mock_imaging_node.py')
