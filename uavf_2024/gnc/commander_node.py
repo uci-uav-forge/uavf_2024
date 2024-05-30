@@ -155,7 +155,6 @@ class CommanderNode(rclpy.node.Node):
                     param1 = 0.0,
                     param2 = 5.0,
                     param3 = 0.0,
-                    param4 = 0.0;
                     param4 = yaw,
 
                     x_lat = wp[0],
