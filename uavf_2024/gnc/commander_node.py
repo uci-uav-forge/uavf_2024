@@ -183,7 +183,6 @@ class CommanderNode(rclpy.node.Node):
                     x_lat = wp[0],
                     y_long = wp[1],
                     z_alt = wp[2])
-                    z_alt = wp[2])
 
                 for wp,yaw in zip(waypoints, yaws)]
 

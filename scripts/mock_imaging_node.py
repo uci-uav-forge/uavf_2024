@@ -106,7 +106,7 @@ class MockImagingNode(Node):
 
             x = target[1][0]
             y = target[1][1]
-            target_boxes.append([x - (w/2), y + (h/2), x + (w/2), y + (h/2), x - (w/2), y - (h/2), x + (w/2), y - (h/2)])
+            target_boxes.append([[x - (w/2), y + (h/2), x + (w/2), y + (h/2)], [x - (w/2), y - (h/2), x + (w/2), y - (h/2)]])
             
             if abs(amt_fwd) < self.img_w_m/2 and abs(amt_side) < self.img_h_m/2:
                 print("target hit!")
@@ -137,7 +137,7 @@ class MockImagingNode(Node):
         import matplotlib.pyplot as plt #??
         plt.xlabel('X-Axis')
         plt.ylabel('Y-Axis')
-
+        print(targets)
         xpoint_target = [target[0][0] for target in targets]
         ypoint_target = [target[0][1] for target in targets]
         plt.plot(xpoint_target, ypoint_target, color= 'r')
