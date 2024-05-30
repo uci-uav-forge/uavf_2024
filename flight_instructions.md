@@ -1,6 +1,6 @@
 # Flight instructions
 
-Boot up PX4 on the ThinkPad and make sure you have a good connection to the drone.
+Boot up QGC on the ThinkPad and make sure you have a good connection to the drone.
 
 Start MAVROS:
 
@@ -20,14 +20,32 @@ ros2 topic echo /mavros/state # etc
 
 Launch the demo (for now) imaging node.
 
+(ARC Upper field)
+
 ```
 cd ~/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 mock_imaging_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE 12 9
 ```
 
-Launch the commander node (for now, note the `end-early` flag - this terminates the script after the mission is pushed and completed.) 
+(ARC Club field)
 
 ```
 cd ~/ws && colcon build --merge-install && source install/setup.bash
-ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE ~/ws/src/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9 --exit-early
+ros2 run libuavf_2024 mock_imaging_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY 12 9
+```
+
+Launch the commander node (for now, note the `end-early` flag - this terminates the script after the mission is pushed and completed.)  -
+
+(ARC Upper field)
+
+```
+cd ~/ws && colcon build --merge-install && source install/setup.bash
+ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE ~/ws/src/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+```
+
+(ARC Club field)
+
+```
+cd ~/ws && colcon build --merge-install && source install/setup.bash
+ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/MISSION ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY ~/ws/src/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```

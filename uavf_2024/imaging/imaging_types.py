@@ -42,7 +42,7 @@ COLORS = list(COLOR_INDICES.keys())
 
 # TODO: Limit these to the types we actually use
 integer = Union[int, np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64]
-real = Union[float, np.float16, np.float32, np.float64, np.float128]
+real = Union[float, np.float16, np.float32, np.float64]
 number = Union[integer, real]
 
 # Can't use np.uint16 because torch doesn't support it. We're good as long as we don't have a gigapixel camera.
@@ -100,9 +100,11 @@ class CertainTargetDescriptor:
     `shape` is one of "circle", "semicircle", "quartercircle", "triangle", "rectangle", "pentagon", "star", "cross", "person"
     `letter` is an uppercase letter or a number (e.g. "A" or "1")
     `shape_col` and `letter_col` are one of "red", "green", "blue", "orange", "purple", "white", "black", "brown"
+
+    A `None` value should only be used for ground truth data that is missing labels, or the "person" shape, which doesn't have a color or letter.
     ''' 
     def __init__(self, shape_col: str, shape: str, letter_col: str, letter: str):
-        assert shape in SHAPES
+        assert shape is None or shape in SHAPES
         self.shape = shape
         if shape == "person":
             self.shape_col = None
@@ -110,9 +112,9 @@ class CertainTargetDescriptor:
             self.letter = None
             return
 
-        assert shape_col in COLORS
-        assert letter_col in COLORS
-        assert letter in LETTERS
+        assert shape_col is None or shape_col in COLORS
+        assert letter_col is None or letter_col in COLORS
+        assert letter is None or letter in LETTERS
         self.shape_col = shape_col
         self.letter_col = letter_col
         self.letter = letter
@@ -128,8 +130,24 @@ class CertainTargetDescriptor:
             COLORS[letter_col_index],
             LETTERS[letter_index]
         )
+
+    def to_indices(self):
+        '''
+        Returns class indices in order (shape_col, shape, letter_col, letter)    
+
+        If a value is None, it will be returned as None in the tuple instead of an integer.
+        '''
+        return (
+            COLORS.index(self.shape_col) if self.shape_col is not None else None,
+            SHAPES.index(self.shape) if self.shape is not None else None,
+            COLORS.index(self.letter_col) if self.letter_col is not None else None,
+            LETTERS.index(self.letter) if self.letter is not None else None
+        )
     
     def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
+        err_message = '''Cannot convert to probabilistic if any of the values are None (probably trying 
+                        to convert a ground truth label with missing data, which shouldn't be done'''
+        assert None not in [self.shape, self.letter, self.shape_col, self.letter_col], err_message
         shape_probs = np.zeros(len(SHAPES))
         shape_probs[SHAPES.index(self.shape)] = 1.0
 
@@ -164,6 +182,24 @@ class Tile:
     y: img_coord_t
 
 @dataclass
+class BoundingBox:
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
+
+    def to_ndarray(self):
+        return np.array([self.x, self.y, self.width, self.height])
+
+    def to_xyxy(self):
+        return np.array([self.x-self.width//2, self.y-self.height//2, self.x+self.width//2, self.y+self.height//2])
+
+    @staticmethod
+    def from_ndarray(arr: np.ndarray):
+        '''Takes ndarray of shape (4,) [x,y,width,height] and returns a BoundingBox object'''
+        return BoundingBox(*arr)
+
+@dataclass
 class FullBBoxPrediction:
     x: img_coord_t
     y: img_coord_t
@@ -181,7 +217,17 @@ class FullBBoxPrediction:
     det_id: int = None
 
 @dataclass
-class InstanceSegmentationResult:
+class FullBBoxGroundTruth:
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
+    descriptor: CertainTargetDescriptor
+    img_id: int = None
+    det_id: int = None
+
+@dataclass
+class DetectionResult:
     '''
     `mask` and `img` should be (w,h,c) where c is 1 for mask and 3 for img
     '''
@@ -190,7 +236,6 @@ class InstanceSegmentationResult:
     width: img_coord_t
     height: img_coord_t
     confidences: np.ndarray
-    mask: np.ndarray
     img: 'Image'
     id : int
 
@@ -213,7 +258,8 @@ class Target3D:
                 np.array(msg.letter_conf),
                 np.array(msg.shape_color_conf),
                 np.array(msg.letter_color_conf)
-            )
+            ),
+            msg.id
         )
 
 @dataclass
@@ -231,6 +277,7 @@ class ROSDetectionMessage:
     letter_conf: list[float]
     shape_color_conf: list[float]
     letter_color_conf: list[float]
+    id: str
 
 class ImageDimension(Enum):
     HEIGHT = 'h'
@@ -334,6 +381,9 @@ class Image(Generic[_UnderlyingImageT]):
         Does not copy the underlying array.
         """
         return Tile(self.make_sub_image(x_coord, y_coord, tile_size, tile_size), x_coord, y_coord)
+    
+    def as_tile(self) -> Tile:
+        return Tile(self, 0, 0)
     
     @property
     def shape(self):

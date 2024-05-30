@@ -37,6 +37,12 @@ class Track:
     def get_measurements(self) -> list[Target3D]:
         return self._measurements
 
+    def __repr__(self):
+        return f"{self.position},{self.descriptor}"
+
+    def contributing_measurement_ids(self):
+        return [m.id for m in self._measurements]
+
 class TargetTracker:
     def __init__(self):
         self.tracks: list[Track] = []
@@ -66,3 +72,6 @@ class TargetTracker:
         ]
 
         return closest_tracks
+
+    def confidence_score(self, candidate: CertainTargetDescriptor) -> float:
+        return max(calc_match_score(track.descriptor, candidate.as_probabilistic()) for track in self.tracks)

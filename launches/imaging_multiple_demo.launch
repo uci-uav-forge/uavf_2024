@@ -1,4 +1,4 @@
 <launch>
-    <node pkg="libuavf_2024" exec="perception_clients/imaging_node.py" name="imaging_server" />
-    <node pkg="libuavf_2024" exec="perception_clients/continuous_image_taking.py" name="imaging_client" />
+    <node pkg="libuavf_2024" exec="imaging_node.py" name="imaging_server" />
+    <node pkg="libuavf_2024" exec="continuous_image_taking.py" name="imaging_client" />
 </launch>

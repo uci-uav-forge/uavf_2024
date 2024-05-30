@@ -7,7 +7,7 @@ from time import sleep
 from uavf_2024.imaging import TargetTracker, Target3D, CertainTargetDescriptor
 
 search_candidates = [
-    CertainTargetDescriptor("red", "pentagon", "yellow", "E")
+    CertainTargetDescriptor("red", "rectangle", "green", "C")
 ]
 
 class ContinuousImagingClient(Node):
@@ -16,26 +16,28 @@ class ContinuousImagingClient(Node):
         self.get_logger().info("Initializing Client")
         self.cli = self.create_client(TakePicture, 'imaging_service')
 
-        while not self.cli.wait_for_service(timeout_sec=1.0):
+        while not self.cli.wait_for_service():
             self.get_logger().info('service not available, waiting again...')
-        self.get_logger().info("Finished intializing client")
 
         self.tracker = TargetTracker()
 
         self.req = TakePicture.Request()
 
-        sleep(5)
-        self.get_logger().info("Sending request")
-        for i in range(10):
-            res: list[TargetDetection] = self.send_request()
+        sleep(10)
+        num_requests = 1000
+        for i in range(num_requests):
+            self.get_logger().info(f"Sending request {i+1}/{num_requests}")
+            res: list[TargetDetection] = self.send_request().detections
             self.tracker.update([
                 Target3D.from_ros(detection) for detection in res
             ])
 
             sleep(1)
 
-        print("Done") 
-        print(self.tracker.estimate_positions(search_candidates))
+        self.get_logger().info("Done with requests")
+        estimated_positions = self.tracker.estimate_positions(search_candidates)
+        self.get_logger().info(str(estimated_positions))
+        self.get_logger().info(str([track.contributing_measurement_ids() for track in estimated_positions]))
 
     def send_request(self):
         self.get_logger().info("Sending request")

@@ -6,7 +6,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 def test_localization(w,h, hfov, camera_pose, pos_2d, actual_position):
-    localizer = Localizer(hfov, (w,h))
+    localizer = Localizer(hfov, (w,h), (np.array([0,0,-1]), np.array([1,0,0])), 1)
     x,y = pos_2d
     pred = FullBBoxPrediction(
         x,y,None,None,None
