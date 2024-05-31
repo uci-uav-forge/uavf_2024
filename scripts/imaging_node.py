@@ -19,7 +19,9 @@ class ImagingNode(Node):
         super().__init__('imaging_node')
         self.camera = Camera()
         self.camera.setAbsoluteZoom(1)
-        self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}/image_processor')
+        logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
+        self.log(f"Logging to {logs_path}")
+        self.image_processor = ImageProcessor(logs_path)
         focal_len = self.camera.getFocalLength()
         self.localizer: Localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
 
