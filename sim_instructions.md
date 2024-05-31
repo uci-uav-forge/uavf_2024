@@ -63,7 +63,7 @@ cd /home/ws && colcon build --merge-install && source install/setup.bash
 
 Launch the mock imaging node:
 ```
-ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
+ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/primary.gpx 12 9
 ```
 
 Launch the demo commander node:

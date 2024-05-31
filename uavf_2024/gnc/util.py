@@ -39,7 +39,7 @@ def extract_coordinates(track: gpxpy.gpx.GPXTrack):
     '''
     coordinates = []
 
-    if track.name.endsWith('Mission'):
+    if track.name.endswith('Mission'):
         for segment in track.segments:
             for point in segment.points:
                 coordinates.append((point.latitude, point.longitude, point.elevation))
