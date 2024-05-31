@@ -2,12 +2,13 @@
 
 # Mavros
 sudo chmod 666 /dev/ttyACM0
+tmux
 ros2 launch mavros px4.launch fcu_url:=/dev/ttyACM0:921600
 
 # ESC Telem
 cd ~/ws/src/libuavf_2024
 sudo chmod 666 /dev/ttyTHS1
-# tmux it
+tmux
 py esc_read.py
 
 # Camera Test
