@@ -112,3 +112,10 @@ ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/d
 cd /home/ws && colcon build --merge-install && source install/setup.bash
 ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
+
+
+## Steps to test mavlink radio messaging:
+* Run `mavlink_console.py` to send statustext on GCS.
+
+* `commander_node.py` now uses MAVROS to send statustext.
+

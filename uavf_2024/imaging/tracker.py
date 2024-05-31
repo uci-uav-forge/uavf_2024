@@ -72,3 +72,6 @@ class TargetTracker:
         ]
 
         return closest_tracks
+
+    def confidence_score(self, candidate: CertainTargetDescriptor) -> float:
+        return max(calc_match_score(track.descriptor, candidate.as_probabilistic()) for track in self.tracks)

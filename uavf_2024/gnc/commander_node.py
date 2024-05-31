@@ -7,15 +7,16 @@ import mavros_msgs.srv
 import numpy as np
 import rclpy
 import rclpy.node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+from rclpy.qos import *
 from scipy.spatial.transform import Rotation as R
 import sensor_msgs.msg
 from shapely.geometry import Point, Polygon, LineString
 import std_msgs.msg
 import time
-from uavf_2024.gnc.dropzone_planner import DropzonePlanner
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list
 from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
+from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list
+from uavf_2024.gnc.dropzone_planner import DropzonePlanner
+from uavf_2024.gnc.mission_messages import *
 
 TAKEOFF_ALTITUDE = 20.0
 
@@ -39,6 +40,7 @@ class CommanderNode(rclpy.node.Node):
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_ALL,
             depth = 1)
         
         self.got_pos = False
@@ -49,6 +51,19 @@ class CommanderNode(rclpy.node.Node):
         self.waypoints_client = self.create_client(mavros_msgs.srv.WaypointPush, 'mavros/mission/push')
         self.clear_mission_client = self.create_client(mavros_msgs.srv.WaypointClear, 'mavros/mission/clear')
         self.cmd_long_client = self.create_client(mavros_msgs.srv.CommandLong, 'mavros/cmd/command')
+
+        self.msg_sub = self.create_subscription(
+            mavros_msgs.msg.StatusText,
+            'mavros/statustext/recv',
+            self.status_text_cb,
+            qos_profile
+        )
+
+        self.msg_pub = self.create_publisher(
+            mavros_msgs.msg.StatusText,
+            'mavros/statustext/send',
+            qos_profile
+        )
 
         self.cur_state = None
         self.state_sub = self.create_subscription(
@@ -98,6 +113,8 @@ class CommanderNode(rclpy.node.Node):
         self.geofence_middle_pt = (38.31470980862425, -76.54936361414539)
         
         self.turn_angle_limit = 170
+
+        self.cur_lap = -1
     
     def log(self, *args, **kwargs):
         '''
@@ -149,6 +166,12 @@ class CommanderNode(rclpy.node.Node):
 
             self.got_global_pos = True
     
+    def status_text_cb(self, statustext):
+        self.log(f"recieved statustext: {statustext}")
+        bump_lap = BumpLap.from_string(statustext.text)
+        if bump_lap is not None:
+            self.cur_lap = max(self.cur_lap, bump_lap.lap_index)
+    
     def local_to_gps(self, local):
         '''
         Convert local coordinates to global coordinates by simply calling 
@@ -169,8 +192,6 @@ class CommanderNode(rclpy.node.Node):
         '''
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
-
-        self.last_wp_seq = -1
 
         self.log("Pushing waypoints")
 
@@ -204,20 +225,27 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints.")
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
-        self.log("Delaying before setting mode.")
-        time.sleep(1)
-        self.log("Setting mode.")
-        # mavros/px4 doesn't consistently set the mode the first time this function is called...
-        # retry or fail the script.
-        for _ in range(1000):
-            self.mode_client.call(mavros_msgs.srv.SetMode.Request(base_mode = 0, custom_mode = 'AUTO.MISSION'))
-            time.sleep(0.2)
-            if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
-                self.log("Success setting mode")
-                break
+
+        if do_set_mode:
+            self.log("Delaying before setting mode.")
+            time.sleep(1)
+            self.log("Setting mode.")
+            # mavros/px4 doesn't consistently set the mode the first time this function is called...
+            # retry or fail the script.
+            for _ in range(1000):
+                self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+                    base_mode = 0,
+                    custom_mode = 'AUTO.MISSION'))
+                self.last_wp_seq = -1
+                time.sleep(0.2)
+                if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
+                    self.log("Success setting mode")
+                    break
+            else:
+                self.log("Failure setting mode, quitting.")
+                quit()
         else:
-            self.log("Failure setting mode, quitting.")
-            quit()
+            self.log("Didn't set mode, waiting for manual flip to MISSION mode.")
 
         self.log("Waiting for mission to finish.")
 
@@ -275,11 +303,15 @@ class CommanderNode(rclpy.node.Node):
         
         return detections
     
-    def wait_for_takeoff(self):
+    def request_load_payload(self, payload):
         '''
         Wait for a signal indicating that the drone should takeoff and start next lap.
         '''
-        self.log('Waiting for takeoff')
+        payload_request = RequestPayload(shape=payload.shape, shape_col=payload.shape_col, letter=payload.letter, letter_col=payload.letter_col)
+        request_msg = payload_request.to_string()
+        self.log(f"Requesting {request_msg}.")
+        for chunk in [request_msg[i:i+30] for i in range(0,len(request_msg),30)]:
+            self.msg_pub.publish(mavros_msgs.msg.StatusText(severity=mavros_msgs.msg.StatusText.NOTICE, text=chunk))
 
     def get_closest_intermediate_point(self, destination_wp):
         '''
@@ -325,15 +357,16 @@ class CommanderNode(rclpy.node.Node):
             return
             
         self.dropzone_planner.gen_dropzone_plan()
-
+        self.request_load_payload(self.payloads[0])
         for lap in range(len(self.payloads)):
             self.log(f"Lap {lap}")
 
-            # Wait for takeoff
-            self.wait_for_takeoff()
-
+            if lap > 0:
+                self.dropzone_planner.advance_current_payload_index()
+                self.request_load_payload(self.payloads[self.dropzone_planner.current_payload_index])
+            
             # Fly waypoint lap
-            self.execute_waypoints(self.mission_wps)
+            self.execute_waypoints(self.mission_wps, do_set_mode=False)
 
             if self.args.exit_early:
                 return

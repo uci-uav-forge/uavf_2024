@@ -11,6 +11,8 @@ from geometry_msgs.msg import PoseStamped, Point
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from time import strftime, time, sleep
 import cv2 as cv
+import json
+import os
 
 class ImagingNode(Node):
     def __init__(self) -> None:
@@ -19,7 +21,7 @@ class ImagingNode(Node):
         self.camera.setAbsoluteZoom(1)
         self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}/image_processor')
         focal_len = self.camera.getFocalLength()
-        self.localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
+        self.localizer: Localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
 
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -42,6 +44,7 @@ class ImagingNode(Node):
         self.cur_pose = pose
         self.cur_position = pose.pose.position
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,])
+        self.last_pose_timestamp_secs = pose.header.stamp.sec + pose.header.stamp.nanosec/1e9
         self.got_pose = True
 
     def log(self, *args, **kwargs):
@@ -61,7 +64,6 @@ class ImagingNode(Node):
 
             self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
             sleep(0.1)
-        sleep(1) # To let the autofocus finish
         
         start_angles = self.camera.getAttitude()
         img = self.camera.take_picture()
@@ -71,7 +73,6 @@ class ImagingNode(Node):
 
         detections = self.image_processor.process_image(img)
 
-        cv.imwrite(f"{self.image_processor.get_last_logs_path()}/image.png", img.get_array())
         self.log("Images processed")
 
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
@@ -88,41 +89,51 @@ class ImagingNode(Node):
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
 
-        with open(f"{self.image_processor.get_last_logs_path()}/cam_angles.txt", "w") as f:
-            f.write(f"{start_angles}\n")
-            f.write(f"{end_angles}")
-            drone_quat = self.cur_rot.as_quat()
-            f.write(f"{[drone_quat[0], drone_quat[1], drone_quat[2], drone_quat[3]]}")
+        cur_rot_quat = self.cur_rot.as_quat()
+
 
         world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
         cam_pose = (cur_position_np, world_orientation)
 
-        self.log("Writing cam pose to file")
-        with open(f"{self.image_processor.get_last_logs_path()}/cam_pose.txt", "w") as f:
-            f.write(f"{cur_position_np[0]},{cur_position_np[1]},{cur_position_np[2]}\n")
-            rot_quat = world_orientation.as_quat()
-            f.write(f"{rot_quat[0]},{rot_quat[1]},{rot_quat[2]},{rot_quat[3]}\n")
-        
         self.log(f"{len(detections)} detections")
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
+        logs_folder = self.image_processor.get_last_logs_path()
+        os.makedirs(logs_folder, exist_ok=True)
+        cv.imwrite(f"{logs_folder}/image.png", img.get_array())
+        log_data = {
+            'pose_time': self.last_pose_timestamp_secs,
+            'image_time': timestamp,
+            'drone_position': cur_position_np.tolist(),
+            'drone_q': cur_rot_quat.tolist(),
+            'gimbal_yaw': avg_angles[0],
+            'gimbal_pitch': avg_angles[1],
+            'gimbal_roll': avg_angles[2],
+            'preds_3d': [
+                {
+                    'position': p.position.tolist(),
+                    'id': p.id,
+                } for p in preds_3d
+            ]
+        }
+        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'))
         self.log("Localization finished")
 
         response.detections = []
-        # for i, p in enumerate(preds_3d):
-        #     t = TargetDetection(
-        #         timestamp = int(timestamp*1000),
-        #         x = p.position[0],
-        #         y = p.position[1],
-        #         z = p.position[2],
-        #         shape_conf = p.descriptor.shape_probs.tolist(),
-        #         letter_conf = p.descriptor.letter_probs.tolist(),
-        #         shape_color_conf = p.descriptor.shape_col_probs.tolist(),
-        #         letter_color_conf = p.descriptor.letter_col_probs.tolist(),
-        #         id = p.id
-        #     )
+        for i, p in enumerate(preds_3d):
+            t = TargetDetection(
+                timestamp = int(timestamp*1000),
+                x = p.position[0],
+                y = p.position[1],
+                z = p.position[2],
+                shape_conf = p.descriptor.shape_probs.tolist(),
+                letter_conf = p.descriptor.letter_probs.tolist(),
+                shape_color_conf = p.descriptor.shape_col_probs.tolist(),
+                letter_color_conf = p.descriptor.letter_col_probs.tolist(),
+                id = p.id
+            )
 
-        #     response.detections.append(t)
+            response.detections.append(t)
 
         self.log("Returning Response")
 

@@ -16,6 +16,10 @@ setup(
         'line_profiler',
         'memory_profiler',
         'geographiclib',
-        'shapely'
+        'shapely',
+        'asyncio',
+        'mavsdk',
+        'aioconsole',
+        'aiostream'
     ]
 )
