@@ -66,6 +66,7 @@ while 1:
                 print("Got first valid buffer", buff)
             temp = buff[0]
             voltage = (buff[1]<<8) + buff[2]
+            print(f"{voltage/100/12:.02f}V per cell ({voltage/100}V total)")
             current = (buff[3]<<8) + buff[4]
             consumption = (buff[5]<<8) + buff[6]
             rpm = (buff[7]<<8) + buff[8]
