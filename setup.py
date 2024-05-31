@@ -17,6 +17,10 @@ setup(
         'memory_profiler',
         'geographiclib',
         'shapely',
+        'asyncio',
+        'mavsdk',
+        'aioconsole',
+        'aiostream',
         'gpxpy'
     ]
 )

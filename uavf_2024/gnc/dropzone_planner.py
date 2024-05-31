@@ -19,6 +19,8 @@ class DropzonePlanner:
         self.has_scanned_dropzone = False
         self.dist_btwn_img_wps = 2
 
+        self.dropped_payloads = []
+
         np.set_printoptions(precision=20)
     
     def gen_dropzone_plan(self):
@@ -142,7 +144,7 @@ class DropzonePlanner:
         '''
 
         # Scan the drop zone if the drone has completed its first waypoint lap
-        if self.has_scanned_dropzone == False:
+        if not self.has_scanned_dropzone:
             self.scan_dropzone()
             self.has_scanned_dropzone = True
         
@@ -164,5 +166,10 @@ class DropzonePlanner:
 
         # Release the payload
         self.commander.release_payload()
-        self.current_payload_index += 1
         self.commander.log(f"Released payload {self.current_payload_index}")
+    
+    def advance_current_payload_index(self):
+        self.dropped_payloads.append(self.current_payload_index)
+        self.current_payload_index = max(
+            (i for i in range(len(self.commander.payloads)) if i not in self.dropped_payloads),
+            key = lambda i: self.target_tracker.confidence_score(self.commander.payloads[i]))

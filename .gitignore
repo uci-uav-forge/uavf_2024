@@ -16,5 +16,6 @@ recorded_images
 .vscode
 test/*.png
 trained_model.pth
+venv/
 logs_esc
 gpx/
