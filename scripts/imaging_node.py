@@ -14,31 +14,6 @@ import cv2 as cv
 import json
 import os
 
-class CyclicQueue:
-    def __init__(self, size):
-        self.size = size
-        self.data = [None for _ in range(size)]
-        self.idx = 0
-
-    def push(self, item):
-        self.data[self.idx] = item
-        self.idx = (self.idx + 1) % self.size
-
-    def get(self):
-        return self.data
-
-    def find_max(self, key_fn):
-        return max(self.data, key=lambda x: key_fn(x) if x is not None else -1)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        return self.data[idx]
-
-    def __repr__(self):
-        return str(self.data)
-
 class ImagingNode(Node):
     def __init__(self) -> None:
         super().__init__('imaging_node')
@@ -75,10 +50,8 @@ class ImagingNode(Node):
 
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
         self.get_logger().info("Finished initializing imaging node")
-        self.telem_queue = CyclicQueue(10)
         
     def got_pose_cb(self, pose: PoseStamped):
-        self.telem_queue.push(pose)
         self.cur_pose = pose
         self.cur_position = pose.pose.position
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,])
@@ -125,12 +98,9 @@ class ImagingNode(Node):
             else:
                 self.log("Got pose finally!")
 
-        closest_pose = self.telem_queue.find_max(lambda x: abs(x.header.stamp.sec + x.header.stamp.nanosec/1e9 - timestamp))
+        cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
 
-        cur_position_np = np.array([closest_pose.pose.position.x, closest_pose.pose.position.y, closest_pose.pose.position.z])
-        cur_rot_quat = R.from_quat([closest_pose.pose.orientation.x,closest_pose.pose.orientation.y,closest_pose.pose.orientation.z,closest_pose.pose.orientation.w])
-        # cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
-        # cur_rot_quat = self.cur_rot.as_quat()
+        cur_rot_quat = self.cur_rot.as_quat()
 
 
         world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
