@@ -3,7 +3,7 @@ from itertools import tee
 import numpy as np
 import torch
 
-from uavf_2024.imaging.imaging_types import Image, ImageDimensionsOrder, HWC, CHW, CHANNELS, HEIGHT, WIDTH
+from uavf_2024.imaging.imaging_types import Image, ImageDimensionsOrder, HWC, CHW, CHANNELS, HEIGHT, WIDTH, ProbabilisticTargetDescriptor, CertainTargetDescriptor
 
 def pairwise(iterable):
     '''
@@ -158,3 +158,18 @@ class ImageClassTest(unittest.TestCase):
                 tile_size = np.random.randint(5,30)
                 test_with_params(i,j,tile_size,np.random.randint(0,tile_size))
 
+    def test_descriptor_serialization(self):
+        prob_desc = CertainTargetDescriptor("red", "rectangle", "white", "A").as_probabilistic()
+
+        remade_desc = ProbabilisticTargetDescriptor.from_string(str(prob_desc))
+
+        for disitrubtions in [
+            (prob_desc.shape_probs, remade_desc.shape_probs),
+            (prob_desc.shape_col_probs, remade_desc.shape_col_probs),
+            (prob_desc.letter_probs, remade_desc.letter_probs),
+            (prob_desc.letter_col_probs, remade_desc.letter_col_probs)
+        ]:
+            assert np.allclose(disitrubtions[0], disitrubtions[1])
+
+if __name__ == "__main__":
+    unittest.main()

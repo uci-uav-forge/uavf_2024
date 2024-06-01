@@ -70,6 +70,21 @@ class ProbabilisticTargetDescriptor:
         )
         '''
 
+    @staticmethod
+    def from_string(string: str) -> ProbabilisticTargetDescriptor:
+        '''
+        Converts a string representation of a ProbabilisticTargetDescriptor back into a ProbabilisticTargetDescriptor object.
+        '''
+        shape_lines = string.split("Shapes:\n")[1].split("Letters:")[0].split("\n")[:-1]
+        shape_probs = np.array([float(line.split(": ")[1].strip()) for line in shape_lines])
+        letter_lines = string.split("Letters:\n")[1].split("Shape Colors:")[0].split("\n")[:-1]
+        letter_probs = np.array([float(line.split(": ")[1].strip()) for line in letter_lines])
+        shape_col_lines = string.split("Shape Colors:\n")[1].split("Letter Colors:")[0].split("\n")[:-1]
+        shape_col_probs = np.array([float(line.split(": ")[1].strip()) for line in shape_col_lines])
+        letter_col_lines = string.split("Letter Colors:\n")[1].split("\n")[:-2]
+        letter_col_probs = np.array([float(line.split(": ")[1].strip()) for line in letter_col_lines])
+        return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
+
     def __add__(self, other):
         return ProbabilisticTargetDescriptor(
             self.shape_probs + other.shape_probs,
