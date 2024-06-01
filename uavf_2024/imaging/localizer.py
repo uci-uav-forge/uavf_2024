@@ -20,6 +20,13 @@ class Localizer:
         self.camera_resolution = camera_resolution
         self.cam_initial_directions = cam_initial_directions
         self.ground_axis = ground_axis
+    
+    @staticmethod
+    def drone_initial_directions() -> tuple[np.ndarray, np.ndarray]:
+        '''
+        Returns the initial directions of the drone camera, in the world frame, for this year's comp quad.
+        '''
+        return (np.array([1,0,0]), np.array([0,-1, 0]))
 
     @staticmethod
     def from_focal_length(cam_focal_len: float, cam_res: tuple[int,int], cam_initial_directions: tuple[np.ndarray, np.ndarray], ground_axis: int):
@@ -77,4 +84,4 @@ class Localizer:
 
         x = w/2 + x_component*scale_factor
         y = h/2 + y_component*scale_factor
-        return (x,y)
+        return (int(x),int(y))
