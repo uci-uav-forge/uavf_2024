@@ -56,7 +56,7 @@ class TargetTracker:
             closest_track = min(self.tracks, key=lambda track: np.linalg.norm(track.position - detection.position))
 
             # if the track is close enough, add the detection to the track
-            if np.linalg.norm(closest_track.position - detection.position) < 3:
+            if np.linalg.norm(closest_track.position - detection.position) < 1:
                 closest_track.add_measurement(detection)
             # otherwise, create a new track
             else:

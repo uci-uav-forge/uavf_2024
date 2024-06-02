@@ -32,8 +32,6 @@ class ContinuousImagingClient(Node):
                 Target3D.from_ros(detection) for detection in res
             ])
 
-            sleep(1)
-
         self.get_logger().info("Done with requests")
         estimated_positions = self.tracker.estimate_positions(search_candidates)
         self.get_logger().info(str(estimated_positions))
