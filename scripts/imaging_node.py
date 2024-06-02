@@ -19,9 +19,20 @@ class ImagingNode(Node):
         super().__init__('imaging_node')
         self.camera = Camera()
         self.camera.setAbsoluteZoom(1)
-        self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}/image_processor')
+        logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
+        os.makedirs(logs_path, exist_ok=True)
+        self.log(f"Logging to {logs_path}")
+        self.image_processor = ImageProcessor(logs_path)
+
         focal_len = self.camera.getFocalLength()
-        self.localizer: Localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
+        self.localizer = Localizer.from_focal_length(
+            focal_len, 
+            (1920, 1080),
+            (np.array([1,0,0]), np.array([0,-1, 0])),
+            2    
+        )
+
+        self.log(f"Setting up imaging node ROS connections")
 
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -99,6 +110,7 @@ class ImagingNode(Node):
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         logs_folder = self.image_processor.get_last_logs_path()
+        self.log(f"This frame going to {logs_folder}")
         os.makedirs(logs_folder, exist_ok=True)
         cv.imwrite(f"{logs_folder}/image.png", img.get_array())
         log_data = {
@@ -146,9 +158,6 @@ def main(args=None) -> None:
     rclpy.init(args=args)
     node = ImagingNode()
     rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
-
 
 if __name__ == '__main__':
     try:
