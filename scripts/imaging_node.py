@@ -10,6 +10,7 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped, Point
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from time import strftime, time, sleep
+import cv2 as cv
 
 class ImagingNode(Node):
     def __init__(self) -> None:
@@ -52,13 +53,13 @@ class ImagingNode(Node):
         
             We want to take photo when the attitude is down only. 
         '''
-        self.get_logger().info("Received Down Image Request")
+        self.log("Received Down Image Request")
 
         self.camera.request_autofocus()
         self.camera.request_down()
         while abs(self.camera.getAttitude()[1] - -90) > 2:
 
-            self.get_logger().info(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
+            self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
             sleep(0.1)
         sleep(1) # To let the autofocus finish
         
@@ -66,10 +67,12 @@ class ImagingNode(Node):
         img = self.camera.take_picture()
         timestamp = time()
         end_angles = self.camera.getAttitude()
-        self.get_logger().info("Picture taken")
+        self.log("Picture taken")
 
         detections = self.image_processor.process_image(img)
-        self.get_logger().info("Images processed")
+
+        cv.imwrite(f"{self.image_processor.get_last_logs_path()}/image.png", img.get_array())
+        self.log("Images processed")
 
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
         if not self.got_pose:
@@ -77,54 +80,54 @@ class ImagingNode(Node):
             for _ in range(5):
                 if self.got_pose:
                     break
-                self.get_logger().info("Waiting for pose")
+                self.log("Waiting for pose")
             if not self.got_pose:
                 return
             else:
-                self.get_logger().info("Got pose finally!")
+                self.log("Got pose finally!")
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
+
+        with open(f"{self.image_processor.get_last_logs_path()}/cam_angles.txt", "w") as f:
+            f.write(f"{start_angles}\n")
+            f.write(f"{end_angles}")
+            drone_quat = self.cur_rot.as_quat()
+            f.write(f"{[drone_quat[0], drone_quat[1], drone_quat[2], drone_quat[3]]}")
+
         world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
         cam_pose = (cur_position_np, world_orientation)
 
-        self.get_logger().info("Writing cam pose to file")
+        self.log("Writing cam pose to file")
         with open(f"{self.image_processor.get_last_logs_path()}/cam_pose.txt", "w") as f:
             f.write(f"{cur_position_np[0]},{cur_position_np[1]},{cur_position_np[2]}\n")
             rot_quat = world_orientation.as_quat()
             f.write(f"{rot_quat[0]},{rot_quat[1]},{rot_quat[2]},{rot_quat[3]}\n")
         
-        self.get_logger().info(f"{len(detections)} detections")
+        self.log(f"{len(detections)} detections")
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
-        self.get_logger().info("Localization finished")
+        self.log("Localization finished")
 
         response.detections = []
-        for i, p in enumerate(preds_3d):
-            t = TargetDetection(
-                timestamp = int(timestamp*1000),
-                x = p.position[0],
-                y = p.position[1],
-                z = p.position[2],
-                shape_conf = p.descriptor.shape_probs.tolist(),
-                letter_conf = p.descriptor.letter_probs.tolist(),
-                shape_color_conf = p.descriptor.shape_col_probs.tolist(),
-                letter_color_conf = p.descriptor.letter_col_probs.tolist(),
-                id = p.id
-            )
+        # for i, p in enumerate(preds_3d):
+        #     t = TargetDetection(
+        #         timestamp = int(timestamp*1000),
+        #         x = p.position[0],
+        #         y = p.position[1],
+        #         z = p.position[2],
+        #         shape_conf = p.descriptor.shape_probs.tolist(),
+        #         letter_conf = p.descriptor.letter_probs.tolist(),
+        #         shape_color_conf = p.descriptor.shape_col_probs.tolist(),
+        #         letter_color_conf = p.descriptor.letter_col_probs.tolist(),
+        #         id = p.id
+        #     )
 
-            response.detections.append(t)
+        #     response.detections.append(t)
 
-        self.get_logger().info("Returning Response")
+        self.log("Returning Response")
 
         return response
-    
-    
-    def get_attitudes(self, request, response: list[float]):
-        self.get_logger().info("Received Request for attitudes")
-        self.camera.request_down()
-        sleep(0.5)
-        response.attitudes = self.camera.getAttitude()
-        return response
+
         
 
 def main(args=None) -> None:

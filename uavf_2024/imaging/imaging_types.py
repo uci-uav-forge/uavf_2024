@@ -227,7 +227,7 @@ class FullBBoxGroundTruth:
     det_id: int = None
 
 @dataclass
-class InstanceSegmentationResult:
+class DetectionResult:
     '''
     `mask` and `img` should be (w,h,c) where c is 1 for mask and 3 for img
     '''
@@ -236,7 +236,6 @@ class InstanceSegmentationResult:
     width: img_coord_t
     height: img_coord_t
     confidences: np.ndarray
-    mask: np.ndarray
     img: 'Image'
     id : int
 
@@ -382,6 +381,9 @@ class Image(Generic[_UnderlyingImageT]):
         Does not copy the underlying array.
         """
         return Tile(self.make_sub_image(x_coord, y_coord, tile_size, tile_size), x_coord, y_coord)
+    
+    def as_tile(self) -> Tile:
+        return Tile(self, 0, 0)
     
     @property
     def shape(self):
