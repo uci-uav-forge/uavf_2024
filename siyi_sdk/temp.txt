@@ -1,0 +1,12 @@
+
+55 66 01 03 00 01 00 0e fa ba 00 b7 b1
+
+55 66 01 02 00 01 00 0e ba 00 f7 e1 yaw: 186 pitch: 0
+
+55 66 01 02 00 01 00 0e 00 fa 64 5e yaw: 0 pitch: 250/10 = 25
+
+55 66 01 02 00 01 00 0F 04 05 60 BB - From MANUAL abs zoom
+
+55 66 01 02 00 00 00 0f 04 05 31 11 - ENCODED abs Zoom (changing seq to 0001 matches manual with CRC)
+|   |  |  |  | |   |  |  |  |
+-STX- CTL -DL- -SEQ- CMD DATA -CRC-
