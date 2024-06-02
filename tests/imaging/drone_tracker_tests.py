@@ -1,9 +1,6 @@
 from uavf_2024.imaging.drone_tracker import DroneTracker
 from uavf_2024.imaging.particle_filter import BoundingBox
 from uavf_2024.imaging.camera_model import CameraModel
-import shutil
-
-#shutil.rmtree()
 import unittest
 import numpy as np
 from numpy import cos, pi, sin, tan
