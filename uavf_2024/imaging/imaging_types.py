@@ -70,6 +70,21 @@ class ProbabilisticTargetDescriptor:
         )
         '''
 
+    @staticmethod
+    def from_string(string: str) -> ProbabilisticTargetDescriptor:
+        '''
+        Converts a string representation of a ProbabilisticTargetDescriptor back into a ProbabilisticTargetDescriptor object.
+        '''
+        shape_lines = string.split("Shapes:\n")[1].split("Letters:")[0].split("\n")[:-1]
+        shape_probs = np.array([float(line.split(": ")[1].strip()) for line in shape_lines])
+        letter_lines = string.split("Letters:\n")[1].split("Shape Colors:")[0].split("\n")[:-1]
+        letter_probs = np.array([float(line.split(": ")[1].strip()) for line in letter_lines])
+        shape_col_lines = string.split("Shape Colors:\n")[1].split("Letter Colors:")[0].split("\n")[:-1]
+        shape_col_probs = np.array([float(line.split(": ")[1].strip()) for line in shape_col_lines])
+        letter_col_lines = string.split("Letter Colors:\n")[1].split("\n")[:-2]
+        letter_col_probs = np.array([float(line.split(": ")[1].strip()) for line in letter_col_lines])
+        return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
+
     def __add__(self, other):
         return ProbabilisticTargetDescriptor(
             self.shape_probs + other.shape_probs,
@@ -106,11 +121,11 @@ class CertainTargetDescriptor:
     def __init__(self, shape_col: str, shape: str, letter_col: str, letter: str):
         assert shape is None or shape in SHAPES
         self.shape = shape
-        if shape == "person":
-            self.shape_col = None
-            self.letter_col = None
-            self.letter = None
-            return
+        # if shape == "person":
+        #     self.shape_col = None
+        #     self.letter_col = None
+        #     self.letter = None
+        #     return
 
         assert shape_col is None or shape_col in COLORS
         assert letter_col is None or letter_col in COLORS
@@ -144,10 +159,17 @@ class CertainTargetDescriptor:
             LETTERS.index(self.letter) if self.letter is not None else None
         )
     
-    def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
+    def as_probabilistic(self, force_through_none = True) -> ProbabilisticTargetDescriptor:
+        '''
+        If force_through_none is True, then the None values will be converted to a uniform distribution over the possible values.
+        otherwise, an error will be raised if any of the values are None.
+        '''
         err_message = '''Cannot convert to probabilistic if any of the values are None (probably trying 
                         to convert a ground truth label with missing data, which shouldn't be done'''
-        assert None not in [self.shape, self.letter, self.shape_col, self.letter_col], err_message
+
+        if not force_through_none and None in [self.shape, self.letter, self.shape_col, self.letter_col]:
+            raise ValueError(err_message+ f" {self}")
+
         shape_probs = np.zeros(len(SHAPES))
         shape_probs[SHAPES.index(self.shape)] = 1.0
 
@@ -172,7 +194,7 @@ class CertainTargetDescriptor:
         return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
 
     def __repr__(self):
-        return f"{self.shape_col} {self.shape}, {self.letter_col} {self.letter}"
+        return f"{self.shape_col} {self.shape} {self.letter_col} {self.letter}"
 
 CertainTargetDescriptor.from_indices(0, 0, 0, 0)
 @dataclass

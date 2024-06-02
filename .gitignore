@@ -19,3 +19,4 @@ trained_model.pth
 venv/
 logs_esc
 gpx/
+flight_logs
