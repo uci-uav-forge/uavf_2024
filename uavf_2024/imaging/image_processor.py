@@ -126,7 +126,7 @@ class ImageProcessor:
                         shape_color_conf,
                         letter_color_conf
                     ),
-                    img_id = self.num_processed-1, # at this point it will have been incremented already
+                    img_id = self.num_processed,
                     det_id = shape_res.id
                 )
             )
@@ -203,7 +203,7 @@ class ImageProcessor:
                     shape_results.width,
                     shape_results.height,
                     ProbabilisticTargetDescriptor(),
-                    img_id = self.num_processed-1, # at this point it will have been incremented already
+                    img_id = self.num_processed,
                     det_id = shape_results.id
                 )]
         total_results = self._classify_color_and_char(shape_results)
