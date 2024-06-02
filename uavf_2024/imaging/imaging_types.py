@@ -64,7 +64,7 @@ class Character:
         return self.value == other.value
     
     @staticmethod
-    def __len__():
+    def count():
         return len(CHARACTERS)
 
 
