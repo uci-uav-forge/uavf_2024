@@ -128,7 +128,7 @@ class ImagingNode(Node):
                 } for p in preds_3d
             ]
         }
-        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'))
+        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
         self.log("Localization finished")
 
         response.detections = []
