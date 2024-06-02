@@ -95,16 +95,6 @@ class ImageProcessor:
         
         shape_results = nms_process(shape_results, self.thresh_iou)
 
-        if self.debug_path is not None:
-            local_debug_path = f"{self.debug_path}/img_{self.num_processed}"
-            os.makedirs(local_debug_path, exist_ok=True)
-            img_to_draw_on = img.get_array().copy()
-            for res in shape_results:
-                x,y,w,h = res.x, res.y, res.width, res.height
-                cv.rectangle(img_to_draw_on, (x,y), (x+w,y+h), (0,255,0), 2)
-                cv.putText(img_to_draw_on, str(res.id), (x,y), cv.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-            cv.imwrite(f"{local_debug_path}/bounding_boxes.png", img_to_draw_on)
-
         return shape_results
     
     def _classify_color_and_char(self, shape_results : list[DetectionResult]):
@@ -119,13 +109,7 @@ class ImageProcessor:
                 letter_img = cv.resize(shape_res.img.get_array().astype(np.float32), (128,128))
                 letter_imgs.append(letter_img)
 
-                if self.debug_path is not None:
-                    local_debug_path = f"{self.debug_path}/img_{self.num_processed}"
-                    instance_debug_path = f"{local_debug_path}/det_{shape_res.id}"
-                    os.makedirs(instance_debug_path, exist_ok=True)
-                    cv.imwrite(f"{instance_debug_path}/input.png", shape_res.img.get_array())
                 # Classify the colors
-
                 letter_color_conf, shape_color_conf = self.color_classifier.predict(letter_img)
 
                 # add to total_results
@@ -152,11 +136,6 @@ class ImageProcessor:
             for result, conf in zip(total_results[-len(results):], letter_conf):
                 result.descriptor.letter_probs = conf
             
-        if self.debug_path is not None:
-            for result in total_results:
-                pred_descriptor_string = str(result.descriptor)
-                with open(f"{local_debug_path}/det_{result.det_id}/descriptor.txt", "w") as f:
-                    f.write(pred_descriptor_string)
         return total_results
     
     def process_image(self, img: Image) -> list[FullBBoxPrediction]:
@@ -170,8 +149,36 @@ class ImageProcessor:
             raise ValueError("img must be in HWC order")
         
         shape_results = self._make_shape_detection(img)
-        self.num_processed += 1
         total_results = self._classify_color_and_char(shape_results)
+
+        if self.debug_path is not None:
+            local_debug_path = f"{self.debug_path}/img_{self.num_processed}"
+            os.makedirs(local_debug_path, exist_ok=True)
+            for shape_res in shape_results:
+                path = f"{local_debug_path}/det_{shape_res.id}"
+                os.makedirs(path, exist_ok=True)
+                cv.imwrite(f"{path}/input.png", shape_res.img.get_array())
+
+            img_to_draw_on = img.get_array().copy()
+            for result in total_results:
+                x,y,w,h = result.x, result.y, result.width, result.height
+                cv.rectangle(img_to_draw_on, (x,y), (x+w,y+h), (0,255,0), 2)
+                shape_col, shape, letter_col, letter = str(result.descriptor.collapse_to_certain()).split(" ")
+                shape_col_prob = max(result.descriptor.shape_col_probs)
+                shape_prob = max(result.descriptor.shape_probs)
+                letter_col_prob = max(result.descriptor.letter_col_probs)
+                letter_prob = max(result.descriptor.letter_probs)
+                cv.putText(img_to_draw_on, f"{result.det_id}", (x,y), cv.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                cv.putText(img_to_draw_on, f"{shape_col}: {shape_col_prob:.03f}", (x+w,y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+                cv.putText(img_to_draw_on, f"{shape}: {shape_prob:.03f}", (x+w,y+20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+                cv.putText(img_to_draw_on, f"{letter_col}: {letter_col_prob:.03f}", (x+w,y+40), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+                cv.putText(img_to_draw_on, f"{letter}: {letter_prob:.03f}", (x+w,y+60), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+                pred_descriptor_string = str(result.descriptor)
+                with open(f"{local_debug_path}/det_{result.det_id}/descriptor.txt", "w") as f:
+                    f.write(pred_descriptor_string)
+            cv.imwrite(f"{local_debug_path}/bounding_boxes.png", img_to_draw_on)
+
+        self.num_processed += 1
         return total_results
     
     def process_image_lightweight(self, img : Image) -> list[FullBBoxPrediction]:

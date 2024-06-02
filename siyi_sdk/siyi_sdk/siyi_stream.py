@@ -1,4 +1,3 @@
-import av # pip install av --no-binary av (https://stackoverflow.com/a/74265080)
 import cv2
 import numpy as np
 import time
@@ -13,6 +12,9 @@ import threading
 # Untested but could work if we build opencv with gstreamer:
 # This will automatically grab latest frame
 #cv2.VideoCapture("rtspsrc location=rtsp://... ! decodebin ! videoconvert ! video/x-raw,framerate=30/1 ! appsink drop=true sync=false", cv2.CAP_GSTREAMER)
+
+# With the current method, we can grab the latest frame, but it will be ~0.6 seconds behind realtime to due opencv being dogshit. (you can see this by running the test_continuous function)
+
 
 class SIYISTREAM:
 
@@ -40,9 +42,22 @@ class SIYISTREAM:
         self._stream_link = "rtsp://"+self._server_ip+":"+str(self._port)+"/"+self._name
         self._logger.info("Stream link: {}".format(self._stream_link))
         self._stream = None
-        self._latest_frame = None
-        self._frame_mutex = threading.Lock()
-        self._frame_reading_thread = threading.Thread(target=self._update_frame)
+
+        #Due to the queue like nature of opencv (really fricking stupid), we need to use a bufferless video capture
+        self.lock = threading.Lock()
+        self.capture_thread = threading.Thread(target=self._read_stream)
+        self.capture_thread.daemon = True
+
+    # grab frames as soon as they are available
+    def _read_stream(self):
+        while True:
+            with self.lock:
+                ret = self._stream.grab()
+                self._logger.debug("Grabbed frame")
+            if not ret:
+                break
+            # Delay so the thread lock isn't hogged
+            time.sleep(1/35) # slightly above 30fps
 
     def connect(self):
         """
@@ -51,26 +66,18 @@ class SIYISTREAM:
         if self._stream is not None:
             self._logger.warning("Already connected to camera")
             return
-        
-        container = av.open(self._stream_link, format="rtsp")        
-        self._stream = container.demux()
-
-        self._frame_reading_thread.start()
-  
+        self._stream = cv2.VideoCapture(self._stream_link)
+        # Check if camera is connected
+        if not self._stream.isOpened():
+            self._logger.error("Unable to connect to camera")
+            self._stream = None
+            return
+        # Start capture thread
+        self.capture_thread.start()
         self._logger.info("Connected to camera")
+        # Let the buffer fill
+        time.sleep(2)
         return True
-    
-    def _update_frame(self):
-        while self._stream is not None:
-            with self._frame_mutex:
-                frames = next(self._stream).decode()
-                if len(frames) == 0:
-                    self._logger.warning("No frame in buffer")
-                    continue
-                elif len(frames) > 1:
-                    self._logger.warning("More than one frame in buffer")
-                self._latest_frame = frames[0].to_ndarray(format="bgr24")
-            time.sleep(1/1000)
 
     def disconnect(self):
         """
@@ -79,19 +86,27 @@ class SIYISTREAM:
         if self._stream is None:
             self._logger.warning("Already disconnected from camera")
             return
+        self._stream.release()
         self._stream = None
-        self._frame_reading_thread.join()
         self._logger.info("Disconnected from camera")
         return
 
     def get_frame(self) -> np.ndarray:
         """
-        Get the latest frame from the stream
+        Get a frame from the stream
         """
         if self._stream is None:
-            raise Exception("Not connected to camera")
-        if self._latest_frame is None:
-            raise Exception("No frame available")
-        with self._frame_mutex:
-            return self._latest_frame
+            self._logger.warning("Not connected to camera")
+            return
+        ret = False
+        while not ret:
+            self._logger.debug("Waiting for lock")
+            with self.lock:
+                self._logger.debug("Lock acquired")
+                ret, frame = self._stream.retrieve()
+                if ret:
+                    self._logger.info("Frame read")
+                else:
+                    self._logger.warning("Unable to read frame")
+        return frame
     

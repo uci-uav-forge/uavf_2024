@@ -28,7 +28,7 @@ class CommanderNode(rclpy.node.Node):
         super().__init__('uavf_commander_node')
 
         np.set_printoptions(precision=8)
-        logging.basicConfig(filename='commander_node_{:%Y-%m-%d}.log'.format(datetime.now()), encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(filename='commander_node_{:%Y-%m-%d}.log'.format(datetime.now()), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
         logging.getLogger().addHandler(logging.StreamHandler())
 
         qos_profile = QoSProfile(
@@ -121,7 +121,10 @@ class CommanderNode(rclpy.node.Node):
             self.last_wp_seq = reached.wp_seq
 
             if self.call_imaging_at_wps:
-                self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
+                self.do_imaging_call()
+    
+    def do_imaging_call(self):
+        self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
     
     def got_pose_cb(self, pose):
         self.cur_pose = pose
@@ -271,6 +274,15 @@ class CommanderNode(rclpy.node.Node):
         if self.args.servo_test:
             self.release_payload()
             return
+
+        if self.args.call_imaging:
+            while True:
+                self.do_imaging_call()
+                detections = self.gather_imaging_detections()
+                for detection in detections:
+                    detection_gp = self.local_to_gps(detection.position)
+                    self.log(f"For detection {detection} would go to {detection_gp}")
+                time.sleep(self.args.call_imaging_period)
             
         self.dropzone_planner.gen_dropzone_plan()
         self.request_load_payload(self.payloads[0])
