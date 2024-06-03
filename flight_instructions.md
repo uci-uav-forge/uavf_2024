@@ -44,7 +44,7 @@ There are a few relevant flags that one might want to use for testing
 
 ```
 cd ~/ws && colcon build --merge-install && source install/setup.bash
-ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE ~/ws/src/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE ~/ws/src/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9 --call-imaging --call-imaging-period 0.5
 ```
 
 (ARC Club field)

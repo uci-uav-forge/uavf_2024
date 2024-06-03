@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from .imaging_types import ProbabilisticTargetDescriptor, Tile
+from math import log
 
 from itertools import islice
 
@@ -26,7 +27,7 @@ def calc_match_score(a: ProbabilisticTargetDescriptor, b: ProbabilisticTargetDes
         letter_score = sum(a.letter_probs * b.letter_probs)
         shape_color_score = sum(a.shape_col_probs * b.shape_col_probs)
         letter_color_score = sum(a.letter_col_probs * b.letter_col_probs)
-        return shape_score * letter_score * shape_color_score * letter_color_score
+        return shape_score * shape_color_score
     
 
 def sort_payload(list_payload_targets: List[ProbabilisticTargetDescriptor], shape_confusion: np.ndarray , 
