@@ -19,7 +19,6 @@ if __name__ == '__main__':
     parser.add_argument('payload_list')
     parser.add_argument('image_width_m', type = float)
     parser.add_argument('image_height_m', type = float)
-    parser.add_argument('geofence_file')
     parser.add_argument('--exit-early', action='store_true')
     parser.add_argument('--servo-test', action='store_true')
     parser.add_argument('--call-imaging', action='store_true')
