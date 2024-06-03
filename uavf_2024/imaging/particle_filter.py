@@ -83,7 +83,7 @@ class ParticleFilter:
         # low and high are lower and upper bounds on the distance away the object we see is.
         low = initial_radius_guess * self.focal_len_pixels / max(box.width, box.height)
         high = 2 * initial_radius_guess * self.focal_len_pixels / max(box.width, box.height) * 2
-        while low < high:
+        for _ in range(100):
             distance = (low + high) / 2
             x_guess = Tensor(cam_pose[0]) + distance * camera_look_vector
             projected_box = self.compute_measurements(
@@ -102,6 +102,8 @@ class ParticleFilter:
                 low = distance
             else:
                 high = distance
+        if projected_box_area < 0.95 * box_area or projected_box_area > 1.05 * box_area:
+            raise Exception(f"Failed to find a good distance. Got {projected_box} with area {projected_box_area} and wanted {box_area}")
 
         horizontal_velocity = torch.rand(1)*10
         vertical_velocity = torch.rand(1)*2-1

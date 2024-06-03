@@ -9,14 +9,13 @@ import argparse
 from threading import Thread
 import sys
 
-# Command to run: ros2 run libuavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/uavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9 /home/ws/uavf_2024/uavf_2024/gnc/data/FLIGHT_BOUNDARY
+# Command to run: ros2 run libuavf_2024 demo_commander_node.py /home/ws/uavf_2024/uavf_2024/gnc/data/primary.gpx /home/ws/uavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 
 if __name__ == '__main__':
     rclpy.init()
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('mission_file')
-    parser.add_argument('dropzone_file')
+    parser.add_argument('gpx_file')
     parser.add_argument('payload_list')
     parser.add_argument('image_width_m', type = float)
     parser.add_argument('image_height_m', type = float)

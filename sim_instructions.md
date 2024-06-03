@@ -63,12 +63,12 @@ cd /home/ws && colcon build --merge-install && source install/setup.bash
 
 Launch the mock imaging node:
 ```
-ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY 12 9
+ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/primary.gpx 12 9
 ```
 
 Launch the demo commander node:
 ```
-ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9 /home/ws/uavf_2024/uavf_2024/gnc/data/FLIGHT_BOUNDARY
+ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/primary.gpx /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
 
 This will execute one lap of the mission in SITL.
@@ -88,12 +88,12 @@ PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64230 PX4_HOME_LON=-117.82683 PX4_HOME_ALT=142 m
 
 ```
 cd /home/ws && colcon build --merge-install && source install/setup.bash
-ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY 12 9
+ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/club_field.gpx 12 9
 ```
 
 ```
 cd /home/ws && colcon build --merge-install && source install/setup.bash
-ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/club_field.gpx /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
 
 ARC upper field sim:
@@ -105,12 +105,12 @@ PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64158 PX4_HOME_LON=-117.82573 PX4_HOME_ALT=142 m
 
 ```
 cd /home/ws && colcon build --merge-install && source install/setup.bash
-ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE 12 9
+ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/upper_field.gpx 12 9
 ```
 
 ```
 cd /home/ws && colcon build --merge-install && source install/setup.bash
-ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/ARC/UPPER_FIELD_DROPZONE /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/upper_field.gpx /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```
 
 

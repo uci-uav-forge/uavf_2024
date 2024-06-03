@@ -20,6 +20,7 @@ setup(
         'asyncio',
         'mavsdk',
         'aioconsole',
-        'aiostream'
+        'aiostream',
+        'gpxpy'
     ]
 )
