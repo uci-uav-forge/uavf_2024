@@ -34,7 +34,7 @@ def calc_metrics(predictions: list[FullBBoxPrediction], ground_truth: list[FullB
         x,y = truth.x, truth.y
         w,h = truth.width, truth.height 
         true_box = np.array([[
-            x-w//2,y+h//2,x+w//2,y+h//2
+            x-w//2,y-h//2,x+w//2,y+h//2
         ]])
         
         shape_col, shape, letter_col, letter = truth.descriptor.to_indices()
