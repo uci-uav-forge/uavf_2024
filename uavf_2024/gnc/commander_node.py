@@ -188,7 +188,7 @@ class CommanderNode(rclpy.node.Node):
         pose = self.cur_pose.pose
         return np.array([pose.position.x, pose.position.y])
     
-    def execute_waypoints(self, waypoints, yaws = None):
+    def execute_waypoints(self, waypoints, yaws = None, do_set_mode = True):
         '''
         Fly to each of the waypoints.
         '''
