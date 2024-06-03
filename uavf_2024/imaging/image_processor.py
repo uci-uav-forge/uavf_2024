@@ -162,7 +162,7 @@ class ImageProcessor:
             img_to_draw_on = img.get_array().copy()
             for result in total_results:
                 x,y,w,h = result.x, result.y, result.width, result.height
-                cv.rectangle(img_to_draw_on, (x,y), (x+w,y+h), (0,255,0), 2)
+                cv.rectangle(img_to_draw_on, (x-w//2,y-h//2), (x+w//2,y+h//2), (0,255,0), 2)
                 shape_col, shape, letter_col, letter = str(result.descriptor.collapse_to_certain()).split(" ")
                 shape_col_prob = max(result.descriptor.shape_col_probs)
                 shape_prob = max(result.descriptor.shape_probs)
