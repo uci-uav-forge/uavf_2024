@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import rclpy
 from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
@@ -17,12 +18,12 @@ import os
 class ImagingNode(Node):
     def __init__(self) -> None:
         super().__init__('imaging_node')
-        self.camera = Camera()
-        self.camera.setAbsoluteZoom(3)
-        logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
-        os.makedirs(logs_path, exist_ok=True)
+        logs_path = Path(f'logs/{strftime("%m-%d %H:%M")}')
+        
+        self.camera = Camera(logs_path / "camera")
+        
         self.log(f"Logging to {logs_path}")
-        self.image_processor = ImageProcessor(logs_path)
+        self.image_processor = ImageProcessor(logs_path / "image_processor")
 
         focal_len = self.camera.getFocalLength()
         self.localizer = Localizer.from_focal_length(

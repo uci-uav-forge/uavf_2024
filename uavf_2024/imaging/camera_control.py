@@ -26,12 +26,14 @@ class ImageBuffer:
 
 
 class Camera:
-    def __init__(self, log_dir: str | None = None):
+    def __init__(self, log_dir: str | Path | None = None):
         """
         Currently starts recording and logging as soon as constructed.
         This should be changed to after takeoff.
         """
         self.log_dir = Path(log_dir) if log_dir is not None else None
+        if self.log_dir:
+            self._prep_log_dir(self.log_dir)
         
         self.cam = SIYISDK(server_ip = "192.168.144.25", port= 37260,debug=False)
         self.stream = SIYISTREAM(server_ip = "192.168.144.25", port = 8554,debug=False)
@@ -43,6 +45,11 @@ class Camera:
         self.buffer = ImageBuffer()
         self.recording_thread: threading.Thread | None = None
         self.start_recording()
+    
+    @staticmethod
+    def _prep_log_dir(log_dir: Path):
+        if not log_dir.exists():
+            log_dir.mkdir(parents=True, exist_ok=True)
         
     def set_log_dir(self, log_dir: str):
         self.log_dir = Path(log_dir)

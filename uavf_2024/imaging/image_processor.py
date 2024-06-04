@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 import numpy as np
 import os
 import cv2 as cv
@@ -56,7 +57,7 @@ def nms_process(shape_results: DetectionResult, thresh_iou):
 
 class ImageProcessor:
     def __init__(self, 
-    debug_path: str = None, 
+    debug_path: str | Path | None = None, 
     shape_batch_size = 3, 
     letter_batch_size = 5,
     tile_size = 1080,
@@ -76,7 +77,15 @@ class ImageProcessor:
         self.shape_detector = ShapeDetector(self.tile_size, conf)
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
-        self.debug_path = debug_path
+        
+        if debug_path:
+            self.debug_path = Path(debug_path)
+            
+            if not self.debug_path.exists():
+                self.debug_path.mkdir(parents=True)
+            elif not self.debug_path.is_dir():
+                raise FileExistsError(f"{str(self.debug_path)} already exists and is not a directory.")
+        
         self.thresh_iou = 0.5
         self.num_processed = 0
         self.shape_batch_size = shape_batch_size
