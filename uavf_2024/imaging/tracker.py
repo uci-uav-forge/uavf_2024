@@ -69,13 +69,15 @@ class TargetTracker:
         Returns closest track in descriptor space for each search candidate
         '''
 
-        cost_matrix = np.empty((5, len(self.tracks)))
-        for i,j in product(range(5), range(len(self.tracks))):
+        
+        cost_matrix = np.empty((len(search_candidates), len(self.tracks)))
+        for i,j in product(range(len(search_candidates)), range(len(self.tracks))):
             cost_matrix[i,j] = calc_match_score(self.tracks[j].descriptor, search_candidates[i].as_probabilistic())
-        row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
-        # col_ind = [
-        #     np.argmax(cost_matrix[i]) for i in range(5)
-        # ]
+        #row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
+        
+        col_ind = [
+            np.argmax(cost_matrix[i]) for i in range(len(search_candidates))
+        ]
 
         closest_tracks = [
             self.tracks[i] for i in col_ind
