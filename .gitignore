@@ -12,3 +12,8 @@ build
 install
 log
 visualizations
+recorded_images
+.vscode
+test/*.png
+trained_model.pth
+logs_esc

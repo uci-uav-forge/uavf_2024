@@ -159,10 +159,14 @@ RUN usermod -a -G dialout qgc
 # Sourcing script at runtime
 COPY .devcontainer/bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
 RUN chmod 777 /usr/local/bin/bashrc_setup.sh
-RUN /usr/local/bin/bashrc_setup.sh
+RUN bash /usr/local/bin/bashrc_setup.sh
 # TOTAL HACK, just doing this to avoid an entire Docker rebuild
 RUN mv /home/ws/uavf_2024 /home/ws/libuavf_2024
 WORKDIR /home/ws/libuavf_2024
 RUN python -m pip install -e .
+WORKDIR /home/ws/libuavf_2024/siyi_sdk
+COPY siyi_sdk/setup.py setup.py
+RUN python -m pip install -e .
+RUN python -m pip install av --no-binary av
 
 CMD ["/bin/bash"]
