@@ -28,7 +28,7 @@ class CommanderNode(rclpy.node.Node):
         super().__init__('uavf_commander_node')
 
         np.set_printoptions(precision=8)
-        logging.basicConfig(filename='commander_node_{:%Y-%m-%d}.log'.format(datetime.now()), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(filename='commander_node_{:%Y-%m-%d-%m-%s}.log'.format(datetime.now()), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
         logging.getLogger().addHandler(logging.StreamHandler())
 
         qos_profile = QoSProfile(
@@ -134,6 +134,7 @@ class CommanderNode(rclpy.node.Node):
     def got_global_pos_cb(self, pos):
         #Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
         self.last_global_pos = pos
+        self.log(f"got global pos: {pos.latitude} {pos.longitude}")
         if not self.got_global_pos:
             self.home_global_pos = pos
             print(self.home_global_pos)
