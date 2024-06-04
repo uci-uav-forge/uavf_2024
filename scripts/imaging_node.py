@@ -18,7 +18,7 @@ class ImagingNode(Node):
     def __init__(self) -> None:
         super().__init__('imaging_node')
         self.camera = Camera()
-        self.camera.setAbsoluteZoom(1)
+        self.camera.setAbsoluteZoom(3)
         logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
         os.makedirs(logs_path, exist_ok=True)
         self.log(f"Logging to {logs_path}")
@@ -50,6 +50,11 @@ class ImagingNode(Node):
 
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
         self.get_logger().info("Finished initializing imaging node")
+        self.counter = 0
+        self.zoom_level = 1
+        self.zoom_levels=[1,2,3,4,5]
+        self.zoom_index=0
+        
         
     def got_pose_cb(self, pose: PoseStamped):
         self.cur_pose = pose
@@ -67,6 +72,11 @@ class ImagingNode(Node):
         
             We want to take photo when the attitude is down only. 
         '''
+        self.counter+=1
+        if self.counter%30==0:
+            self.zoom_index+=1
+            self.zoom_level = self.zoom_levels[self.zoom_index%len(self.zoom_levels)]
+
         self.log("Received Down Image Request")
 
         self.camera.request_autofocus()
@@ -88,7 +98,7 @@ class ImagingNode(Node):
 
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
         if not self.got_pose:
-            self.get_logger().error("No pose info from mavros. Hanging until we get pose")
+
             for _ in range(5):
                 if self.got_pose:
                     break
@@ -99,18 +109,19 @@ class ImagingNode(Node):
                 self.log("Got pose finally!")
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
-
+        self.log(f"Position: {self.cur_position.x:.02f},{self.cur_position.y:.02f},{self.cur_position.z:.02f}")
         cur_rot_quat = self.cur_rot.as_quat()
 
 
         world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
         cam_pose = (cur_position_np, world_orientation)
 
-        self.log(f"{len(detections)} detections")
+        self.log(f"{len(detections)} detections \t({'*'*len(detections)})")
         preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         logs_folder = self.image_processor.get_last_logs_path()
         self.log(f"This frame going to {logs_folder}")
+        self.log(f"Zoom level: {self.zoom_level}")
         os.makedirs(logs_folder, exist_ok=True)
         cv.imwrite(f"{logs_folder}/image.png", img.get_array())
         log_data = {
@@ -121,6 +132,7 @@ class ImagingNode(Node):
             'gimbal_yaw': avg_angles[0],
             'gimbal_pitch': avg_angles[1],
             'gimbal_roll': avg_angles[2],
+            'zoom level': self.zoom_level,
             'preds_3d': [
                 {
                     'position': p.position.tolist(),

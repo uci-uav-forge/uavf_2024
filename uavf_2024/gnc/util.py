@@ -1,8 +1,10 @@
-from uavf_2024.imaging import CertainTargetDescriptor
 from geographiclib.geodesic import Geodesic
-from shapely.geometry import Point, Polygon
-import numpy as np
+import gpxpy
+import gpxpy.gpx
 import math
+import numpy as np
+from shapely.geometry import Point, Polygon
+from uavf_2024.imaging import CertainTargetDescriptor
 
 def read_gps(fname):
     with open(fname) as f:
@@ -16,6 +18,49 @@ def read_payload_list(fname):
             payload_list.append(CertainTargetDescriptor(shape_col, shape, letter_col, letter))
     
     return payload_list
+
+def extract_track_label(track: gpxpy.gpx.GPXTrack):
+    '''
+    Depending on the given track's name, return one of the four following labels:
+    'Mission', 'Airdrop Boundary', 'Flight Boundary', 'Unknown Track'.
+    '''
+    if track.name.endswith('Mission'):
+        return 'Mission'
+    elif track.name.endswith('Airdrop Boundary'):
+        return 'Airdrop Boundary'
+    elif track.name.endswith('Flight Boundary'):
+        return 'Flight Boundary'
+    else:
+        return 'Unknown Track'
+
+def extract_coordinates(track: gpxpy.gpx.GPXTrack):
+    '''
+    Return the list of coordinates that make up the given track.
+    '''
+    coordinates = []
+
+    if track.name.endswith('Mission'):
+        for segment in track.segments:
+            for point in segment.points:
+                coordinates.append((point.latitude, point.longitude, point.elevation))
+    else:
+        for segment in track.segments:
+            for point in segment.points:
+                coordinates.append((point.latitude, point.longitude))
+
+    return coordinates
+
+def read_gpx_file(file_name: str):
+    '''
+    Return a dictionary with key-value pairs that represent the main tracks 
+    in the given GPX file. The key is the track's label, which will either be
+    Flight Boundary, Airdrop Boundary, Mission, or Unknown Track. The value 
+    is a list of GPS points that describe the associated track.
+    '''
+    gpx_file = open(file_name, 'r')
+    gpx = gpxpy.parse(gpx_file)
+    track_map = {extract_track_label(track): extract_coordinates(track) for track in gpx.tracks}
+    return track_map
 
 def is_inside_bounds_local(bounds, pt):
     p = Point(pt[0], pt[1])

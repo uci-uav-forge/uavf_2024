@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="gpx.py -- https://github.com/tkrajina/gpxpy">
+  <trk>
+    <name>Upper Field Flight Boundary</name>
+    <trkseg>
+      <trkpt lat="33.641324" lon="-117.826328">
+      </trkpt>
+      <trkpt lat="33.641072" lon="-117.825819">
+      </trkpt>
+      <trkpt lat="33.641591" lon="-117.825457">
+      </trkpt>
+      <trkpt lat="33.641816" lon="-117.825938">
+      </trkpt>
+      <trkpt lat="33.641324" lon="-117.826328">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Upper Field Airdrop Boundary</name>
+    <trkseg>
+      <trkpt lat="33.64131" lon="-117.82624">
+      </trkpt>
+      <trkpt lat="33.64123" lon="-117.82605">
+      </trkpt>
+      <trkpt lat="33.64133" lon="-117.82591">
+      </trkpt>
+      <trkpt lat="33.64141" lon="-117.82614">
+      </trkpt>
+      <trkpt lat="33.64131" lon="-117.82624">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Upper Field Mission</name>
+    <trkseg>
+      <trkpt lat="33.64138" lon="-117.82573">
+        <ele>30</ele>
+      </trkpt>
+      <trkpt lat="33.64132" lon="-117.82622">
+        <ele>20</ele>
+      </trkpt>
+      <trkpt lat="33.64171" lon="-117.82584">
+        <ele>40</ele>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

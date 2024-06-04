@@ -15,7 +15,7 @@ from libuavf_2024.msg import TargetDetection
 from libuavf_2024.srv import TakePicture
 from geometry_msgs.msg import PoseStamped
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m
+from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, read_gpx_file
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 import argparse
@@ -61,7 +61,7 @@ class MockImagingNode(Node):
         self.global_position_sub = self.create_subscription(NavSatFix, '/mavros/global_position/global', self.got_global_pos_cb, qos_profile)
         self.imaging_service = self.create_service(TakePicture, '/imaging_service', self.imaging_callback)
 
-        self.dropzone_bounds = read_gps(args.dropzone_file)
+        self.dropzone_bounds = read_gpx_file(args.dropzone_file)['Airdrop Boundary']
         self.img_w_m = args.img_w_m
         self.img_h_m = args.img_h_m
 
