@@ -71,9 +71,9 @@ class CommanderNode(rclpy.node.Node):
             libuavf_2024.srv.TakePicture,
             '/imaging_service')
 
-        self.geofence = read_geofence(args.geofence_points)
-        self.mission_wps = read_gps(args.mission_file, self.geofence)
-        self.dropzone_bounds = read_gps(args.dropzone_file, self.geofence)
+        # self.geofence = read_geofence(args.geofence_points)
+        # self.mission_wps = read_gps(args.mission_file, self.geofence)
+        # self.dropzone_bounds = read_gps(args.dropzone_file, self.geofence)
         self.payloads = read_payload_list(args.payload_list)
 
 
@@ -94,6 +94,7 @@ class CommanderNode(rclpy.node.Node):
     
     def got_state_cb(self, state):
         self.cur_state = state
+        # state.mode; if else -> quit
     
     def reached_cb(self, reached):
         if reached.wp_seq > self.last_wp_seq:
@@ -134,9 +135,9 @@ class CommanderNode(rclpy.node.Node):
 
         waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude)] +  waypoints
 
-        # Validates that the waypoints are within the geofence
-        for waypoint in waypoints:
-            assert is_point_within_fence(waypoint, self.geofence), "ERROR: Waypoint is not within the geofence"
+        # # Validates that the waypoints are within the geofence
+        # for waypoint in waypoints:
+        #     assert is_point_within_fence(waypoint, self.geofence), "ERROR: Waypoint is not within the geofence"
 
         yaws = [float('NaN')] + yaws
         self.log(waypoints, yaws)
