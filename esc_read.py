@@ -18,7 +18,7 @@ fan side    o o   edge of board
 '''
 
 ser = serial.Serial(
-        '/dev/ttyTHS0', 
+        '/dev/ttyTHS1', 
         baudrate = 115200, 
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
@@ -47,10 +47,12 @@ first_byte = True
 first_buff = True
 first_valid_buff = True
 
-os.makedirs("logs_esc", exist_ok=True)
-fname = f"logs_esc/{strftime('%H:%M:%S')}.txt"
+os.makedirs("/home/forge/logs_esc", exist_ok=True)
+fname = f"/home/forge/logs_esc/{strftime('%H:%M:%S')}.txt"
 
 print(f"Logging to {fname}")
+last_ten = []
+i=0
 while 1:
     buff.append(ord(ser.read()))
     if first_byte:
@@ -66,6 +68,16 @@ while 1:
                 print("Got first valid buffer", buff)
             temp = buff[0]
             voltage = (buff[1]<<8) + buff[2]
+            per_cell = voltage/100/12
+            last_ten.append(per_cell)
+            if len(last_ten) == 21:
+                del last_ten[0]
+                indicators = [
+                    '-','/','|','\\'
+                ]
+                print(f"{sum(last_ten)/len(last_ten):.02f}V (avg) / {min(last_ten):.02f}V (min) / {max(last_ten):.02f}V (max) / {per_cell:.02f}V (live) {indicators[i%len(indicators)]}",end='\r')
+                i+=1
+            # print(f"{per_cell:.02f}V per cell ({voltage/100}V total)", len(last_ten))
             current = (buff[3]<<8) + buff[4]
             consumption = (buff[5]<<8) + buff[6]
             rpm = (buff[7]<<8) + buff[8]

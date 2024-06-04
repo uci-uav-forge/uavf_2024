@@ -24,15 +24,13 @@ class ContinuousImagingClient(Node):
         self.req = TakePicture.Request()
 
         sleep(10)
-        num_requests = 10
+        num_requests = 10000
         for i in range(num_requests):
             self.get_logger().info(f"Sending request {i+1}/{num_requests}")
             res: list[TargetDetection] = self.send_request().detections
             self.tracker.update([
                 Target3D.from_ros(detection) for detection in res
             ])
-
-            sleep(1)
 
         self.get_logger().info("Done with requests")
         estimated_positions = self.tracker.estimate_positions(search_candidates)
