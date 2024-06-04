@@ -20,3 +20,6 @@ venv/
 logs_esc
 gpx/
 flight_logs
+
+# virtualenv
+*venv/
