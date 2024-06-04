@@ -10,5 +10,5 @@ cam.request_autofocus()
 os.makedirs("snapshots", exist_ok = True)
 
 for i in range(20):
-    img = cam.take_picture()
+    img = cam.get_latest_image()
     cv.imwrite(f"snapshots/{i}.png", img.get_array())

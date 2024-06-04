@@ -87,7 +87,7 @@ class ImagingNode(Node):
             sleep(0.1)
         
         start_angles = self.camera.getAttitude()
-        img = self.camera.take_picture()
+        img = self.camera.get_latest_image()
         timestamp = time()
         end_angles = self.camera.getAttitude()
         self.log("Picture taken")

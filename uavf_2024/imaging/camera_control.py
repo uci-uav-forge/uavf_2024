@@ -11,9 +11,8 @@ class Camera:
         self.stream.connect()
         self.cam.connect()
         #self.cam.requestLockMode()
-
         
-    def take_picture(self) -> Image:
+    def get_latest_image(self) -> Image:
         '''
         Returns picture as ndarray with shape (height,width,3)
         '''
@@ -91,6 +90,6 @@ class Camera:
 
 if __name__ == "__main__":
     cam = Camera()
-    out = cam.take_picture()
+    out = cam.get_latest_image()
     matplotlib.image.imsave("sample_frame.png",out.get_array().transpose(2,1,0))
     cam.disconnect()
