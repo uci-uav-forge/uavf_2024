@@ -106,10 +106,6 @@ class CommanderNode(rclpy.node.Node):
 
         self.call_imaging_at_wps = False
         self.imaging_futures = []
-
-        self.left_intermediate_waypoint_global = (38.31605966, -76.55154921)
-        self.right_intermediate_waypoint_global = (38.31542867, -76.54548898)
-        self.geofence_middle_pt = (38.31470980862425, -76.54936361414539)
         
         self.turn_angle_limit = 170
 
@@ -197,8 +193,9 @@ class CommanderNode(rclpy.node.Node):
 
         self.log("Pushing waypoints")
 
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] +  waypoints
-        waypoints = self.generate_legal_waypoints(waypoints)
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, self.last_global_pos.altitude)] +  waypoints
+        if self.args.is_maryland:
+            waypoints = self.generate_legal_waypoints(waypoints)
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
 
@@ -321,7 +318,11 @@ class CommanderNode(rclpy.node.Node):
         By flying to the intermediate waypoint before the destination_wp, the
         geofence will not be violated.
         '''
-        return self.right_intermediate_waypoint_global if destination_wp[1] > self.geofence_middle_pt[1] else self.left_intermediate_waypoint_global
+        left_intermediate_waypoint_global = (38.31605966, -76.55154921, self.last_global_pos.altitude)
+        right_intermediate_waypoint_global = (38.31542867, -76.54548898, self.last_global_pos.altitude)
+        geofence_middle_pt = (38.31470980862425, -76.54936361414539, self.last_global_pos.altitude)
+
+        return right_intermediate_waypoint_global if destination_wp[1] > geofence_middle_pt[1] else left_intermediate_waypoint_global
 
     def generate_legal_waypoints(self, waypoints):
         '''

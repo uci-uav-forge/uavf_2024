@@ -2,7 +2,7 @@ import math
 import numpy as np
 from shapely.geometry import Point, Polygon
 from uavf_2024.imaging.tracker import TargetTracker
-altitude = 20.0
+altitude = 23.0
 
 class DropzonePlanner:
     '''
