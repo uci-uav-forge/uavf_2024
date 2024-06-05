@@ -851,9 +851,9 @@ class SIYISDK:
         --
         [bool] True: success. False: fail
         """
-        if level<1 or level>30:
-            self._logger.error("Zoom level is out of range 1~30")
-            return
+        if level<1 or level>10: # Technically we can zoom till 30
+            self._logger.error("Zoom level is out of range 1~10")
+            return False
         
         success = self._manual_absolute_zoom(level)
         self.requestAutoFocus()
