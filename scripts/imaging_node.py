@@ -89,14 +89,15 @@ class ImagingNode(Node):
         self.zoom_level = request.zoom_level
         return response
     
-    def update_localizer(self):
+    def make_localizer(self):
         focal_len = self.camera.getFocalLength()
-        self.localizer = Localizer.from_focal_length(
+        localizer = Localizer.from_focal_length(
             focal_len, 
             (1920, 1080),
             (np.array([1,0,0]), np.array([0,-1, 0])),
             2    
         )
+        return localizer
 
     def point_camera_down(self):
         self.camera.request_down()
@@ -117,10 +118,10 @@ class ImagingNode(Node):
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
             self.point_camera_down()
 
-        #TODO: Figure out a way to detect gimbal lock and handle it
+        #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
         
         # Take picture and grab relevant data
-        self.update_localizer()
+        localizer = self.make_localizer()
         start_angles = self.camera.getAttitude()
         img = self.camera.take_picture()
         timestamp = time()
@@ -154,7 +155,7 @@ class ImagingNode(Node):
         self.log(f"{len(detections)} detections \t({'*'*len(detections)})")
 
         # Get 3D predictions
-        preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
+        preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         # Log data
         logs_folder = self.image_processor.get_last_logs_path()
