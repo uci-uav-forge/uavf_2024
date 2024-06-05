@@ -28,9 +28,7 @@ class ImagingNode(Node):
         self.camera.setAbsoluteZoom(self.zoom_level)
 
         # Set up logging
-        logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
-        os.makedirs(logs_path, exist_ok=True)
-        self.log(f"Logging to {logs_path}")
+        self.initialize_logging()
         
         # Set up image processor
         self.image_processor = ImageProcessor(logs_path)
@@ -59,10 +57,17 @@ class ImagingNode(Node):
         self.recenter_service = self.create_service(PointCam, 'recenter_service', self.request_point_cb)
         # Set up zoom camera service
         self.zoom_service = self.create_service(ZoomCam, 'zoom_service', self.setAbsoluteZoom_cb)
+        # Set up reset log directory service
+        self.reset_log_dir_service = self.create_service(ResetLogDir, 'reset_log_dir', self.reset_log_dir_cb)
 
         # Cleanup
         self.get_logger().info("Finished initializing imaging node")
         
+    def initialize_logging(self):
+        self.logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
+        os.makedirs(self.logs_path, exist_ok=True)
+        self.log(f"Logging to {self.logs_path}")
+    
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)
 
@@ -87,6 +92,12 @@ class ImagingNode(Node):
         response.success = self.camera.setAbsoluteZoom(request.zoom_level)
         self.camera.request_autofocus()
         self.zoom_level = request.zoom_level
+        return response
+
+    def reset_log_dir_cb(self, request, response):
+        self.log("Received request to reset log directory")
+        self.initialize_logging()
+        response.success = True
         return response
     
     def make_localizer(self):
