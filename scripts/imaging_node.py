@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
-from libuavf_2024.srv import TakePicture,PointCam,GetAttitude
+from libuavf_2024.srv import TakePicture,PointCam,ZoomCam,GetAttitude
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 from scipy.spatial.transform import Rotation as R
 import numpy as np
@@ -58,7 +58,7 @@ class ImagingNode(Node):
         # Set up recenter camera service
         self.recenter_service = self.create_service(PointCam, 'recenter_service', self.request_point_cb)
         # Set up zoom camera service
-        self.zoom_service = self.create_service(PointCam, 'zoom_service', self.setAbsoluteZoom_cb)
+        self.zoom_service = self.create_service(ZoomCam, 'zoom_service', self.setAbsoluteZoom_cb)
 
         # Cleanup
         self.get_logger().info("Finished initializing imaging node")
