@@ -128,13 +128,10 @@ RUN apt-get update --fix-missing
 RUN apt-get install -y python3-pip
 RUN apt-get install -y ffmpeg libsm6 libxext6
 
-WORKDIR "/home/ws/uavf_2024"
-COPY setup.py setup.py
-RUN pip install -e .
-
 # GNC setup stuff (gazebo garden, ardupilot sitl, and respective ros2 plugins etc)
 
 #RUN echo 'export PATH="$PATH:$HOME/.local/bin"' >> /root/.bashrc
+RUN sudo apt update
 RUN sudo apt-get install -y ros-humble-mavros ros-humble-mavros-extras
 RUN bash -ic "source /opt/ros/humble/setup.bash && ros2 run mavros install_geographiclib_datasets.sh"
 
@@ -161,8 +158,8 @@ COPY .devcontainer/bashrc_setup.sh /usr/local/bin/bashrc_setup.sh
 RUN chmod 777 /usr/local/bin/bashrc_setup.sh
 RUN bash /usr/local/bin/bashrc_setup.sh
 # TOTAL HACK, just doing this to avoid an entire Docker rebuild
-RUN mv /home/ws/uavf_2024 /home/ws/libuavf_2024
 WORKDIR /home/ws/libuavf_2024
+COPY setup.py setup.py
 RUN python -m pip install -e .
 WORKDIR /home/ws/libuavf_2024/siyi_sdk
 COPY siyi_sdk/setup.py setup.py

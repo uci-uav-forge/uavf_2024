@@ -34,7 +34,7 @@ class CommanderNode(rclpy.node.Node):
         super().__init__('uavf_commander_node')
 
         np.set_printoptions(precision=8)
-        logging.basicConfig(filename='commander_node_{:%Y-%m-%d}.log'.format(datetime.now()), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(filename='commander_node_{:%Y-%m-%d-%m-%s}.log'.format(datetime.now()), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
         logging.getLogger().addHandler(logging.StreamHandler())
 
         qos_profile = QoSProfile(
@@ -43,7 +43,6 @@ class CommanderNode(rclpy.node.Node):
             history=HistoryPolicy.KEEP_ALL,
             depth = 1)
         
-        self.got_pos = False
 
         self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')   
         self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
@@ -96,6 +95,14 @@ class CommanderNode(rclpy.node.Node):
         self.imaging_client = self.create_client(
             libuavf_2024.srv.TakePicture,
             '/imaging_service')
+
+        self.got_home_pos = False
+        self.home_position_sub = self.create_subscription(
+            mavros_msgs.msg.HomePosition,
+            'mavros/home_position/home',
+            self.home_position_cb,
+            qos_profile
+        )
         
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
@@ -155,14 +162,12 @@ class CommanderNode(rclpy.node.Node):
         '''
         # Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
         self.last_global_pos = pos
-        if not self.got_global_pos:
-            self.home_global_pos = pos
-            print(self.home_global_pos)
-            
-            self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
-            self.log(f"Dropzone bounds in local coords {self.dropzone_bounds_mlocal}")
+        self.got_global_pos = True
 
-            self.got_global_pos = True
+            
+    def home_position_cb(self, pos):
+        self.home_pos = pos
+        self.got_home_pos = True
     
     def status_text_cb(self, statustext):
         self.log(f"recieved statustext: {statustext}")
@@ -175,7 +180,7 @@ class CommanderNode(rclpy.node.Node):
         Convert local coordinates to global coordinates by simply calling 
         the convert_local_m_to_delta_gps() utility function.
         '''
-        return convert_local_m_to_delta_gps((self.home_global_pos.latitude, self.home_global_pos.longitude) , local)
+        return convert_local_m_to_delta_gps((self.home_pos.geo.latitude,self.home_pos.geo.longitude) , local)
 
     def get_cur_xy(self):
         '''
@@ -352,7 +357,8 @@ class CommanderNode(rclpy.node.Node):
         Execute one mission loop which consists of flying one waypoint lap, flying to the drop zone,
         releasing the payload in the drop zone, and flying back to the home position.
         '''
-        while not self.got_global_pos:
+        
+        while not self.got_global_pos or not self.got_home_pos:
             pass
 
         if self.args.servo_test:
@@ -368,9 +374,10 @@ class CommanderNode(rclpy.node.Node):
                     self.log(f"For detection {detection} would go to {detection_gp}")
                 time.sleep(self.args.call_imaging_period)
             
-        self.dropzone_planner.gen_dropzone_plan()
         self.request_load_payload(self.payloads[0])
         for lap in range(len(self.payloads)):
+            self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((self.home_pos.geo.latitude, self.home_pos.geo.longitude), x) for x in self.dropzone_bounds]
+
             self.log(f"Lap {lap}")
 
             if lap > 0:
@@ -387,4 +394,4 @@ class CommanderNode(rclpy.node.Node):
             self.dropzone_planner.conduct_air_drop()
 
             # Fly back to home position
-            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude, TAKEOFF_ALTITUDE)])
+            self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, TAKEOFF_ALTITUDE)])

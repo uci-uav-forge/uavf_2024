@@ -39,7 +39,7 @@ class DropzonePlanner:
 
         cur_xy = self.commander.get_cur_xy()
         self.commander.log(f"bounds: {dropzone_coords}")
-        self.commander.log(f"homepos: {self.commander.home_global_pos}")
+        self.commander.log(f"homepos: {self.commander.home_pos}")
         self.commander.log(f"current xy: {cur_xy}")
 
         closest_idx = min(range(4), key = lambda i: np.linalg.norm(dropzone_coords[i] - cur_xy))
