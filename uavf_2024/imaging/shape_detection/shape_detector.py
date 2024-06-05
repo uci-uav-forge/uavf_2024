@@ -48,7 +48,7 @@ class ShapeDetector:
     @profiler
     def predict(self, tiles: tuple[Tile]) -> list[DetectionResult]:
         imgs_list = [tile.img.get_array() for tile in tiles if tile is not None]
-        predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False, conf=self.conf, device='0')
+        predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False, conf=self.conf, device='cuda')
 
         full_results = []
         for img_index, single_pred in enumerate(predictions):
