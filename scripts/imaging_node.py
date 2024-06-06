@@ -28,8 +28,8 @@ class ImagingNode(Node):
         self.camera.setAbsoluteZoom(self.zoom_level)
 
         # Set up logging
-        self.logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
-        self.log(f"Logging to {self.logs_path}")
+        logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
+        self.log(f"Logging to {logs_path}")
         
         # Set up image processor
         self.image_processor = ImageProcessor(logs_path)
