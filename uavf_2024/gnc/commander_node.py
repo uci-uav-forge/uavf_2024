@@ -8,7 +8,7 @@ import sensor_msgs.msg
 import geometry_msgs.msg 
 import libuavf_2024.srv
 from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list
+from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
@@ -28,7 +28,7 @@ class CommanderNode(rclpy.node.Node):
         super().__init__('uavf_commander_node')
 
         np.set_printoptions(precision=8)
-        logging.basicConfig(filename='commander_node_{:%Y-%m-%d}.log'.format(datetime.now()), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(filename='commander_node_{:%Y-%m-%d-%m-%s}.log'.format(datetime.now()), format='%(asctime)s %(message)s', encoding='utf-8', level=logging.DEBUG)
         logging.getLogger().addHandler(logging.StreamHandler())
 
         qos_profile = QoSProfile(
@@ -37,7 +37,6 @@ class CommanderNode(rclpy.node.Node):
             history=HistoryPolicy.KEEP_ALL,
             depth = 1)
         
-        self.got_pos = False
 
         self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')   
         self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
@@ -90,9 +89,23 @@ class CommanderNode(rclpy.node.Node):
         self.imaging_client = self.create_client(
             libuavf_2024.srv.TakePicture,
             '/imaging_service')
+
+        self.got_home_pos = False
+        self.home_position_sub = self.create_subscription(
+            mavros_msgs.msg.HomePosition,
+            'mavros/home_position/home',
+            self.home_position_cb,
+            qos_profile
+        )
+
+        self.setpoint_pub = self.create_publisher(
+            geometry_msgs.msg.PoseStamped,
+            'mavros/setpoint_position/local',
+            qos_profile
+        )
         
-        self.mission_wps = read_gps(args.mission_file)
-        self.dropzone_bounds = read_gps(args.dropzone_file)
+        self.gpx_track_map = read_gpx_file(args.gpx_file)
+        self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
         self.payloads = read_payload_list(args.payload_list)
 
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
@@ -107,10 +120,6 @@ class CommanderNode(rclpy.node.Node):
     
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
-    
-    def global_pos_cb(self, global_pos):
-        self.got_pos = True
-        self.last_pos = global_pos
     
     def got_state_cb(self, state):
         self.cur_state = state
@@ -134,14 +143,12 @@ class CommanderNode(rclpy.node.Node):
     def got_global_pos_cb(self, pos):
         #Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
         self.last_global_pos = pos
-        if not self.got_global_pos:
-            self.home_global_pos = pos
-            print(self.home_global_pos)
-            
-            self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
-            self.log(f"Dropzone bounds in local coords {self.dropzone_bounds_mlocal}")
+        self.got_global_pos = True
 
-            self.got_global_pos = True
+            
+    def home_position_cb(self, pos):
+        self.home_pos = pos
+        self.got_home_pos = True
     
     def status_text_cb(self, statustext):
         self.log(f"recieved statustext: {statustext}")
@@ -150,7 +157,7 @@ class CommanderNode(rclpy.node.Node):
             self.cur_lap = max(self.cur_lap, bump_lap.lap_index)
     
     def local_to_gps(self, local):
-        return convert_local_m_to_delta_gps((self.home_global_pos.latitude,self.home_global_pos.longitude) , local)
+        return convert_local_m_to_delta_gps((self.home_pos.geo.latitude,self.home_pos.geo.longitude) , local)
 
     def get_cur_xy(self):
         pose = self.cur_pose.pose
@@ -266,10 +273,48 @@ class CommanderNode(rclpy.node.Node):
         self.log(f"Requesting {request_msg}.")
         for chunk in [request_msg[i:i+30] for i in range(0,len(request_msg),30)]:
             self.msg_pub.publish(mavros_msgs.msg.StatusText(severity=mavros_msgs.msg.StatusText.NOTICE, text=chunk))
+    
+    def setpoint(self, x, y, z):
+        self.setpoint_pub.publish(geometry_msgs.msg.PoseStamped(pose=geometry_msgs.msg.Pose(position=geometry_msgs.msg.Point(x=x,y=y,z=z))))
+
+    def demo_setpoint_loop(self):
+        for _ in range(200):
+            self.setpoint(0.0,0.0,40.0)
+            time.sleep(0.05)
+        self.log('setting mode')
+        
+        self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+                    base_mode = 0,
+                    custom_mode = 'OFFBOARD'))
+        t0 = time.time()
+        while True:
+            dt = time.time() - t0
+            dt %= 40
+            x,y,z = 0.0,0.0,40.0
+            p = dt % 10
+            if dt < 10:
+                x = p-5
+                y = -5
+            elif dt < 20:
+                x=5
+                y=p-5 
+            elif dt < 30:
+                x=5-p
+                y=5
+            else:
+                x=-5
+                y=5-p
+
+            self.setpoint(float(x),float(y),float(z))
+            time.sleep(0.05)
 
     def execute_mission_loop(self):
-        while not self.got_global_pos:
+        while not self.got_global_pos or not self.got_home_pos:
             pass
+
+        if self.args.demo_setpoint_loop:
+            self.demo_setpoint_loop()
+            return
 
         if self.args.servo_test:
             self.release_payload()
@@ -284,9 +329,10 @@ class CommanderNode(rclpy.node.Node):
                     self.log(f"For detection {detection} would go to {detection_gp}")
                 time.sleep(self.args.call_imaging_period)
             
-        self.dropzone_planner.gen_dropzone_plan()
         self.request_load_payload(self.payloads[0])
         for lap in range(len(self.payloads)):
+            self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((self.home_pos.geo.latitude, self.home_pos.geo.longitude), x) for x in self.dropzone_bounds]
+
             self.log(f"Lap {lap}")
 
             if lap > 0:
@@ -303,4 +349,4 @@ class CommanderNode(rclpy.node.Node):
             self.dropzone_planner.conduct_air_drop()
 
             # Fly back to home position
-            self.execute_waypoints([(self.home_global_pos.latitude, self.home_global_pos.longitude, TAKEOFF_ALTITUDE)])
+            self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, TAKEOFF_ALTITUDE)])

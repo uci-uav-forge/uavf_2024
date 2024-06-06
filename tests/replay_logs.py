@@ -6,13 +6,21 @@ import numpy as np
 import os
 import json
 from collections import defaultdict
+import shutil
 
 if __name__=="__main__":
-    root_folder = "imaging/2024_test_data/arc_test_530"
-    out_folder = "imaging/visualizations/arc_test_530"
-    os.makedirs(out_folder, exist_ok=True)
+    root_folder = "/home/forge/ws/src/libuavf_2024/flight_logs/06-01 10:26/image_processor"
+    out_folder = "imaging/visualizations/arc_test_601_1_limited"
+    try:
+        os.makedirs(out_folder)
+    except:
+        shutil.rmtree(out_folder)
     tracker = TargetTracker()
-    for frame_folder in os.listdir(root_folder):
+    # for frame_folder in os.listdir(root_folder):
+    for i in range(779, 818):
+        if i in [792,803,804,809,810]:
+            continue
+        frame_folder = f"img_{i}"
         data = json.load(open(f"{root_folder}/{frame_folder}/data.json"))
         preds_3d_dicts = data["preds_3d"] 
         for p in preds_3d_dicts:
@@ -24,12 +32,19 @@ if __name__=="__main__":
                 id = f"{frame_folder}/{det_id}"
             )])
 
+    # targets = [
+    #     CertainTargetDescriptor('red','star','green','Q'),
+    #     CertainTargetDescriptor('blue','semicircle','orange','S'),
+    #     CertainTargetDescriptor('brown','pentagon','orange','C'),
+    #     CertainTargetDescriptor('red','rectangle','green','T'),
+    #     CertainTargetDescriptor('orange','quartercircle','blue','3')
+    # ]
     targets = [
-        CertainTargetDescriptor('red','pentagon','orange','F'),
-        CertainTargetDescriptor('red','rectangle','white','T'),
-        CertainTargetDescriptor('black','pentagon','white','G'),
-        CertainTargetDescriptor('green','triangle','white','7'),
-        CertainTargetDescriptor('purple','semicircle','blue','R')
+        CertainTargetDescriptor('red','star','green','Q'),
+        CertainTargetDescriptor('blue','semicircle','orange','S'),
+        CertainTargetDescriptor('brown','pentagon','orange','C'),
+        CertainTargetDescriptor('red','rectangle','green','T'),
+        CertainTargetDescriptor('orange','quartercircle','blue','3')
     ]
 
     positions = tracker.estimate_positions(targets)
@@ -47,13 +62,17 @@ if __name__=="__main__":
         
         for frame_folder, det_ids in contributing_frame_mapping.items():
             img = cv.imread(f"{root_folder}/{frame_folder}/bounding_boxes.png")
+            for i, det_id in enumerate(det_ids):
+                descriptor_str = open(f"{root_folder}/{frame_folder}/{det_id}/descriptor.txt").read()
+                descriptor = ProbabilisticTargetDescriptor.from_string(descriptor_str)
+                cv.putText(img, f"{det_id}: {descriptor.collapse_to_certain()}", (10,60+30*i), cv.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+
+            # reproject
             data = json.load(open(f"{root_folder}/{frame_folder}/data.json"))
             drone_pos = np.array(data["drone_position"])
             drone_quaternion = R.from_quat(data["drone_q"])
             cam_angles = np.array([data["gimbal_yaw"], data["gimbal_pitch"], data["gimbal_roll"]])
             zoom_level = data.get("zoom_level", 1)
-
-            # reproject
             localizer = Localizer.from_focal_length(
                 Camera.focalLengthFromZoomLevel(zoom_level),
                 (img.shape[1], img.shape[0]),
@@ -61,15 +80,14 @@ if __name__=="__main__":
                 2
             )
             cam_rot = Camera.orientation_in_world_frame(drone_quaternion, cam_angles)
-            reprojected = localizer.coords_to_2d(pos.position, (drone_pos, cam_rot))
-            cv.circle(img, reprojected, 15, (0,0,255), 2)
+            for other_target, other_pos in zip(targets, positions):
+                reprojected = localizer.coords_to_2d(other_pos.position, (drone_pos, cam_rot))
+                cv.circle(img, reprojected, 15, (0,0,255), 2)
+                cv.putText(img, str(other_target), reprojected, cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
             in_bounds = 0 <= reprojected[0] < img.shape[1] and 0 <= reprojected[1] < img.shape[0]
             color = (255,0,0) if in_bounds else (0,0,255)
             cv.putText(img, str(reprojected), (10,30), cv.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
-            for i, det_id in enumerate(det_ids):
-                descriptor_str = open(f"{root_folder}/{frame_folder}/{det_id}/descriptor.txt").read()
-                descriptor = ProbabilisticTargetDescriptor.from_string(descriptor_str)
-                cv.putText(img, f"{det_id}: {descriptor.collapse_to_certain()}", (10,60+30*i), cv.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
 
             cv.imwrite(f"{out_folder}/{target_name}/{frame_folder}.png", img)

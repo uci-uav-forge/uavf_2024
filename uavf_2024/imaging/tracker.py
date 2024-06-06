@@ -1,6 +1,8 @@
 from __future__ import annotations
 from .imaging_types import Target3D, CertainTargetDescriptor
 from .utils import calc_match_score
+from scipy.optimize import linear_sum_assignment
+from itertools import product
 import numpy as np
 
 class Track:
@@ -56,7 +58,7 @@ class TargetTracker:
             closest_track = min(self.tracks, key=lambda track: np.linalg.norm(track.position - detection.position))
 
             # if the track is close enough, add the detection to the track
-            if np.linalg.norm(closest_track.position - detection.position) < 1:
+            if np.linalg.norm(closest_track.position - detection.position) < 3:
                 closest_track.add_measurement(detection)
             # otherwise, create a new track
             else:
@@ -66,9 +68,19 @@ class TargetTracker:
         '''
         Returns closest track in descriptor space for each search candidate
         '''
+
+        
+        cost_matrix = np.empty((len(search_candidates), len(self.tracks)))
+        for i,j in product(range(len(search_candidates)), range(len(self.tracks))):
+            cost_matrix[i,j] = calc_match_score(self.tracks[j].descriptor, search_candidates[i].as_probabilistic())
+        #row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
+        
+        col_ind = [
+            np.argmax(cost_matrix[i]) for i in range(len(search_candidates))
+        ]
+
         closest_tracks = [
-            max(self.tracks, key=lambda track: calc_match_score(track.descriptor, candidate.as_probabilistic()))
-            for candidate in search_candidates
+            self.tracks[i] for i in col_ind
         ]
 
         return closest_tracks

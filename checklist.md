@@ -19,4 +19,4 @@ py test_only_camera.py
 cd ~/ws
 source install/setup.sh
 colcon build --merge-install
-ros2 launch src/libuavf_2024/launches/imaging_multiple_demo.launch
+ros2 launch src/libuavf_2024/launches/imaging_demo.launch

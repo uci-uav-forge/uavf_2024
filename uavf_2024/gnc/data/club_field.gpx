@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="gpx.py -- https://github.com/tkrajina/gpxpy">
+  <trk>
+    <name>Club Field Airdrop Boundary</name>
+    <trkseg>
+      <trkpt lat="33.64161" lon="-117.82761">
+      </trkpt>
+      <trkpt lat="33.64137" lon="-117.82715">
+      </trkpt>
+      <trkpt lat="33.64169" lon="-117.82691">
+      </trkpt>
+      <trkpt lat="33.64186" lon="-117.82745">
+      </trkpt>
+      <trkpt lat="33.64161" lon="-117.82761">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Club Field Flight Boundary</name>
+    <trkseg>
+      <trkpt lat="33.641614" lon="-117.827689">
+      </trkpt>
+      <trkpt lat="33.641289" lon="-117.827064">
+      </trkpt>
+      <trkpt lat="33.642103" lon="-117.826463">
+      </trkpt>
+      <trkpt lat="33.642425" lon="-117.82709">
+      </trkpt>
+      <trkpt lat="33.641614" lon="-117.827689">
+      </trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Club Field Mission</name>
+    <trkseg>
+      <trkpt lat="33.64211" lon="-117.82721">
+        <ele>20.0</ele>
+      </trkpt>
+      <trkpt lat="33.64203" lon="-117.82703">
+        <ele>20.0</ele>
+      </trkpt>
+      <trkpt lat="33.64216" lon="-117.82695">
+        <ele>20.0</ele>
+      </trkpt>
+      <trkpt lat="33.64221" lon="-117.82709">
+        <ele>20.0</ele>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

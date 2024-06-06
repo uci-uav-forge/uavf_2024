@@ -8,18 +8,22 @@ class Localizer:
                  camera_hfov: float,
                  camera_resolution: tuple[int,int],
                  cam_initial_directions: tuple[np.ndarray, np.ndarray],
-                 ground_axis: int):
+                 ground_axis: int,
+                 ground_coordinate: float = 0 ):
         '''
         `camera_fov` is the horizontal FOV, in degrees
         `camera_resolution` (w,h) in pixels
 
         `cam_initial_directions` is a tuple of two vectors. the first vector is the direction the camera is facing when R is the identity, in world frame,
         and the second is the direction toward the right of the frame when R is the identity, in the world frame. Both need to be unit vectors.
+
+        `ground_coordinate` is the level of the ground plane. For example, a value of one and ground_axis being 2 would mean the ground is at z=1
         '''
         self.camera_hfov = camera_hfov
         self.camera_resolution = camera_resolution
         self.cam_initial_directions = cam_initial_directions
         self.ground_axis = ground_axis
+        self.ground_coordinate = ground_coordinate 
     
     @staticmethod
     def drone_initial_directions() -> tuple[np.ndarray, np.ndarray]:
@@ -57,8 +61,8 @@ class Localizer:
         # rotate the vector to match the camera's rotation
         rotated_vector = rot_transform.apply(initial_direction_vector)
 
-        # solve camera_pose + t*rotated_vector = [x,0,z] = target_position
-        t = -camera_position[self.ground_axis]/rotated_vector[self.ground_axis]
+        # solve camera_pos + t*rotated_vector = [x,ground_coord,z] = target_position
+        t = (self.ground_coordinate-camera_position[self.ground_axis])/rotated_vector[self.ground_axis]
         target_position = camera_position + t*rotated_vector
         assert abs(target_position[self.ground_axis])<1e-3
 
