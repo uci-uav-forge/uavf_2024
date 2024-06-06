@@ -154,15 +154,12 @@ class ImagingNode(Node):
         img = self.camera.get_latest_image()
         timestamp = time()
         end_angles = self.camera.getAttitude()
-        self.log("Picture taken")
 
         if img is None:
             self.log("Could not get image from Camera.")
             return []
     
         detections = self.image_processor.process_image(img)
-
-        self.log("Images processed")
 
         # Get avg camera pose for the image
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
@@ -177,14 +174,12 @@ class ImagingNode(Node):
                 self.log("Got pose!")
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
-        self.log(f"Position: {self.cur_position.x:.02f},{self.cur_position.y:.02f},{self.cur_position.z:.02f}")
         cur_rot_quat = self.cur_rot.as_quat()
 
 
         world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
         cam_pose = (cur_position_np, world_orientation)
 
-        self.log(f"{len(detections)} detections \t({'*'*len(detections)})")
 
         # Get 3D predictions
         preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
@@ -193,6 +188,7 @@ class ImagingNode(Node):
         logs_folder = self.image_processor.get_last_logs_path()
         self.log(f"This frame going to {logs_folder}")
         self.log(f"Zoom level: {self.zoom_level}")
+        self.log(f"{len(detections)} detections \t({'*'*len(detections)})")
         os.makedirs(logs_folder, exist_ok=True)
         cv.imwrite(f"{logs_folder}/image.png", img.get_array())
         log_data = {
@@ -212,7 +208,6 @@ class ImagingNode(Node):
             ]
         }
         json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
-        self.log("Localization finished")
 
         response.detections = []
         for i, p in enumerate(preds_3d):
@@ -229,8 +224,6 @@ class ImagingNode(Node):
             )
 
             response.detections.append(t)
-
-        self.log("Returning Response")
 
         return response
 
