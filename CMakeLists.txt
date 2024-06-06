@@ -42,6 +42,7 @@ set(msg_files
 set(srv_files
   "srv/TakePicture.srv"
   "srv/GetAttitude.srv"
+  "srv/ResetLogDir.srv"
   "srv/PointCam.srv"
   "srv/ZoomCam.srv"
 )
