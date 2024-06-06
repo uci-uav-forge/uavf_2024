@@ -18,8 +18,6 @@ from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_l
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from uavf_2024.gnc.mission_messages import *
 
-TAKEOFF_ALTITUDE = 20.0
-
 class CommanderNode(rclpy.node.Node):
     '''
     Manages subscriptions to ROS2 topics and services necessary for the main GNC node. 
@@ -43,7 +41,6 @@ class CommanderNode(rclpy.node.Node):
             history=HistoryPolicy.KEEP_ALL,
             depth = 1)
         
-
         self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')   
         self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
         self.takeoff_client = self.create_client(mavros_msgs.srv.CommandTOL, 'mavros/cmd/takeoff')
@@ -55,14 +52,12 @@ class CommanderNode(rclpy.node.Node):
             mavros_msgs.msg.StatusText,
             'mavros/statustext/recv',
             self.status_text_cb,
-            qos_profile
-        )
+            qos_profile)
 
         self.msg_pub = self.create_publisher(
             mavros_msgs.msg.StatusText,
             'mavros/statustext/send',
-            qos_profile
-        )
+            qos_profile)
 
         self.cur_state = None
         self.state_sub = self.create_subscription(
@@ -101,9 +96,13 @@ class CommanderNode(rclpy.node.Node):
             mavros_msgs.msg.HomePosition,
             'mavros/home_position/home',
             self.home_position_cb,
-            qos_profile
-        )
-        
+            qos_profile)
+
+        self.default_altitude_asml = 23
+        self.left_intermediate_waypoint_global = (38.31605966, -76.55154921, self.default_altitude_asml)
+        self.right_intermediate_waypoint_global = (38.31542867, -76.54548898, self.default_altitude_asml)
+        self.geofence_middle_pt = (38.31470980862425, -76.54936361414539, self.default_altitude_asml)
+
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
         self.payloads = read_payload_list(args.payload_list)
@@ -113,8 +112,6 @@ class CommanderNode(rclpy.node.Node):
 
         self.call_imaging_at_wps = False
         self.imaging_futures = []
-        
-        self.turn_angle_limit = 170
 
         self.cur_lap = -1
     
@@ -198,7 +195,7 @@ class CommanderNode(rclpy.node.Node):
 
         self.log("Pushing waypoints")
 
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, self.last_global_pos.altitude)] +  waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, self.default_altitude_asml)] + waypoints
         if self.args.is_maryland:
             waypoints = self.generate_legal_waypoints(waypoints)
         yaws = [float('NaN')] + yaws
@@ -323,13 +320,9 @@ class CommanderNode(rclpy.node.Node):
         By flying to the intermediate waypoint before the destination_wp, the
         geofence will not be violated.
         '''
-        left_intermediate_waypoint_global = (38.31605966, -76.55154921, self.last_global_pos.altitude)
-        right_intermediate_waypoint_global = (38.31542867, -76.54548898, self.last_global_pos.altitude)
-        geofence_middle_pt = (38.31470980862425, -76.54936361414539, self.last_global_pos.altitude)
+        return self.right_intermediate_waypoint_global if destination_wp[1] > self.geofence_middle_pt[1] else self.left_intermediate_waypoint_global
 
-        return right_intermediate_waypoint_global if destination_wp[1] > geofence_middle_pt[1] else left_intermediate_waypoint_global
-
-    def generate_legal_waypoints(self, waypoints):
+    def generate_legal_waypoints(self, waypoints: list):
         '''
         Check if the given waypoints produces a flight path that will violate the geofence
         and return a legal set of waypoints that ensures the drone will stay within the
@@ -350,7 +343,6 @@ class CommanderNode(rclpy.node.Node):
         legal_waypoints.append(waypoints[-1])
 
         return legal_waypoints
-
 
     def execute_mission_loop(self):
         '''
