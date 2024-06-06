@@ -93,6 +93,10 @@ class ImagingNode(Node):
         end_angles = self.camera.getAttitude()
         self.log("Picture taken")
 
+        if img is None:
+            self.log("Could not get image from Camera.")
+            return []
+    
         detections = self.image_processor.process_image(img)
 
         self.log("Images processed")
