@@ -21,6 +21,7 @@ class ImagingNode(Node):
         logs_path = Path(f'logs/{strftime("%m-%d %H:%M")}')
         
         self.camera = Camera(logs_path / "camera")
+        self.camera.setAbsoluteZoom(1)
         
         self.log(f"Logging to {logs_path}")
         self.image_processor = ImageProcessor(logs_path / "image_processor")
