@@ -44,6 +44,7 @@ class Camera:
         # Buffer for taking the latest image, logging it, and returning it in get_latest_image
         self.buffer = ImageBuffer()
         self.recording_thread: threading.Thread | None = None
+        self.recording = False
         self.start_recording()
     
     @staticmethod
@@ -58,7 +59,7 @@ class Camera:
         """
         Worker function that continuously gets frames from the stream and puts them in the buffer as well as logging them.
         """
-        while True:
+        while self.recording:
             try:
                 img_arr = self.stream.get_frame()
                 
@@ -82,10 +83,12 @@ class Camera:
         Currently called in __init__, but this should be changed to being called when we're in the air.
         """
         self.recording_thread = threading.Thread(target=self._recording_worker)
+        self.recording = True
         self.recording_thread.start()
         
     def stop_recording(self):
         if self.recording_thread:
+            self.recording = False
             self.recording_thread.join()
             self.recording_thread = None
         
@@ -143,6 +146,7 @@ class Camera:
         self.disconnect()
     
     def disconnect(self):
+        self.stop_recording()
         self.stream.disconnect()
         self.cam.disconnect()
 
