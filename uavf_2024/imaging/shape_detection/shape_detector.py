@@ -61,8 +61,6 @@ class ShapeDetector:
             boxes: Boxes = single_pred.boxes
             for box, prob, cls in zip(boxes.xywh, boxes.conf, boxes.cls):
                 x,y,w,h = box.int()
-                x-=int(w/2) # adjust to make x,y the top left
-                y-=int(h/2)
                 confidences = np.zeros(9)
                 new_cls = classes_2023_remapping[cls.int().item()]
                 confidences[new_cls] = prob
