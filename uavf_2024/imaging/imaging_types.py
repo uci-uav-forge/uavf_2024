@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import os
 from typing import Generator, Generic, NamedTuple, TypeVar, Union
 import cv2
 import numpy as np
@@ -344,7 +345,7 @@ class Image(Generic[_UnderlyingImageT]):
         dim_order: ImageDimensionsOrder = HWC
     ):
         if not isinstance(array, np.ndarray) and not isinstance(array, torch.Tensor):
-            raise TypeError("array must be a numpy array or torch tensor")
+            raise TypeError(f"array must be a numpy array or torch tensor. Got {type(array)}")
         
         if len(array.shape) != 3:
             raise ValueError("array must have 3 axes, got shape " + str(array.shape))
@@ -465,7 +466,22 @@ class Image(Generic[_UnderlyingImageT]):
         
         else:
             raise TypeError("array_type must be np.ndarray or torch.Tensor")
+    
+    def save(self, fp: os.PathLike | str) -> None:
+        """
+        Saves the image to a file. Uses cv2.imwrite internally.
         
+        
+        Args:
+            fp (str): The file path
+        """
+        np_array = np.array(self._array)
+        
+        # Tranpose if necessary.
+        if self._dim_order == CHW:
+            np_array = np_array.transpose(1, 2, 0)
+        
+        cv2.imwrite(str(fp), np_array)
     
     def change_dim_order(self, target_dim_order: ImageDimensionsOrder) -> None:
         """

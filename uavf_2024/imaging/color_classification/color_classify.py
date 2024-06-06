@@ -56,6 +56,7 @@ class ColorClassifier:
         try:
             if torch.cuda.is_available():
                 model.load_state_dict(torch.load(model_path))
+                model.to('cuda')
             else:
                 model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         except FileNotFoundError:
@@ -72,9 +73,10 @@ class ColorClassifier:
     def predict(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Returns probabilities for each color"""
         image_tensor = self.transform(image).unsqueeze(0)  # Add a batch dimension
-
-
         
+        if torch.cuda.is_available():
+            image_tensor = image_tensor.to('cuda')
+
         with torch.no_grad():
             predicted_letter, predicted_shape = self.model.forward(image_tensor)
         letter_probs, shape_probs = predicted_letter.cpu()[0].numpy(), predicted_shape[0].cpu().numpy()
