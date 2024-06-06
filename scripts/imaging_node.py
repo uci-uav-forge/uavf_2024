@@ -14,8 +14,19 @@ from time import strftime, time, sleep
 import cv2 as cv
 import json
 import os
+import traceback
+
+def log_exceptions(func):
+    def wrapped_fn(self,*args, **kwargs):
+        try:
+            func(self, *args, **kwargs)
+        except Exception:
+            self.get_logger().error(traceback.format_exc())
+    return wrapped_fn
+
 
 class ImagingNode(Node):
+    @log_exceptions
     def __init__(self) -> None:
         # Initialize the node
         super().__init__('imaging_node')
@@ -27,6 +38,8 @@ class ImagingNode(Node):
         
         self.log(f"Logging to {logs_path}")
         self.image_processor = ImageProcessor(logs_path / "image_processor")
+
+        1/0
 
         # Set up ROS connections
         self.log(f"Setting up imaging node ROS connections")
@@ -59,9 +72,11 @@ class ImagingNode(Node):
         self.get_logger().info("Finished initializing imaging node")
         
     
+    @log_exceptions
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)
 
+    @log_exceptions
     def pose_cb(self, pose: PoseStamped):
         # Update current position and rotation
         self.cur_position = pose.pose.position
@@ -69,6 +84,7 @@ class ImagingNode(Node):
         self.last_pose_timestamp_secs = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
         self.got_pose = True
 
+    @log_exceptions
     def request_point_cb(self, request, response):
         self.log(f"Received Point Camera Down Request: {request}")
         if request.down:
@@ -78,6 +94,7 @@ class ImagingNode(Node):
         self.camera.request_autofocus()
         return response
     
+    @log_exceptions
     def setAbsoluteZoom_cb(self, request, response):
         self.log(f"Received Set Zoom Request: {request}")
         response.success = self.camera.setAbsoluteZoom(request.zoom_level)
@@ -85,6 +102,7 @@ class ImagingNode(Node):
         self.zoom_level = request.zoom_level
         return response
 
+    @log_exceptions
     def reset_log_dir_cb(self, request, response):
         new_logs_dir = Path('logs/{strftime("%m-%d %H:%M")}')
         self.log(f"Starting new log directory at {new_logs_dir}")
@@ -94,6 +112,7 @@ class ImagingNode(Node):
         response.success = True
         return response
     
+    @log_exceptions
     def make_localizer(self):
         focal_len = self.camera.getFocalLength()
         localizer = Localizer.from_focal_length(
@@ -104,6 +123,7 @@ class ImagingNode(Node):
         )
         return localizer
 
+    @log_exceptions
     def point_camera_down(self):
         self.camera.request_down()
         while abs(self.camera.getAttitude()[1] - -90) > 2:
@@ -112,6 +132,7 @@ class ImagingNode(Node):
         self.log("Camera pointed down")
         self.camera.request_autofocus()
 
+    @log_exceptions
     def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
         '''
             autofocus, then wait till cam points down, take pic,
