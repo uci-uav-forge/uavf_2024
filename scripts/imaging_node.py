@@ -39,8 +39,6 @@ class ImagingNode(Node):
         self.log(f"Logging to {logs_path}")
         self.image_processor = ImageProcessor(logs_path / "image_processor")
 
-        1/0
-
         # Set up ROS connections
         self.log(f"Setting up imaging node ROS connections")
         # Init QoS profile
