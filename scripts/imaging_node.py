@@ -17,13 +17,17 @@ import os
 import traceback
 
 def log_exceptions(func):
+    '''
+    Decorator that can be applied to methods on any class that extends
+    a ros `Node` to make them correctly log exceptions when run through
+    a roslaunch file
+    '''
     def wrapped_fn(self,*args, **kwargs):
         try:
             func(self, *args, **kwargs)
         except Exception:
             self.get_logger().error(traceback.format_exc())
     return wrapped_fn
-
 
 class ImagingNode(Node):
     @log_exceptions
