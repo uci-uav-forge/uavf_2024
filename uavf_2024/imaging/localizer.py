@@ -23,7 +23,7 @@ class Localizer:
         self.camera_resolution = camera_resolution
         self.cam_initial_directions = cam_initial_directions
         self.ground_axis = ground_axis
-        self.ground_coordinate = 0
+        self.ground_coordinate = ground_coordinate 
     
     @staticmethod
     def drone_initial_directions() -> tuple[np.ndarray, np.ndarray]:
