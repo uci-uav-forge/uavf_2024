@@ -97,6 +97,12 @@ class CommanderNode(rclpy.node.Node):
             self.home_position_cb,
             qos_profile
         )
+
+        self.setpoint_pub = self.create_publisher(
+            geometry_msgs.msg.PoseStamped,
+            'mavros/setpoint_position/local',
+            qos_profile
+        )
         
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
@@ -267,10 +273,48 @@ class CommanderNode(rclpy.node.Node):
         self.log(f"Requesting {request_msg}.")
         for chunk in [request_msg[i:i+30] for i in range(0,len(request_msg),30)]:
             self.msg_pub.publish(mavros_msgs.msg.StatusText(severity=mavros_msgs.msg.StatusText.NOTICE, text=chunk))
+    
+    def setpoint(self, x, y, z):
+        self.setpoint_pub.publish(geometry_msgs.msg.PoseStamped(pose=geometry_msgs.msg.Pose(position=geometry_msgs.msg.Point(x=x,y=y,z=z))))
+
+    def demo_setpoint_loop(self):
+        for _ in range(200):
+            self.setpoint(0.0,0.0,40.0)
+            time.sleep(0.05)
+        self.log('setting mode')
+        
+        self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
+                    base_mode = 0,
+                    custom_mode = 'OFFBOARD'))
+        t0 = time.time()
+        while True:
+            dt = time.time() - t0
+            dt %= 40
+            x,y,z = 0.0,0.0,40.0
+            p = dt % 10
+            if dt < 10:
+                x = p-5
+                y = -5
+            elif dt < 20:
+                x=5
+                y=p-5 
+            elif dt < 30:
+                x=5-p
+                y=5
+            else:
+                x=-5
+                y=5-p
+
+            self.setpoint(float(x),float(y),float(z))
+            time.sleep(0.05)
 
     def execute_mission_loop(self):
         while not self.got_global_pos or not self.got_home_pos:
             pass
+
+        if self.args.demo_setpoint_loop:
+            self.demo_setpoint_loop()
+            return
 
         if self.args.servo_test:
             self.release_payload()
