@@ -105,7 +105,7 @@ class SIYISTREAM:
                 self._logger.debug("Lock acquired")
                 ret, frame = self._stream.retrieve()
                 if ret:
-                    self._logger.info("Frame read")
+                    self._logger.debug("Frame read")
                 else:
                     self._logger.warning("Unable to read frame")
         return frame
