@@ -91,7 +91,7 @@ class SIYISTREAM:
         self._logger.info("Disconnected from camera")
         return
 
-    def get_frame(self) -> np.ndarray:
+    def get_frame(self) -> np.ndarray | None:
         """
         Get a frame from the stream
         """

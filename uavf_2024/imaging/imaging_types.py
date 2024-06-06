@@ -345,7 +345,7 @@ class Image(Generic[_UnderlyingImageT]):
         dim_order: ImageDimensionsOrder = HWC
     ):
         if not isinstance(array, np.ndarray) and not isinstance(array, torch.Tensor):
-            raise TypeError("array must be a numpy array or torch tensor")
+            raise TypeError(f"array must be a numpy array or torch tensor. Got {type(array)}")
         
         if len(array.shape) != 3:
             raise ValueError("array must have 3 axes, got shape " + str(array.shape))
