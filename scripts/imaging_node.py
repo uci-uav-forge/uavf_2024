@@ -4,7 +4,7 @@ from pathlib import Path
 import rclpy
 from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
-from libuavf_2024.srv import TakePicture,PointCam,ZoomCam,GetAttitude
+from libuavf_2024.srv import TakePicture,PointCam,ZoomCam,GetAttitude,ResetLogDir
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 from scipy.spatial.transform import Rotation as R
 import numpy as np
