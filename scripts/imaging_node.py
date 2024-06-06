@@ -28,7 +28,8 @@ class ImagingNode(Node):
         self.camera.setAbsoluteZoom(self.zoom_level)
 
         # Set up logging
-        self.initialize_logging()
+        self.logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
+        self.log(f"Logging to {self.logs_path}")
         
         # Set up image processor
         self.image_processor = ImageProcessor(logs_path)
@@ -63,10 +64,6 @@ class ImagingNode(Node):
         # Cleanup
         self.get_logger().info("Finished initializing imaging node")
         
-    def initialize_logging(self):
-        self.logs_path = f'logs/{strftime("%m-%d %H:%M")}/image_processor'
-        os.makedirs(self.logs_path, exist_ok=True)
-        self.log(f"Logging to {self.logs_path}")
     
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)

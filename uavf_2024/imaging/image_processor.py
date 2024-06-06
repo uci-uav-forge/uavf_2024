@@ -2,8 +2,6 @@ from __future__ import annotations
 import numpy as np
 import os
 import cv2 as cv
-import shutil
-
 from .utils import batched
 from .imaging_types import HWC, FullBBoxPrediction, Image, DetectionResult, ProbabilisticTargetDescriptor
 from .letter_classification import LetterClassifier
@@ -78,6 +76,7 @@ class ImageProcessor:
         self.letter_classifier = LetterClassifier(self.letter_size)
         self.color_classifier = ColorClassifier()
         self.debug_path = debug_path
+        os.makedirs(self.debug_path, exist_ok=True)
         self.thresh_iou = 0.5
         self.num_processed = 0
         self.shape_batch_size = shape_batch_size
