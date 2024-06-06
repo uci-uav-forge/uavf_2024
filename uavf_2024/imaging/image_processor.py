@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import os
 import cv2 as cv
+import shutil
 
 from .utils import batched
 from .imaging_types import HWC, FullBBoxPrediction, Image, DetectionResult, ProbabilisticTargetDescriptor
@@ -84,6 +85,12 @@ class ImageProcessor:
 
     def get_last_logs_path(self):
         return f"{self.debug_path}/img_{self.num_processed-1}"
+    
+    def reset_log_directory(self):
+        if self.debug_path and os.path.exists(self.debug_path):
+            shutil.rmtree(self.debug_path)
+        os.makedirs(self.debug_path, exist_ok=True)
+        self.num_processed = 0
 
     def _make_shape_detection(self, img : Image) -> list[DetectionResult]:
         shape_results: list[DetectionResult] = []

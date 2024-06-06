@@ -97,6 +97,7 @@ class ImagingNode(Node):
     def reset_log_dir_cb(self, request, response):
         self.log("Received request to reset log directory")
         self.initialize_logging()
+        self.image_processor.reset_log_directory()
         response.success = True
         return response
     
