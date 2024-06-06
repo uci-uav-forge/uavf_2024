@@ -61,11 +61,16 @@ class Camera:
         while True:
             try:
                 img_arr = self.stream.get_frame()
+                
+                if img_arr is None:
+                    time.sleep(0.1)
+                    continue
             except Exception as e:
                 # Waits 100ms before trying again
                 print(f"Error getting frame: {e}")
                 time.sleep(0.1)
                 continue
+            
             image = Image(img_arr, HWC)
             
             self.buffer.put(image)
