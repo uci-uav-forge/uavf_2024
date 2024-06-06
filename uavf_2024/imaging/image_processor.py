@@ -84,6 +84,8 @@ class ImageProcessor:
                 self.debug_path.mkdir(parents=True)
             elif not self.debug_path.is_dir():
                 raise FileExistsError(f"{str(self.debug_path)} already exists and is not a directory.")
+        else:
+            self.debug_path = None
         
         self.thresh_iou = 0.5
         self.num_processed = 0
