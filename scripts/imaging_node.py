@@ -38,6 +38,7 @@ class ImagingNode(Node):
         
         self.camera = Camera(logs_path / "camera")
         self.zoom_level = 3
+        self.camera_state = False # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
         self.camera.setAbsoluteZoom(self.zoom_level)
         
         self.log(f"Logging to {logs_path}")
@@ -85,6 +86,24 @@ class ImagingNode(Node):
         self.cur_rot = R.from_quat([pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w])
         self.last_pose_timestamp_secs = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
         self.got_pose = True
+        self.cam_auto_point()
+
+    @log_exceptions
+    def cam_auto_point(self):
+        # If pointed down and close to the ground, point forward
+        if(self.camera_state and self.cur_position.z < 10): #10 meters ~ 30 feet
+            self.camera.request_center()
+            self.camera_state = False
+            self.log(f"Crossing 10m down, pointing forward. Current position: {self.cur_position.z}")
+        # If pointed forward and altitude is higher, point down
+        elif(not self.camera_state and self.cur_position.z > 10):
+            self.camera.request_down()
+            self.camera_state = True
+            self.log(f"Crossing 10m up, pointing down. Current position: {self.cur_position.z}")
+        else:
+            return
+        self.camera.request_autofocus()
+
 
     @log_exceptions
     def request_point_cb(self, request, response):
