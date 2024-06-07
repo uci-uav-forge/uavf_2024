@@ -18,7 +18,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('gpx_file')
     parser.add_argument('payload_list')
-    parser.add_argument('geofence_points')
     parser.add_argument('image_width_m', type = float)
     parser.add_argument('image_height_m', type = float)
     parser.add_argument('--exit-early', action='store_true')
