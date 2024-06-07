@@ -34,7 +34,7 @@ class ImagingNode(Node):
     @log_exceptions
     def __init__(self) -> None:
         # Initialize the node
-        super().__init__('imaging_node')
+        super().__init__('imaging_node') # type: ignore
         logs_path = Path(f'logs/{strftime("%m-%d %H:%M")}')
         
         self.camera = Camera(logs_path / "camera")

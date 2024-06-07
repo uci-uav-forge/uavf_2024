@@ -52,7 +52,7 @@ class Camera:
         if not log_dir.exists():
             log_dir.mkdir(parents=True, exist_ok=True)
         
-    def set_log_dir(self, log_dir: str):
+    def set_log_dir(self, log_dir: str | Path):
         self.log_dir = Path(log_dir)
         
     def _recording_worker(self):

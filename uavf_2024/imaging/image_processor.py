@@ -95,7 +95,7 @@ class ImageProcessor:
     def get_last_logs_path(self):
         return f"{self.debug_path}/img_{self.num_processed-1}"
     
-    def reset_log_directory(self, new_debug_path: str):
+    def reset_log_directory(self, new_debug_path: str | Path):
         self.debug_path = new_debug_path
         self.num_processed = 0
         os.makedirs(self.debug_path, exist_ok=True)
