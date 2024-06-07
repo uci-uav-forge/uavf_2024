@@ -152,7 +152,7 @@ class PoseProvider:
     """
     class _WorldPosSubscribe(Node):
         CREATED = False
-        def __init__(self, callback: Callable[[PoseStamped], Any]):
+        def __init__(self, pose_callback: Callable[[PoseStamped], Any], altitude_callback: Callable[[Altitude], Any]):
             """
             If this needs to be reused, it should be converted to a singleton.
             """
@@ -173,7 +173,14 @@ class PoseProvider:
             self.create_subscription(
                 PoseStamped,
                 '/mavros/local_position/pose',
-                callback,
+                pose_callback,
+                qos_profile
+            )
+            
+            self.create_subscription(
+                Altitude,
+                '/mavros/altitude', 
+                altitude_callback, 
                 qos_profile
             )
             
@@ -204,7 +211,7 @@ class PoseProvider:
         
         self._buffer = _PoseBuffer(buffer_size)
         
-        __class__._WorldPosSubscribe(self._handle_pose_update)
+        __class__._WorldPosSubscribe(self._handle_pose_update, self._handle_altitude_update)
         
         self.log(f"Finished intializing PoseProvider. Logging to {self.logs_path}")
         
@@ -223,6 +230,27 @@ class PoseProvider:
         self._buffer.put(formatted)
         self._log_pose(formatted)
         self._subscribers.notify(formatted)
+        
+    def _handle_altitude_update(self, altitude: Altitude):
+        """
+        TODO: Rewrite this so that you can subscribe to the altitude as well.
+        """
+        if not self.logs_path:
+            return
+
+        logs_dir = self.logs_path.parent / "altitudes"
+        if not logs_dir.is_dir():
+            logs_dir.mkdir(parents=True)
+        
+        data = {
+            "amsl": float(altitude.amsl),
+            "local": float(altitude.local),
+            "relative": float(altitude.relative),
+            "terrain": float(altitude.terrain)
+        }
+        
+        with open(logs_dir / (str(time.time()) + ".json"), "w") as f:
+            json.dump(data, f)
         
     def get(self, offset: int = 0):
         """
@@ -274,19 +302,6 @@ class ImagingNode(Node):
         # Subscriptions ----
         self.pose_provider = PoseProvider(self.logs_path)
         self.pose_provider.subscribe(self.cam_auto_point)
-        
-        # Init QoS profile
-        qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.VOLATILE,
-            depth = 1
-        )
-        
-        self.drone_altitude_sub = self.create_subscription(
-            Altitude,
-            '/mavros/altitude', 
-            self.log_altitude, 
-            qos_profile)
 
         # Services ----
         # Set up take picture service
@@ -306,22 +321,6 @@ class ImagingNode(Node):
     @log_exceptions
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)
-
-    @log_exceptions
-    def log_altitude(self, altitude: Altitude):
-        """
-        TODO: Refactor this shit
-        """
-        logs_dir = self.logs_path / "altitudes"
-        if not self.logs_path.is_dir():
-            self.logs_path.mkdir(parents=True)
-        
-        data = {
-            "altitude": altitude
-        }
-        
-        with open(logs_dir / str(time.time()), "w") as f:
-            json.dump(data, f)
 
     @log_exceptions
     def cam_auto_point(self, current_pose: PoseDatum):
