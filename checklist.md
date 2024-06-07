@@ -9,7 +9,10 @@ ros2 launch mavros px4.launch fcu_url:=/dev/ttyACM0:921600
 cd ~/ws/src/libuavf_2024
 sudo chmod 666 /dev/ttyTHS1
 tmux
-py esc_read.py
+cd ~/ws
+source install/setup.sh
+colcon build --merge-install
+ros2 run libuavf_2024 esc_read.py
 
 # Camera Test
 cd ~/ws/src/libuavf_2024/scripts/perception_clients

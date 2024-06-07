@@ -16,7 +16,7 @@ class ContinuousImagingClient(Node):
         self.get_logger().info("Initializing Client")
         self.cli = self.create_client(TakePicture, 'imaging_service')
 
-        while not self.cli.wait_for_service():
+        while not self.cli.wait_for_service(5):
             self.get_logger().info('service not available, waiting again...')
 
         self.tracker = TargetTracker()

@@ -48,7 +48,7 @@ def calc_metrics(predictions: list[FullBBoxPrediction], ground_truth: list[FullB
         this_target_was_detected = False
         for pred in predictions:
             pred_box = np.array([[
-                pred.x,pred.y,pred.x+pred.width,pred.y+pred.height
+                pred.x-pred.width//2,pred.y-pred.height//2,pred.x+pred.width//2,pred.y+pred.height//2
             ]])
 
             iou = box_iou(torch.Tensor(true_box), torch.Tensor(pred_box))

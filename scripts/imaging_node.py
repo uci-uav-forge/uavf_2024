@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 import rclpy
 from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
-from libuavf_2024.srv import TakePicture,GetAttitude
+from libuavf_2024.srv import TakePicture,PointCam,ZoomCam,getAttitude,ResetLogDir
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 from scipy.spatial.transform import Rotation as R
 import numpy as np
@@ -12,16 +13,42 @@ from mavros_msgs.msg import Altitude
 
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from time import strftime, time, sleep
+import cv2 as cv
+import json
+import os
+import traceback
+
+def log_exceptions(func):
+    '''
+    Decorator that can be applied to methods on any class that extends
+    a ros `Node` to make them correctly log exceptions when run through
+    a roslaunch file
+    '''
+    def wrapped_fn(self,*args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except Exception:
+            self.get_logger().error(traceback.format_exc())
+    return wrapped_fn
 
 class ImagingNode(Node):
+    @log_exceptions
     def __init__(self) -> None:
+        # Initialize the node
         super().__init__('imaging_node')
-        self.camera = Camera()
-        self.camera.setAbsoluteZoom(1)
-        self.image_processor = ImageProcessor(f'logs/{strftime("%m-%d %H:%M")}/image_processor')
-        focal_len = self.camera.getFocalLength()
-        self.localizer = Localizer.from_focal_length(focal_len, (1920, 1080))
+        logs_path = Path(f'logs/{strftime("%m-%d %H:%M")}')
+        
+        self.camera = Camera(logs_path / "camera")
+        self.zoom_level = 3
+        self.camera_state = False # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
+        self.camera.setAbsoluteZoom(self.zoom_level)
+        
+        self.log(f"Logging to {logs_path}")
+        self.image_processor = ImageProcessor(logs_path / "image_processor")
 
+        # Set up ROS connections
+        self.log(f"Setting up imaging node ROS connections")
+        # Init QoS profile
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
@@ -34,19 +61,46 @@ class ImagingNode(Node):
         self.world_position_sub = self.create_subscription(
             PoseStamped,
             '/mavros/local_position/pose',
-            self.got_pose_cb,
+            self.pose_cb,
             qos_profile)
         
         self.drone_altitude_sub = self.create_subscription(
             Altitude,
             '/mavros/altitude', 
-            self.got_alt_cb, 
+            self.alt_cb, 
             qos_profile)
 
+        # Services ----
+        # Set up take picture service
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
         self.get_logger().info("Finished initializing imaging node")
 
-    def got_alt_cb(self, altitude: Altitude):
+
+        # Set up recenter camera service
+        self.recenter_service = self.create_service(PointCam, 'recenter_service', self.request_point_cb)
+        # Set up zoom camera service
+        self.zoom_service = self.create_service(ZoomCam, 'zoom_service', self.setAbsoluteZoom_cb)
+        # Set up reset log directory service
+        self.reset_log_dir_service = self.create_service(ResetLogDir, 'reset_log_dir', self.reset_log_dir_cb)
+
+        # Cleanup
+        self.get_logger().info("Finished initializing imaging node")
+        
+    @log_exceptions
+    def log(self, *args, **kwargs):
+        self.get_logger().info(*args, **kwargs)
+
+    @log_exceptions
+    def pose_cb(self, pose: PoseStamped):
+        # Update current position and rotation
+        self.cur_position = pose.pose.position
+        self.cur_rot = R.from_quat([pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w])
+        self.last_pose_timestamp_secs = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
+        self.got_pose = True
+        self.cam_auto_point()
+
+    @log_exceptions
+    def alt_cb(self, altitude: Altitude):
         self.cur_altitude = altitude
         self.cur_amsl = altitude.amsl
         self.cur_local_alt = altitude.local
@@ -54,46 +108,101 @@ class ImagingNode(Node):
         self.cur_terrain_alt = altitude.terrain
         self.got_altitude = True
 
+    @log_exceptions
+    def cam_auto_point(self):
+        # If pointed down and close to the ground, point forward
+        if(self.camera_state and self.cur_position.z < 10): #10 meters ~ 30 feet
+            self.camera.request_center()
+            self.camera_state = False
+            self.log(f"Crossing 10m down, pointing forward. Current position: {self.cur_position.z}")
+        # If pointed forward and altitude is higher, point down
+        elif(not self.camera_state and self.cur_position.z > 10):
+            self.camera.request_down()
+            self.camera_state = True
+            self.log(f"Crossing 10m up, pointing down. Current position: {self.cur_position.z}")
+        else:
+            return
+        self.camera.request_autofocus()
 
-        
-    def got_pose_cb(self, pose: PoseStamped):
-        self.cur_pose = pose
-        self.cur_position = pose.pose.position
-        self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,])
-        self.got_pose = True
 
-
-    def log(self, *args, **kwargs):
-        self.get_logger().info(*args, **kwargs)
+    @log_exceptions
+    def request_point_cb(self, request, response):
+        self.log(f"Received Point Camera Down Request: {request}")
+        if request.down:
+            response.success = self.camera.request_down()
+        else:
+            response.success = self.camera.request_center()
+        self.camera.request_autofocus()
+        return response
     
+    @log_exceptions
+    def setAbsoluteZoom_cb(self, request, response):
+        self.log(f"Received Set Zoom Request: {request}")
+        response.success = self.camera.setAbsoluteZoom(request.zoom_level)
+        self.camera.request_autofocus()
+        self.zoom_level = request.zoom_level
+        return response
+
+    @log_exceptions
+    def reset_log_dir_cb(self, request, response):
+        new_logs_dir = Path('logs/{strftime("%m-%d %H:%M")}')
+        self.log(f"Starting new log directory at {new_logs_dir}")
+        os.makedirs(new_logs_dir, exist_ok = True)
+        self.image_processor.reset_log_directory(new_logs_dir / 'image_processor')
+        self.camera.set_log_dir(new_logs_dir / 'camera')
+        response.success = True
+        return response
+    
+    @log_exceptions
+    def make_localizer(self):
+        focal_len = self.camera.getFocalLength()
+        localizer = Localizer.from_focal_length(
+            focal_len, 
+            (1920, 1080),
+            (np.array([1,0,0]), np.array([0,-1, 0])),
+            2    
+        )
+        return localizer
+
+    @log_exceptions
+    def point_camera_down(self):
+        self.camera.request_down()
+        while abs(self.camera.getAttitude()[1] - -90) > 2:
+            self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
+            sleep(0.1)
+        self.log("Camera pointed down")
+        self.camera.request_autofocus()
+
+    @log_exceptions
     def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
         '''
             autofocus, then wait till cam points down, take pic,
         
             We want to take photo when the attitude is down only. 
         '''
-        self.get_logger().info("Received Down Image Request")
+        self.log("Received Down Image Request")
 
-        self.camera.request_autofocus()
-        self.camera.request_down()
-        while abs(self.camera.getAttitude()[1] - -90) > 2:
+        if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
+            self.point_camera_down()
 
-            self.get_logger().info(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
-            sleep(0.1)
-        sleep(1) # To let the autofocus finish
+        #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
         
+        # Take picture and grab relevant data
+        localizer = self.make_localizer()
         start_angles = self.camera.getAttitude()
-        img = self.camera.take_picture()
+        img = self.camera.get_latest_image()
         timestamp = time()
         end_angles = self.camera.getAttitude()
-        self.get_logger().info("Picture taken")
 
+        if img is None:
+            self.log("Could not get image from Camera.")
+            return []
+    
         detections = self.image_processor.process_image(img)
-        self.get_logger().info("Images processed")
 
+        # Get avg camera pose for the image
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
         if not self.got_pose:
-            self.get_logger().error("No pose info from mavros. Hanging until we get pose")
             for _ in range(5):
                 if self.got_pose:
                     break
@@ -101,22 +210,43 @@ class ImagingNode(Node):
             if not self.got_pose:
                 return
             else:
-                self.get_logger().info("Got pose finally!")
+                self.log("Got pose!")
 
         cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
+        cur_rot_quat = self.cur_rot.as_quat()
+
+
         world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
         cam_pose = (cur_position_np, world_orientation)
 
-        self.get_logger().info("Writing cam pose to file")
-        with open(f"{self.image_processor.get_last_logs_path()}/cam_pose.txt", "w") as f:
-            f.write(f"{cur_position_np[0]},{cur_position_np[1]},{cur_position_np[2]}\n")
-            rot_quat = world_orientation.as_quat()
-            f.write(f"{rot_quat[0]},{rot_quat[1]},{rot_quat[2]},{rot_quat[3]}\n")
-        
-        self.get_logger().info(f"{len(detections)} detections")
-        preds_3d = [self.localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
-        self.get_logger().info("Localization finished")
+        # Get 3D predictions
+        preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
+
+        # Log data
+        logs_folder = self.image_processor.get_last_logs_path()
+        self.log(f"This frame going to {logs_folder}")
+        self.log(f"Zoom level: {self.zoom_level}")
+        self.log(f"{len(detections)} detections \t({'*'*len(detections)})")
+        os.makedirs(logs_folder, exist_ok=True)
+        cv.imwrite(f"{logs_folder}/image.png", img.get_array())
+        log_data = {
+            'pose_time': self.last_pose_timestamp_secs,
+            'image_time': timestamp,
+            'drone_position': cur_position_np.tolist(),
+            'drone_q': cur_rot_quat.tolist(),
+            'gimbal_yaw': avg_angles[0],
+            'gimbal_pitch': avg_angles[1],
+            'gimbal_roll': avg_angles[2],
+            'zoom level': self.zoom_level,
+            'preds_3d': [
+                {
+                    'position': p.position.tolist(),
+                    'id': p.id,
+                } for p in preds_3d
+            ]
+        }
+        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
 
         response.detections = []
         for i, p in enumerate(preds_3d):
@@ -133,8 +263,6 @@ class ImagingNode(Node):
             )
 
             response.detections.append(t)
-
-        self.get_logger().info("Returning Response")
 
         return response
     
