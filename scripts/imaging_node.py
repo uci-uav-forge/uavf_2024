@@ -73,7 +73,6 @@ class ImagingNode(Node):
         # Services ----
         # Set up take picture service
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
-        self.get_logger().info("Finished initializing imaging node")
 
 
         # Set up recenter camera service
@@ -206,7 +205,7 @@ class ImagingNode(Node):
             for _ in range(5):
                 if self.got_pose:
                     break
-                self.get_logger().info("Waiting for pose")
+                self.log("Waiting for pose")
             if not self.got_pose:
                 return
             else:
@@ -266,13 +265,6 @@ class ImagingNode(Node):
 
         return response
     
-    
-    def get_attitudes(self, request, response: list[float]):
-        self.get_logger().info("Received Request for attitudes")
-        self.camera.request_down()
-        sleep(0.5)
-        response.attitudes = self.camera.getAttitude()
-        return response
         
 
 def main(args=None) -> None:
@@ -280,8 +272,7 @@ def main(args=None) -> None:
     rclpy.init(args=args)
     node = ImagingNode()
     rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+
 
 
 if __name__ == '__main__':
