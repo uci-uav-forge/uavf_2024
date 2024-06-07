@@ -3,6 +3,10 @@ import base64
 import time
 from time import strftime
 import os
+import rclpy
+from rclpy.qos import *
+import mavros_msgs.msg
+from threading import Thread
 
 # on the jetson orin, you plug the esc telem wire into pin 10,
 # which is fifth from the USB ports on the side closer to the fan.
@@ -43,12 +47,34 @@ def crc8(buff: list) -> bool:
         crc = update_crc8(buff[i], crc)
     return crc
 
+
+class EscReadNode(rclpy.node.Node):
+    def __init__(self):
+        super().__init__('esc_read')
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_ALL,
+            depth = 1)
+        self.msg_pub = self.create_publisher(
+            mavros_msgs.msg.StatusText,
+            'mavros/statustext/send',
+            qos_profile
+        )
+rclpy.init()
+node = EscReadNode()
+spinner = Thread(target = rclpy.spin, args = (node,))
+
+
 first_byte = True
 first_buff = True
 first_valid_buff = True
 
 os.makedirs("/home/forge/logs_esc", exist_ok=True)
 fname = f"/home/forge/logs_esc/{strftime('%H:%M:%S')}.txt"
+
+STATUSTEXT_PERIOD = 1000
+statustext_timer = STATUSTEXT_PERIOD
 
 print(f"Logging to {fname}")
 last_ten = []
@@ -75,7 +101,16 @@ while 1:
                 indicators = [
                     '-','/','|','\\'
                 ]
-                print(f"{sum(last_ten)/len(last_ten):.02f}V (avg) / {min(last_ten):.02f}V (min) / {max(last_ten):.02f}V (max) / {per_cell:.02f}V (live) {indicators[i%len(indicators)]}",end='\r')
+                status_str = f"{sum(last_ten)/len(last_ten):.02f}V (avg) / {min(last_ten):.02f}V (min) / {max(last_ten):.02f}V (max) / {per_cell:.02f}V (live)"
+                print(f"status_str {indicators[i%len(indicators)]}",end='\r')
+
+                statustext_timer -= 1 
+                if statustext_timer == 0:
+                    for chunk in [status_str[i:i+30] for i in range(0,len(status_str),30)]:
+                        node.msg_pub.publish(mavros_msgs.msg.StatusText(severity=mavros_msgs.msg.StatusText.NOTICE, text=chunk))
+                    statustext_timer = STATUSTEXT_PERIOD
+
+
                 i+=1
             # print(f"{per_cell:.02f}V per cell ({voltage/100}V total)", len(last_ten))
             current = (buff[3]<<8) + buff[4]
