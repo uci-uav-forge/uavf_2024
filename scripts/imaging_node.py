@@ -1,22 +1,29 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
-import rclpy
-from rclpy.node import Node
-from libuavf_2024.msg import TargetDetection
-from libuavf_2024.srv import TakePicture,PointCam,ZoomCam,ResetLogDir
-from uavf_2024.imaging import Camera, ImageProcessor, Localizer
-from scipy.spatial.transform import Rotation as R
-import numpy as np
-from geometry_msgs.msg import PoseStamped, Point
-from mavros_msgs.msg import Altitude
-
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
-from time import strftime, time, sleep
-import cv2 as cv
 import json
 import os
+import random
+import threading
+import time
 import traceback
+from collections import deque
+from pathlib import Path
+from typing import Any, Callable, Generic, NamedTuple, TypeVar
+import logging
+
+import cv2 as cv
+import numpy as np
+import rclpy
+from geometry_msgs.msg import Point, PoseStamped
+from mavros_msgs.msg import Altitude
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from scipy.spatial.transform import Rotation
+
+from libuavf_2024.msg import TargetDetection
+from libuavf_2024.srv import PointCam, ResetLogDir, TakePicture, ZoomCam
+from uavf_2024.imaging import Camera, ImageProcessor, Localizer
+
 
 def log_exceptions(func):
     '''
@@ -31,44 +38,270 @@ def log_exceptions(func):
             self.get_logger().error(traceback.format_exc())
     return wrapped_fn
 
+
+class PoseDatum(NamedTuple):
+    """
+    Our representation of the pose data from the Cube.
+    """
+    position: Point
+    rotation: Rotation
+    time_seconds: float
+    
+    def to_json(self):
+        return {
+            "position": [self.position.x, self.position.y, self.position.z],
+            "rotation": list(self.rotation.as_quat()),
+            "time_seconds": self.time_seconds
+        }
+
+
+class _PoseBuffer:
+    def __init__(self, capacity: int = 4):
+        if capacity < 1:
+            raise ValueError(f"Buffer capacity cannot be less than 1. Got {capacity}")
+        self._capacity = capacity
+        self._queue: deque[PoseDatum] = deque(maxlen=self.capacity)
+        
+        # Lock for the whole queue. 
+        # Not necessary if only the front is popped because that is thread-safe. 
+        self.lock = threading.Lock()
+        
+    @property
+    def capacity(self):
+        return self._capacity
+    
+    @property
+    def count(self):
+        return len(self._queue)
+        
+    def __bool__(self):
+        return bool(self.count)
+    
+    def put(self, datum: PoseDatum):
+        with self.lock:
+            # If the queue is too long, it'll automatically discard 
+            # the item at the other end.
+            self._queue.append(datum)
+        
+    def get_fresh(self, offset: int = 0):
+        """
+        Gets the item at the freshness offset specified (if specified).
+        Otherwise, get the freshest datum
+        """
+        if offset < 0:
+            raise ValueError(f"Offset cannot be less than 0. Got {offset}")
+        
+        with self.lock:
+            return self._queue[-(offset + 1)]
+    
+    def get_all(self) -> list[PoseDatum]:
+        """
+        Returns all items in the buffer in the order of freshest first.
+        
+        Can be useful if we want a more refined search.
+        """
+        with self.lock:
+            return list(reversed(self._queue))
+        
+
+InputT = TypeVar("InputT")
+class Subscriptions(Generic[InputT]):
+    """
+    Manages subscriptions in a thread-safe way.
+    
+    This class can be used in the future to subsume ROS' subscription
+    functionality when we stay within Python.
+    """
+    def __init__(self):
+        self._callbacks: dict[float, Callable[[InputT], Any]] = {}
+        self.lock = threading.Lock()
+    
+    def add(self, callback: Callable[[InputT], Any]) -> Callable[[], None]:
+        """
+        Adds the callback to the collection of subscriptions to be called
+        when there is a notification.
+        
+        Returns a function to unsubscribe.
+        """
+        subscription_id = random.random()
+        
+        with self.lock:
+            def unsubscribe():
+                del self._callbacks[subscription_id]
+            
+            self._callbacks[subscription_id] = callback
+        
+        return unsubscribe
+
+    def notify(self, new_value: InputT):
+        """
+        Calls all of the callbacks with the new value.
+        
+        Locks so that subscriptions will have to wait after a round of notifications.
+        """
+        with self.lock:
+            for callback in self._callbacks.values():
+                callback(new_value)
+
+
+class PoseProvider:
+    """
+    Logs and buffers the world position for reading.
+    
+    Provides a method to subscribe to changes as well.
+    """
+    class _WorldPosSubscribe(Node):
+        CREATED = False
+        def __init__(self, pose_callback: Callable[[PoseStamped], Any], altitude_callback: Callable[[Altitude], Any]):
+            """
+            If this needs to be reused, it should be converted to a singleton.
+            """
+            if __class__.CREATED:
+                raise AssertionError("_WorldPosSubscriber should only be created once")
+            
+            super().__init__("uavf_world_pos_node") # type: ignore
+            
+            __class__.CREATED = True
+            
+            # Initialize Quality-of-Service profile for subscription
+            qos_profile = QoSProfile(
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+                durability=DurabilityPolicy.VOLATILE,
+                depth = 1
+            )
+        
+            self.create_subscription(
+                PoseStamped,
+                '/mavros/local_position/pose',
+                pose_callback,
+                qos_profile
+            )
+            
+            self.create_subscription(
+                Altitude,
+                '/mavros/altitude', 
+                altitude_callback, 
+                qos_profile
+            )
+            
+            threading.Thread(target=lambda: rclpy.spin(self), daemon=True).start()
+    
+    def __init__(
+        self, 
+        logs_path: str | os.PathLike | Path | None = None, 
+        buffer_size = 5
+    ):
+        """
+        Parameters:
+            logs_path: The parent directory to which to log.
+            buffer_size: The number of world positions to keep in the buffer
+                for offsetted access.
+        """
+        self.logger = logging.getLogger("PoseProviderLogger")
+        
+        self._subscribers: Subscriptions[PoseDatum] = Subscriptions()
+        
+        self._log_index = 0
+        self.logs_path = Path(logs_path) / "poses" if logs_path else None
+        if self.logs_path:
+            if not self.logs_path.exists():
+                self.logs_path.mkdir(parents=True)
+            elif not self.logs_path.is_dir():
+                raise FileExistsError(f"{self.logs_path} exists but is not a directory")
+        
+        self._buffer = _PoseBuffer(buffer_size)
+        
+        __class__._WorldPosSubscribe(self._handle_pose_update, self._handle_altitude_update)
+        
+        self.log(f"Finished intializing PoseProvider. Logging to {self.logs_path}")
+        
+    def log(self, message, level = logging.INFO):
+        self.logger.log(level, message)
+        
+    def _handle_pose_update(self, pose: PoseStamped) -> None:
+        quaternion = pose.pose.orientation
+        formatted = PoseDatum(
+            position = pose.pose.position,
+            rotation = Rotation.from_quat(
+                [quaternion.x, quaternion.y, quaternion.z, quaternion.w]),
+            time_seconds = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
+        )
+        
+        self._buffer.put(formatted)
+        self._log_pose(formatted)
+        self._subscribers.notify(formatted)
+        
+    def _handle_altitude_update(self, altitude: Altitude):
+        """
+        TODO: Rewrite this so that you can subscribe to the altitude as well.
+        """
+        if not self.logs_path:
+            return
+
+        logs_dir = self.logs_path.parent / "altitudes"
+        if not logs_dir.is_dir():
+            logs_dir.mkdir(parents=True)
+        
+        data = {
+            "amsl": float(altitude.amsl),
+            "local": float(altitude.local),
+            "relative": float(altitude.relative),
+            "terrain": float(altitude.terrain)
+        }
+        
+        with open(logs_dir / (str(time.time()) + ".json"), "w") as f:
+            json.dump(data, f)
+        
+    def get(self, offset: int = 0):
+        """
+        Gets the item at the freshness offset specified (if specified).
+        Otherwise, get the freshest datum
+        """
+        return self._buffer.get_fresh(offset)
+    
+    def _log_pose(self, pose: PoseDatum):
+        if not self.logs_path:
+            return
+        
+        with open(self.logs_path / f"{pose.time_seconds:.02f}.json", "w") as f:
+            json.dump(pose.to_json(), f)
+    
+    def subscribe(self, callback: Callable[[PoseDatum], Any]):
+        self._subscribers.add(callback)
+        
+    def wait_for_pose(self, timeout_seconds: float = float('inf')):
+        """
+        Waits until the first pose is added to the buffer.
+        """
+        start = time.time()
+        
+        while self._buffer.count == 0:
+            if time.time() - start >= timeout_seconds:
+                raise TimeoutError("Timed out waiting for pose")
+            
+            time.sleep(0.1)
+
 class ImagingNode(Node):
     @log_exceptions
     def __init__(self) -> None:
         # Initialize the node
-        super().__init__('imaging_node')
-        logs_path = Path(f'logs/{strftime("%m-%d %H:%M")}')
+        super().__init__('imaging_node') # type: ignore
+        self.logs_path = Path(f'logs/{time.strftime("%m-%d %H:%M")}')
         
-        self.camera = Camera(logs_path / "camera")
+        self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
         self.camera_state = False # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
         self.camera.setAbsoluteZoom(self.zoom_level)
         
-        self.log(f"Logging to {logs_path}")
-        self.image_processor = ImageProcessor(logs_path / "image_processor")
+        self.log(f"Logging to {self.logs_path}")
+        self.image_processor = ImageProcessor(self.logs_path / "image_processor")
 
         # Set up ROS connections
         self.log(f"Setting up imaging node ROS connections")
-        # Init QoS profile
-        qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.VOLATILE,
-            depth = 1
-        )
-
-        self.got_pose = False
-        self.got_altitude = False
-
-        self.world_position_sub = self.create_subscription(
-            PoseStamped,
-            '/mavros/local_position/pose',
-            self.pose_cb,
-            qos_profile)
         
-        self.drone_altitude_sub = self.create_subscription(
-            Altitude,
-            '/mavros/altitude', 
-            self.alt_cb, 
-            qos_profile)
+        # Subscriptions ----
+        self.pose_provider = PoseProvider(self.logs_path)
+        self.pose_provider.subscribe(self.cam_auto_point)
 
         # Services ----
         # Set up take picture service
@@ -90,35 +323,19 @@ class ImagingNode(Node):
         self.get_logger().info(*args, **kwargs)
 
     @log_exceptions
-    def pose_cb(self, pose: PoseStamped):
-        # Update current position and rotation
-        self.cur_position = pose.pose.position
-        self.cur_rot = R.from_quat([pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w])
-        self.last_pose_timestamp_secs = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
-        self.got_pose = True
-        self.cam_auto_point()
-
-    @log_exceptions
-    def alt_cb(self, altitude: Altitude):
-        self.cur_altitude = altitude
-        self.cur_amsl = altitude.amsl
-        self.cur_local_alt = altitude.local
-        self.cur_relative_alt = altitude.relative
-        self.cur_terrain_alt = altitude.terrain
-        self.got_altitude = True
-
-    @log_exceptions
-    def cam_auto_point(self):
+    def cam_auto_point(self, current_pose: PoseDatum):
+        z = current_pose.position.z
+        
         # If pointed down and close to the ground, point forward
-        if(self.camera_state and self.cur_position.z < 10): #10 meters ~ 30 feet
+        if(self.camera_state and z < 10): #10 meters ~ 30 feet
             self.camera.request_center()
             self.camera_state = False
-            self.log(f"Crossing 10m down, pointing forward. Current position: {self.cur_position.z}")
+            self.log(f"Crossing 10m down, pointing forward. Current position: {z}")
         # If pointed forward and altitude is higher, point down
-        elif(not self.camera_state and self.cur_position.z > 10):
+        elif(not self.camera_state and z > 10):
             self.camera.request_down()
             self.camera_state = True
-            self.log(f"Crossing 10m up, pointing down. Current position: {self.cur_position.z}")
+            self.log(f"Crossing 10m up, pointing down. Current position: {z}")
         else:
             return
         self.camera.request_autofocus()
@@ -168,7 +385,7 @@ class ImagingNode(Node):
         self.camera.request_down()
         while abs(self.camera.getAttitude()[1] - -90) > 2:
             self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
-            sleep(0.1)
+            time.sleep(0.1)
         self.log("Camera pointed down")
         self.camera.request_autofocus()
 
@@ -190,7 +407,7 @@ class ImagingNode(Node):
         localizer = self.make_localizer()
         start_angles = self.camera.getAttitude()
         img = self.camera.get_latest_image()
-        timestamp = time()
+        timestamp = time.time()
         end_angles = self.camera.getAttitude()
 
         if img is None:
@@ -201,23 +418,15 @@ class ImagingNode(Node):
 
         # Get avg camera pose for the image
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
-        if not self.got_pose:
-            for _ in range(5):
-                if self.got_pose:
-                    break
-                self.log("Waiting for pose")
-            if not self.got_pose:
-                return
-            else:
-                self.log("Got pose!")
+        
+        self.pose_provider.wait_for_pose()
+        pose = self.pose_provider.get()
 
-        cur_position_np = np.array([self.cur_position.x, self.cur_position.y, self.cur_position.z])
-        cur_rot_quat = self.cur_rot.as_quat()
+        cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
+        cur_rot_quat = pose.rotation.as_quat()
 
-
-        world_orientation = self.camera.orientation_in_world_frame(self.cur_rot, avg_angles)
+        world_orientation = self.camera.orientation_in_world_frame(pose.rotation, avg_angles)
         cam_pose = (cur_position_np, world_orientation)
-
 
         # Get 3D predictions
         preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
@@ -230,7 +439,7 @@ class ImagingNode(Node):
         os.makedirs(logs_folder, exist_ok=True)
         cv.imwrite(f"{logs_folder}/image.png", img.get_array())
         log_data = {
-            'pose_time': self.last_pose_timestamp_secs,
+            'pose_time': pose.time_seconds,
             'image_time': timestamp,
             'drone_position': cur_position_np.tolist(),
             'drone_q': cur_rot_quat.tolist(),
@@ -264,8 +473,7 @@ class ImagingNode(Node):
             response.detections.append(t)
 
         return response
-    
-        
+
 
 def main(args=None) -> None:
     print('Starting imaging node...')
