@@ -22,6 +22,7 @@ from scipy.spatial.transform import Rotation
 
 from libuavf_2024.msg import TargetDetection
 from libuavf_2024.srv import PointCam, ResetLogDir, TakePicture, ZoomCam
+from uavf_2024.async_utils import OnceCallable
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 
 
@@ -302,7 +303,10 @@ class ImagingNode(Node):
         # Subscriptions ----
         self.pose_provider = PoseProvider(self.logs_path)
         self.pose_provider.subscribe(self.cam_auto_point)
-        self.pose_provider.subscribe(lambda _: self.camera.start_recording())
+        
+        # Only start the recording once (when the first pose comes in)
+        start_recording_once = OnceCallable(lambda _: self.camera.start_recording)
+        self.pose_provider.subscribe(start_recording_once)
 
         # Services ----
         # Set up take picture service
@@ -331,11 +335,13 @@ class ImagingNode(Node):
         if(self.camera_state and z < 3): #3 meters ~ 30 feet
             self.camera.request_center()
             self.camera_state = False
+            self.camera.stop_recording()
             self.log(f"Crossing 3m down, pointing forward. Current position: {z}")
         # If pointed forward and altitude is higher, point down
         elif(not self.camera_state and z > 3):
             self.camera.request_down()
             self.camera_state = True
+            self.camera.start_recording()
             self.log(f"Crossing 3m up, pointing down. Current position: {z}")
         else:
             return
