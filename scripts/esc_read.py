@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
 import serial
 import base64
 import time
 from time import strftime
 import os
 import rclpy
+import rclpy.node
 from rclpy.qos import *
 import mavros_msgs.msg
 from threading import Thread
