@@ -151,44 +151,9 @@ class PoseProvider:
     
     Provides a method to subscribe to changes as well.
     """
-    class _WorldPosSubscribe(Node):
-        CREATED = False
-        def __init__(self, pose_callback: Callable[[PoseStamped], Any], altitude_callback: Callable[[Altitude], Any]):
-            """
-            If this needs to be reused, it should be converted to a singleton.
-            """
-            if __class__.CREATED:
-                raise AssertionError("_WorldPosSubscriber should only be created once")
-            
-            super().__init__("uavf_world_pos_node") # type: ignore
-            
-            __class__.CREATED = True
-            
-            # Initialize Quality-of-Service profile for subscription
-            qos_profile = QoSProfile(
-                reliability=ReliabilityPolicy.BEST_EFFORT,
-                durability=DurabilityPolicy.VOLATILE,
-                depth = 1
-            )
-        
-            self.create_subscription(
-                PoseStamped,
-                '/mavros/local_position/pose',
-                pose_callback,
-                qos_profile
-            )
-            
-            self.create_subscription(
-                Altitude,
-                '/mavros/altitude', 
-                altitude_callback, 
-                qos_profile
-            )
-            
-            threading.Thread(target=lambda: rclpy.spin(self), daemon=True).start()
-    
     def __init__(
         self, 
+        node_context: Node,
         logs_path: str | os.PathLike | Path | None = None, 
         buffer_size = 5
     ):
@@ -198,6 +163,7 @@ class PoseProvider:
             buffer_size: The number of world positions to keep in the buffer
                 for offsetted access.
         """
+        self._node = node_context
         self.logger = logging.getLogger("PoseProviderLogger")
         
         self._subscribers: Subscriptions[PoseDatum] = Subscriptions()
@@ -212,12 +178,34 @@ class PoseProvider:
         
         self._buffer = _PoseBuffer(buffer_size)
         
-        __class__._WorldPosSubscribe(self._handle_pose_update, self._handle_altitude_update)
+        self._subscribe_pose_and_altitude(self._handle_pose_update, self._handle_altitude_update)
         
         self.log(f"Finished intializing PoseProvider. Logging to {self.logs_path}")
         
     def log(self, message, level = logging.INFO):
         self.logger.log(level, message)
+        
+    def _subscribe_pose_and_altitude(self, pose_callback: Callable[[PoseStamped], Any], altitude_callback: Callable[[Altitude], Any]):        
+        # Initialize Quality-of-Service profile for subscription
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            depth = 1
+        )
+    
+        self._node.create_subscription(
+            PoseStamped,
+            '/mavros/local_position/pose',
+            pose_callback,
+            qos_profile
+        )
+        
+        self._node.create_subscription(
+            Altitude,
+            '/mavros/altitude', 
+            altitude_callback, 
+            qos_profile
+        )
         
     def _handle_pose_update(self, pose: PoseStamped) -> None:
         quaternion = pose.pose.orientation
@@ -301,7 +289,7 @@ class ImagingNode(Node):
         self.log(f"Setting up imaging node ROS connections")
         
         # Subscriptions ----
-        self.pose_provider = PoseProvider(self.logs_path)
+        self.pose_provider = PoseProvider(self, self.logs_path)
         self.pose_provider.subscribe(self.cam_auto_point)
         
         # Only start the recording once (when the first pose comes in)
