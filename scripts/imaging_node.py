@@ -279,7 +279,7 @@ class ImagingNode(Node):
         
         self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
-        self.camera_state = False # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
+        self.camera_state = True # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
         self.camera.setAbsoluteZoom(self.zoom_level)
         
         self.log(f"Logging to {self.logs_path}")
@@ -293,7 +293,7 @@ class ImagingNode(Node):
         self.pose_provider.subscribe(self.cam_auto_point)
         
         # Only start the recording once (when the first pose comes in)
-        start_recording_once = OnceCallable(lambda _: self.camera.start_recording)
+        start_recording_once = OnceCallable(lambda _: self.camera.start_recording())
         self.pose_provider.subscribe(start_recording_once)
 
         # Services ----
