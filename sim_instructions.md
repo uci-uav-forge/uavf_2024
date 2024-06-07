@@ -68,11 +68,7 @@ ros2 run libuavf_2024 mock_imaging_node.py /home/ws/libuavf_2024/uavf_2024/gnc/d
 
 Launch the demo commander node:
 ```
-<<<<<<< HEAD
-ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/TEST_MISSION /home/ws/libuavf_2024/uavf_2024/gnc/data/AIRDROP_BOUNDARY /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST /home/ws/uavf_2024/uavf_2024/gnc/data/FLIGHT_BOUNDARY 12 9
-=======
 ros2 run libuavf_2024 demo_commander_node.py /home/ws/libuavf_2024/uavf_2024/gnc/data/primary.gpx /home/ws/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
->>>>>>> 7f14c96fd4852e4536756a521a2575111acd8779
 ```
 
 This will execute one lap of the mission in SITL.
