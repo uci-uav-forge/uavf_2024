@@ -1,25 +1,102 @@
+from pathlib import Path
+import threading
+import time
 from siyi_sdk import SIYISTREAM,SIYISDK
 from uavf_2024.imaging.imaging_types import Image, HWC
 import matplotlib.image 
 from scipy.spatial.transform import Rotation
 import numpy as np
 
-class Camera:
+
+class ImageBuffer:
+    """
+    Buffer for one Image implementing a Lock for multithreading. 
+    """
     def __init__(self):
+        self.image = None
+        self.lock = threading.Lock()
+        
+    def put(self, image: Image):
+        with self.lock:
+            self.image = image
+            
+    def get(self) -> Image | None:
+        with self.lock:
+            return self.image
+
+
+class Camera:
+    def __init__(self, log_dir: str | Path | None = None):
+        """
+        Currently starts recording and logging as soon as constructed.
+        This should be changed to after takeoff.
+        """
+        self.log_dir = Path(log_dir) if log_dir is not None else None
+        if self.log_dir:
+            self._prep_log_dir(self.log_dir)
+        
         self.cam = SIYISDK(server_ip = "192.168.144.25", port= 37260,debug=False)
         self.stream = SIYISTREAM(server_ip = "192.168.144.25", port = 8554,debug=False)
         self.stream.connect()
         self.cam.connect()
         #self.cam.requestLockMode()
-
         
-    def take_picture(self) -> Image:
-        '''
-        Returns picture as ndarray with shape (height,width,3)
-        '''
-        pic = self.stream.get_frame()
-        return Image(pic, HWC)
-        # return np.random.rand(3, 3840, 2160)
+        # Buffer for taking the latest image, logging it, and returning it in get_latest_image
+        self.buffer = ImageBuffer()
+        self.recording_thread: threading.Thread | None = None
+        self.recording = False
+        self.start_recording()
+    
+    @staticmethod
+    def _prep_log_dir(log_dir: Path):
+        if not log_dir.exists():
+            log_dir.mkdir(parents=True, exist_ok=True)
+        
+    def set_log_dir(self, log_dir: str):
+        self.log_dir = Path(log_dir)
+        
+    def _recording_worker(self):
+        """
+        Worker function that continuously gets frames from the stream and puts them in the buffer as well as logging them.
+        """
+        while self.recording:
+            try:
+                img_arr = self.stream.get_frame()
+                
+                if img_arr is None:
+                    time.sleep(0.1)
+                    continue
+            except Exception as e:
+                # Waits 100ms before trying again
+                print(f"Error getting frame: {e}")
+                time.sleep(0.1)
+                continue
+            
+            image = Image(img_arr, HWC)
+            
+            self.buffer.put(image)
+            if self.log_dir:
+                image.save(self.log_dir / f"{time.time()}.png")
+                
+    def start_recording(self):
+        """
+        Currently called in __init__, but this should be changed to being called when we're in the air.
+        """
+        self.recording_thread = threading.Thread(target=self._recording_worker)
+        self.recording = True
+        self.recording_thread.start()
+        
+    def stop_recording(self):
+        if self.recording_thread:
+            self.recording = False
+            self.recording_thread.join()
+            self.recording_thread = None
+        
+    def get_latest_image(self) -> Image | None:
+        """
+        Returns the latest Image (HWC) from the buffer.
+        """
+        return self.buffer.get()
     
     def requestAbsolutePosition(self, yaw: float, pitch: float):
         return self.cam.requestAbsolutePosition(yaw, pitch)
@@ -69,6 +146,7 @@ class Camera:
         self.disconnect()
     
     def disconnect(self):
+        self.stop_recording()
         self.stream.disconnect()
         self.cam.disconnect()
 
@@ -91,6 +169,7 @@ class Camera:
 
 if __name__ == "__main__":
     cam = Camera()
-    out = cam.take_picture()
-    matplotlib.image.imsave("sample_frame.png",out.get_array().transpose(2,1,0))
+    out = cam.get_latest_image()
+    # matplotlib.image.imsave("sample_frame.png",out.get_array().transpose(2,1,0))
+    out.save("sample_frame.png")
     cam.disconnect()

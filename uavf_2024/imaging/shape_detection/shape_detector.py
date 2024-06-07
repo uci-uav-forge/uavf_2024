@@ -3,6 +3,7 @@ import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
 import numpy as np
+import torch
 from ..imaging_types import Tile, DetectionResult, img_coord_t, SHAPES
 import os
 from .. import profiler
@@ -48,7 +49,8 @@ class ShapeDetector:
     @profiler
     def predict(self, tiles: tuple[Tile]) -> list[DetectionResult]:
         imgs_list = [tile.img.get_array() for tile in tiles if tile is not None]
-        predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False, conf=self.conf)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        predictions: list[Results] = self.shape_model.predict(imgs_list, verbose=False, conf=self.conf, device=device)
 
         full_results = []
         for img_index, single_pred in enumerate(predictions):
@@ -59,8 +61,6 @@ class ShapeDetector:
             boxes: Boxes = single_pred.boxes
             for box, prob, cls in zip(boxes.xywh, boxes.conf, boxes.cls):
                 x,y,w,h = box.int()
-                x-=int(w/2) # adjust to make x,y the top left
-                y-=int(h/2)
                 confidences = np.zeros(9)
                 new_cls = classes_2023_remapping[cls.int().item()]
                 confidences[new_cls] = prob

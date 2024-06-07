@@ -34,7 +34,7 @@ async def print_drone_position():
                     cam.request_down()
                     cam.request_autofocus()
                     last_autofocus = time()
-                img = cam.take_picture()
+                img = cam.get_latest_image()
                 os.system('cls' if os.name == 'nt' else 'clear')  # Clear for Windows/Linux
                 msg = f"Drone angles (zyx): {[f'{a:.2f}' for a in angles]}"
                 position_ned = telemetry.position
