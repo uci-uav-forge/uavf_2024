@@ -45,7 +45,6 @@ class Camera:
         self.buffer = ImageBuffer()
         self.recording_thread: threading.Thread | None = None
         self.recording = False
-        self.start_recording()
     
     @staticmethod
     def _prep_log_dir(log_dir: Path):
@@ -82,6 +81,9 @@ class Camera:
         """
         Currently called in __init__, but this should be changed to being called when we're in the air.
         """
+        if self.recording:
+            return
+
         self.recording_thread = threading.Thread(target=self._recording_worker)
         self.recording = True
         self.recording_thread.start()
