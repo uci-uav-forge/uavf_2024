@@ -4,11 +4,13 @@ from pathlib import Path
 import rclpy
 from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
-from libuavf_2024.srv import TakePicture,PointCam,ZoomCam,GetAttitude,ResetLogDir
+from libuavf_2024.srv import TakePicture,PointCam,ZoomCam,ResetLogDir
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 from geometry_msgs.msg import PoseStamped, Point
+from mavros_msgs.msg import Altitude
+
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from time import strftime, time, sleep
 import cv2 as cv
@@ -53,17 +55,26 @@ class ImagingNode(Node):
             depth = 1
         )
 
-        # Subscribers ----
-        # Set up mavros pose subscriber
+        self.got_pose = False
+        self.got_altitude = False
+
         self.world_position_sub = self.create_subscription(
             PoseStamped,
             '/mavros/local_position/pose',
             self.pose_cb,
             qos_profile)
+        
+        self.drone_altitude_sub = self.create_subscription(
+            Altitude,
+            '/mavros/altitude', 
+            self.alt_cb, 
+            qos_profile)
 
         # Services ----
         # Set up take picture service
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
+
+
         # Set up recenter camera service
         self.recenter_service = self.create_service(PointCam, 'recenter_service', self.request_point_cb)
         # Set up zoom camera service
@@ -74,7 +85,6 @@ class ImagingNode(Node):
         # Cleanup
         self.get_logger().info("Finished initializing imaging node")
         
-    
     @log_exceptions
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)
@@ -87,6 +97,15 @@ class ImagingNode(Node):
         self.last_pose_timestamp_secs = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
         self.got_pose = True
         self.cam_auto_point()
+
+    @log_exceptions
+    def alt_cb(self, altitude: Altitude):
+        self.cur_altitude = altitude
+        self.cur_amsl = altitude.amsl
+        self.cur_local_alt = altitude.local
+        self.cur_relative_alt = altitude.relative
+        self.cur_terrain_alt = altitude.terrain
+        self.got_altitude = True
 
     @log_exceptions
     def cam_auto_point(self):
@@ -245,7 +264,7 @@ class ImagingNode(Node):
             response.detections.append(t)
 
         return response
-
+    
         
 
 def main(args=None) -> None:
@@ -253,6 +272,8 @@ def main(args=None) -> None:
     rclpy.init(args=args)
     node = ImagingNode()
     rclpy.spin(node)
+
+
 
 if __name__ == '__main__':
     try:
