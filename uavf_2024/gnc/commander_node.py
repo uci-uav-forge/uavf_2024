@@ -103,7 +103,7 @@ class CommanderNode(rclpy.node.Node):
             'mavros/setpoint_position/local',
             qos_profile)
 
-        self.default_altitude_asml = 23
+        self.default_altitude_asml = 23.0
         self.left_intermediate_waypoint_global = (38.31605966, -76.55154921, self.default_altitude_asml)
         self.right_intermediate_waypoint_global = (38.31542867, -76.54548898, self.default_altitude_asml)
         self.geofence_middle_pt = (38.31470980862425, -76.54936361414539, self.default_altitude_asml)
@@ -195,14 +195,16 @@ class CommanderNode(rclpy.node.Node):
         '''
         Fly to each of the waypoints.
         '''
+        if self.args.is_maryland:
+            waypoints = self.generate_legal_waypoints(waypoints)
+
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
         self.log("Pushing waypoints")
 
         waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, self.default_altitude_asml)] + waypoints
-        if self.args.is_maryland:
-            waypoints = self.generate_legal_waypoints(waypoints)
+        
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
 
@@ -429,4 +431,4 @@ class CommanderNode(rclpy.node.Node):
             self.dropzone_planner.conduct_air_drop()
 
             # Fly back to home position
-            self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, TAKEOFF_ALTITUDE)])
+            self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, self.default_altitude_asml)])
