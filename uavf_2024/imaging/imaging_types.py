@@ -272,6 +272,7 @@ class Target3D:
     position: np.ndarray # (x,y,z) in local frame
     descriptor: ProbabilisticTargetDescriptor
     id: str = None
+    hist: np.ndarray = None # shape of (3,256), flat histogram for each color channel
     @staticmethod
     def from_ros(msg: ROSDetectionMessage) -> Target3D:
         return Target3D(

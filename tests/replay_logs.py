@@ -23,14 +23,22 @@ if __name__=="__main__":
         frame_folder = f"img_{i}"
         data = json.load(open(f"{root_folder}/{frame_folder}/data.json"))
         preds_3d_dicts = data["preds_3d"] 
+        preds_3d = []
         for p in preds_3d_dicts:
             det_id = p['id'].split('/')[1]
+            crop_img = cv.imread(f"{root_folder}/{frame_folder}/{det_id}/input.png")
             file_contents = open(f"{root_folder}/{frame_folder}/{det_id}/descriptor.txt").read()
-            tracker.update([Target3D(
+            channels = cv.split(crop_img)
+            hist = np.empty((3,256))
+            for i, chan in enumerate(channels):
+                hist[i] = cv.calcHist([chan], [0], None, [256], [0, 256])[:,0]
+            preds_3d.append(Target3D(
                 np.array(p['position']),
                 ProbabilisticTargetDescriptor.from_string(file_contents),
-                id = f"{frame_folder}/{det_id}"
-            )])
+                id = f"{frame_folder}/{det_id}",
+                hist=hist
+            ))
+        tracker.update(preds_3d)
 
     # targets = [
     #     CertainTargetDescriptor('red','star','green','Q'),
@@ -47,12 +55,14 @@ if __name__=="__main__":
         CertainTargetDescriptor('orange','quartercircle','blue','3')
     ]
 
-    positions = tracker.estimate_positions(targets)
+    tracks = tracker.estimate_positions(targets)
 
-    for target, pos in zip(targets, positions):
-        target_name = str(target)
-        os.makedirs(f"{out_folder}/{target_name}", exist_ok=True)
-        print(f"Target {target} is at position {pos}")
+    for target, track in zip(targets, tracks):
+        print(f"Target {target} on track {track.id}")
+
+    for pos in tracker.tracks:
+        os.makedirs(f"{out_folder}/{pos.id}", exist_ok=True)
+        print(f"Track {pos.id}")
         print(f"Contributing measurements: {pos.contributing_measurement_ids()}")
         # for each contributing measurement, reproject the 3D position to the image plane and display the image with the reprojected point, bounding box, and descriptor
         contributing_frame_mapping = defaultdict(list)
@@ -80,14 +90,16 @@ if __name__=="__main__":
                 2
             )
             cam_rot = Camera.orientation_in_world_frame(drone_quaternion, cam_angles)
-            for other_target, other_pos in zip(targets, positions):
-                reprojected = localizer.coords_to_2d(other_pos.position, (drone_pos, cam_rot))
-                cv.circle(img, reprojected, 15, (0,0,255), 2)
-                cv.putText(img, str(other_target), reprojected, cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+            for other_track in tracker.tracks:
+                reprojected = localizer.coords_to_2d(other_track.position, (drone_pos, cam_rot))
+                color = (255,255,0) if other_track.id==pos.id else (0,0,255)
+                cv.circle(img, reprojected, 5, color, -1)
+                pos_str = ",".join(f'{coord:.01f}' for coord in other_track.position)
+                cv.putText(img, f"{other_track.id}, {pos_str}", reprojected, cv.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
             in_bounds = 0 <= reprojected[0] < img.shape[1] and 0 <= reprojected[1] < img.shape[0]
             color = (255,0,0) if in_bounds else (0,0,255)
             cv.putText(img, str(reprojected), (10,30), cv.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
 
-            cv.imwrite(f"{out_folder}/{target_name}/{frame_folder}.png", img)
+            cv.imwrite(f"{out_folder}/{pos.id}/{frame_folder}.png", img)
