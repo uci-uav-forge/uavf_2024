@@ -9,7 +9,7 @@ from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 import numpy as np
 from geometry_msgs.msg import PoseStamped, Point
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
-from time import strftime, time, sleep
+import time
 import cv2 as cv
 import json
 import os
@@ -248,7 +248,7 @@ class ImagingNode(Node):
     def __init__(self) -> None:
         # Initialize the node
         super().__init__('imaging_node') # type: ignore
-        logs_path = Path(f'logs/{strftime("%m-%d %H:%M")}')
+        logs_path = Path(f'logs/{time.strftime("%m-%d %H:%M")}')
         
         self.camera = Camera(logs_path / "camera")
         self.zoom_level = 3
@@ -346,7 +346,7 @@ class ImagingNode(Node):
         self.camera.request_down()
         while abs(self.camera.getAttitude()[1] - -90) > 2:
             self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
-            sleep(0.1)
+            time.sleep(0.1)
         self.log("Camera pointed down")
         self.camera.request_autofocus()
 
@@ -368,7 +368,7 @@ class ImagingNode(Node):
         localizer = self.make_localizer()
         start_angles = self.camera.getAttitude()
         img = self.camera.get_latest_image()
-        timestamp = time()
+        timestamp = time.time()
         end_angles = self.camera.getAttitude()
 
         if img is None:
