@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import csv
+from itertools import count
 import json
 import os
 import random
@@ -11,6 +12,7 @@ from queue import Queue
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Generic, NamedTuple, TypeVar
+import logging
 
 import cv2 as cv
 import numpy as np
@@ -46,6 +48,13 @@ class PoseDatum(NamedTuple):
     position: Point
     rotation: Rotation
     time_seconds: float
+    
+    def to_json(self):
+        return {
+            "position": [self.position.x, self.position.y, self.position.z],
+            "rotation": list(self.rotation.as_quat()),
+            "time_seconds": self.time_seconds
+        }
 
 
 class _PoseBuffer:
@@ -142,7 +151,36 @@ class PoseProvider:
     Logs and buffers the world position for reading.
     
     Provides a method to subscribe to changes as well.
-    """ 
+    """
+    class _WorldPosSubscribe(Node):
+        CREATED = False
+        def __init__(self, callback: Callable[[PoseStamped], Any]):
+            """
+            If this needs to be reused, it should be converted to a singleton.
+            """
+            if __class__.CREATED:
+                raise AssertionError("_WorldPosSubscriber should only be created once")
+            
+            super().__init__("uavf_world_pos_node") # type: ignore
+            
+            __class__.CREATED = True
+            
+            # Initialize Quality-of-Service profile for subscription
+            qos_profile = QoSProfile(
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+                durability=DurabilityPolicy.VOLATILE,
+                depth = 1
+            )
+        
+            self.create_subscription(
+                PoseStamped,
+                '/mavros/local_position/pose',
+                callback,
+                qos_profile
+            )
+            
+            threading.Thread(target=lambda: rclpy.spin(self), daemon=True).start()
+    
     def __init__(
         self, 
         logs_path: str | os.PathLike | Path | None = None, 
@@ -154,41 +192,28 @@ class PoseProvider:
             buffer_size: The number of world positions to keep in the buffer
                 for offsetted access.
         """
-        self.logs_path = Path(logs_path) if logs_path else None
+        self.logger = logging.getLogger("PoseProviderLogger")
         
+        self._subscribers: Subscriptions[PoseDatum] = Subscriptions()
+        
+        self._log_index = 0
+        self.logs_path = Path(logs_path) / "poses" if logs_path else None
         if self.logs_path:
             if not self.logs_path.exists():
                 self.logs_path.mkdir(parents=True)
             elif not self.logs_path.is_dir():
                 raise FileExistsError(f"{self.logs_path} exists but is not a directory")
         
-        # daemon=True allows the thread to be terminated when the class instance is deleted.
-        self._logger_thread = threading.Thread(target=self._log_task, daemon=True)
-        self._logs_queue: Queue[PoseDatum] = Queue()
-        
         self._buffer = _PoseBuffer(buffer_size)
         
-        # This is encapsulated so as not to expose Node's interface
-        # The type error is just from rclpy and is unavoidable
-        self._world_pos_node = Node("world_pos_node") # type: ignore
+        __class__._WorldPosSubscribe(self._handle_pose_update)
         
-        # Initialize Quality-of-Service profile for subscription
-        qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            durability=DurabilityPolicy.VOLATILE,
-            depth = 1
-        )
+        self.log(f"Finished intializing PoseProvider. Logging to {self.logs_path}")
         
-        self._world_pos_node.create_subscription(
-            PoseStamped,
-            '/mavros/local_position/pose',
-            self.handle_pose_update,
-            qos_profile
-        )
+    def log(self, message, level = logging.INFO):
+        self.logger.log(level, message)
         
-        self._subscribers: Subscriptions[PoseDatum] = Subscriptions()
-        
-    def handle_pose_update(self, pose: PoseStamped) -> None:
+    def _handle_pose_update(self, pose: PoseStamped) -> None:
         quaternion = pose.pose.orientation
         formatted = PoseDatum(
             position = pose.pose.position,
@@ -196,7 +221,9 @@ class PoseProvider:
                 [quaternion.x, quaternion.y, quaternion.z, quaternion.w]),
             time_seconds = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
         )
+        
         self._buffer.put(formatted)
+        self._log_pose(formatted)
         self._subscribers.notify(formatted)
         
     def get(self, offset: int = 0):
@@ -206,20 +233,12 @@ class PoseProvider:
         """
         return self._buffer.get_fresh(offset)
     
-    def _log_task(self):
-        """
-        Task to pull from the _logs_queue and write the pose to file.
-        """
-        if self.logs_path is None:
+    def _log_pose(self, pose: PoseDatum):
+        if not self.logs_path:
             return
         
-        with open(self.logs_path / "poses.csv") as f:
-            writer = csv.writer(f)
-            writer.writerow(PoseDatum._fields)
-            
-            while True:
-                datum = self._logs_queue.get()
-                writer.writerow(datum)
+        with open(self.logs_path / f"{pose.time_seconds:.02f}.json", "w") as f:
+            json.dump(pose.to_json(), f)
     
     def subscribe(self, callback: Callable[[PoseDatum], Any]):
         self._subscribers.add(callback)
