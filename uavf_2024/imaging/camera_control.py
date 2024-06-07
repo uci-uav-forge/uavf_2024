@@ -45,7 +45,6 @@ class Camera:
         self.buffer = ImageBuffer()
         self.recording_thread: threading.Thread | None = None
         self.recording = False
-        self.start_recording()
     
     @staticmethod
     def _prep_log_dir(log_dir: Path):
