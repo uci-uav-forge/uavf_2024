@@ -302,7 +302,7 @@ class ImagingNode(Node):
         # Subscriptions ----
         self.pose_provider = PoseProvider(self.logs_path)
         self.pose_provider.subscribe(self.cam_auto_point)
-        self.pose_provider.subscribe(lambda _: self.camera.start_recording)
+        self.pose_provider.subscribe(lambda _: self.camera.start_recording())
 
         # Services ----
         # Set up take picture service
