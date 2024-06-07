@@ -327,15 +327,15 @@ class ImagingNode(Node):
         z = current_pose.position.z
         
         # If pointed down and close to the ground, point forward
-        if(self.camera_state and z < 10): #10 meters ~ 30 feet
+        if(self.camera_state and z < 3): #3 meters ~ 30 feet
             self.camera.request_center()
             self.camera_state = False
-            self.log(f"Crossing 10m down, pointing forward. Current position: {z}")
+            self.log(f"Crossing 3m down, pointing forward. Current position: {z}")
         # If pointed forward and altitude is higher, point down
-        elif(not self.camera_state and z > 10):
+        elif(not self.camera_state and z > 3):
             self.camera.request_down()
             self.camera_state = True
-            self.log(f"Crossing 10m up, pointing down. Current position: {z}")
+            self.log(f"Crossing 3m up, pointing down. Current position: {z}")
         else:
             return
         self.camera.request_autofocus()
