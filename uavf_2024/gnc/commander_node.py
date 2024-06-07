@@ -271,6 +271,7 @@ class CommanderNode(rclpy.node.Node):
         deg_to_actuation = lambda x: (x/180)*2 - 1
         self.log("waiting for cmd long client...")
         self.cmd_long_client.wait_for_service()
+        self.log_statustext("Releasing payload.")
         for t_deg in list(range(deg1+1,deg2-1,-1)) + list(range(deg2,deg1)):
             self.log(f"setting to {t_deg}") 
             a = deg_to_actuation(t_deg)
@@ -318,7 +319,11 @@ class CommanderNode(rclpy.node.Node):
         payload_request = RequestPayload(shape=payload.shape, shape_col=payload.shape_col, letter=payload.letter, letter_col=payload.letter_col)
         request_msg = payload_request.to_string()
         self.log(f"Requesting {request_msg}.")
-        for chunk in [request_msg[i:i+30] for i in range(0,len(request_msg),30)]:
+        self.log_statustext(request_msg)
+    
+    def log_statustext(self, msg):
+        self.log(msg)
+        for chunk in [msg[i:i+30] for i in range(0,len(msg),30)]:
             self.msg_pub.publish(mavros_msgs.msg.StatusText(severity=mavros_msgs.msg.StatusText.NOTICE, text=chunk))
     
     def setpoint(self, x, y, z):
@@ -415,20 +420,21 @@ class CommanderNode(rclpy.node.Node):
         for lap in range(len(self.payloads)):
             self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((self.home_pos.geo.latitude, self.home_pos.geo.longitude), x) for x in self.dropzone_bounds]
 
-            self.log(f"Lap {lap}")
-
             if lap > 0:
                 self.dropzone_planner.advance_current_payload_index()
                 self.request_load_payload(self.payloads[self.dropzone_planner.current_payload_index])
             
+            self.log_statustext(f"Pushing mission for {lap}")
             # Fly waypoint lap
             self.execute_waypoints(self.mission_wps, do_set_mode=False)
 
             if self.args.exit_early:
                 return
 
+            self.log_statustext(f"Beginning dropzone lap.")
             # Fly to drop zone and release current payload
             self.dropzone_planner.conduct_air_drop()
-
+            
+            self.log_statustext("Returning home.")
             # Fly back to home position
             self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, self.default_altitude_asml)])

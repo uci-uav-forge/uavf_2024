@@ -152,6 +152,7 @@ class DropzonePlanner:
 
         # Scan the drop zone if the drone has completed its first waypoint lap
         if not self.has_scanned_dropzone:
+            self.commander.log_statustext("First visit, scanning dropzone.")
             self.scan_dropzone()
             self.has_scanned_dropzone = True
         
@@ -166,6 +167,7 @@ class DropzonePlanner:
         
         # Fly along the path of waypoints to the target
         self.commander.call_imaging_at_wps = True
+        self.commander.log_statustext(f"Going to target. gps = {self.commander.local_to_gps((best_match_x, best_match_y))}")
         self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp), np.array([altitude]))) for wp in next_wps])
         self.commander.call_imaging_at_wps = False
         detections = self.commander.gather_imaging_detections()
