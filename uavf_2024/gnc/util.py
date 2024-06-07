@@ -6,11 +6,17 @@ import numpy as np
 from shapely.geometry import Point, Polygon
 from uavf_2024.imaging import CertainTargetDescriptor
 
-# def is_point_within_fence(point, fence):
-#     # Convert the list of tuples representing the border to a Shapely Polygon
-#     fence_polygon = Polygon(fence)
-#     point = Point(point)
-#     return fence_polygon.contains(point)
+def is_point_within_fence(point, geofence):
+    fence_polygon = Polygon(geofence)
+    point = Point(point)
+    return fence_polygon.contains(point)
+
+def validate_points(point_list, geofence):
+    for point in point_list:
+        assert(len(point) == 3, "ERROR: Point does not contain all three: Lat, Lon, Alt.")
+        assert(point[2] > 0, "ERROR: Altitude must be greater than 0.")
+        assert(is_point_within_fence((point[0], point[1]), geofence), "ERROR: Point is not within Geofence.")
+    return
 #
 # def validate_gps_data(data, geofence):
 #     for point_tuple in data:

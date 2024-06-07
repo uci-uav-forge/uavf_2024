@@ -8,7 +8,7 @@ import sensor_msgs.msg
 import geometry_msgs.msg 
 import libuavf_2024.srv
 from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file
+from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file, validate_points
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
@@ -97,10 +97,10 @@ class CommanderNode(rclpy.node.Node):
             self.home_position_cb,
             qos_profile
         )
-
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
-
+        validate_points(self.mission_wps, self.geofence)
+        validate_points(self.dropzone_bounds, self.geofence)
         # self.geofence = read_geofence(args.geofence_points)
         # self.mission_wps = read_gps(args.mission_file, self.geofence)
         # self.dropzone_bounds = read_gps(args.dropzone_file, self.geofence)
@@ -121,7 +121,8 @@ class CommanderNode(rclpy.node.Node):
 
     def got_state_cb(self, state):
         self.cur_state = state
-        # state.mode; if else -> quit
+        if state not in ["AUTO.MISSION", "HOLD"]:
+            quit()
 
     def reached_cb(self, reached):
         if reached.wp_seq > self.last_wp_seq:
@@ -168,7 +169,8 @@ class CommanderNode(rclpy.node.Node):
 
         self.log("Pushing waypoints")
 
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] +  waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] + waypoints
+        validate_points(waypoints, self.geofence)
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
 
