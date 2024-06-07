@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
+import random
 import rclpy
 from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
@@ -36,7 +37,6 @@ import time
 from typing import Any, Callable, Generic, NamedTuple, TypeVar
 from collections import deque
 import csv
-from uuid import UUID
 
 from scipy.spatial.transform import Rotation
 
@@ -113,7 +113,7 @@ class Subscriptions(Generic[InputT]):
     functionality when we stay within Python.
     """
     def __init__(self):
-        self._callbacks: dict[UUID, Callable[[InputT], Any]] = {}
+        self._callbacks: dict[float, Callable[[InputT], Any]] = {}
         self.lock = threading.Lock()
     
     def add(self, callback: Callable[[InputT], Any]) -> Callable[[], None]:
@@ -123,7 +123,7 @@ class Subscriptions(Generic[InputT]):
         
         Returns a function to unsubscribe.
         """
-        subscription_id = UUID()
+        subscription_id = random.random()
         
         with self.lock:
             def unsubscribe():
