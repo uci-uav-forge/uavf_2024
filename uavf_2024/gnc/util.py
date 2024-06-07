@@ -17,25 +17,6 @@ def validate_points(point_list, geofence):
         assert(point[2] > 0, "ERROR: Altitude must be greater than 0.")
         assert(is_point_within_fence((point[0], point[1]), geofence), "ERROR: Point is not within Geofence.")
     return
-#
-# def validate_gps_data(data, geofence):
-#     for point_tuple in data:
-#         if not is_point_within_fence(point_tuple, geofence):
-#             return False
-#     return True
-#
-# def read_geofence(fname):
-#     # Creates a list of tuples of (lat, lon) of the geofence
-#     with open(fname) as f:
-#         return [tuple(map(float, line.split(','))) for line in f]
-#
-# def read_gps(fname, geofence):
-#     with open(fname) as f:
-#         data = [tuple(map(float, line.split(','))) for line in f]
-#     if validate_gps_data(data, geofence): # Passes coords to validate that they're within the geofence
-#         return data
-#     else:
-#         raise ValueError("Invalid GPS data format or outside geofence boundaries.")
 
 def read_payload_list(fname):
     payload_list = []
