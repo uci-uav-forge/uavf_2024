@@ -150,6 +150,10 @@ class PoseProvider:
     
     Provides a method to subscribe to changes as well.
     """
+    # Budged parameter for flight-testing
+    # Maximum number of entries that we read backwards for pose data
+    MAXIMUM_OFFSET = 25
+    
     class _WorldPosSubscribe(Node):
         CREATED = False
         def __init__(self, pose_callback: Callable[[PoseStamped], Any], altitude_callback: Callable[[Altitude], Any]):
@@ -188,8 +192,7 @@ class PoseProvider:
     
     def __init__(
         self, 
-        logs_path: str | os.PathLike | Path | None = None, 
-        buffer_size = 5
+        logs_path: str | os.PathLike | Path | None = None
     ):
         """
         Parameters:
@@ -209,7 +212,7 @@ class PoseProvider:
             elif not self.logs_path.is_dir():
                 raise FileExistsError(f"{self.logs_path} exists but is not a directory")
         
-        self._buffer = _PoseBuffer(buffer_size)
+        self._buffer = _PoseBuffer(__class__.MAXIMUM_OFFSET)
         
         __class__._WorldPosSubscribe(self._handle_pose_update, self._handle_altitude_update)
         
@@ -259,6 +262,29 @@ class PoseProvider:
         """
         return self._buffer.get_fresh(offset)
     
+    def get_closest_to_time(self, seconds: float):
+        """
+        Returns the datum closest to the given timestamp in float seconds. 
+        
+        TODO: Refactor to be more efficient
+        """
+        data = self._buffer.get_all()
+        
+        best = data[0]
+        best_dist = seconds - data[0].time_seconds
+        for datum in data:
+            new_dist = seconds - datum.time_seconds
+            if new_dist < best_dist:
+                best_dist = new_dist
+                best = datum
+            else: # Because the data is sorted, we've passed the optimal point
+                break
+        
+        if best == data[0]:
+            self.log("The closest pose datum was the oldest one buffered. You may want to increase MAXIMUM_OFFSET", logging.WARN)
+            
+        return best
+    
     def _log_pose(self, pose: PoseDatum):
         if not self.logs_path:
             return
@@ -282,6 +308,10 @@ class PoseProvider:
             time.sleep(0.1)
 
 class ImagingNode(Node):
+    # Time to delay when looking at the pose compared to the camera frame.
+    # The camera seems to be slower by ~0.5 seconds
+    CAM_POSE_OFFSET_SECONDS = 0.5
+    
     @log_exceptions
     def __init__(self) -> None:
         # Initialize the node
@@ -420,7 +450,7 @@ class ImagingNode(Node):
         avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
         
         self.pose_provider.wait_for_pose()
-        pose = self.pose_provider.get()
+        pose = self.pose_provider.get_closest_to_time(timestamp - __class__.CAM_POSE_OFFSET_SECONDS)
 
         cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
         cur_rot_quat = pose.rotation.as_quat()
