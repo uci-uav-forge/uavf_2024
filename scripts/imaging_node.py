@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
-import csv
-from itertools import count
 import json
 import os
 import random
 import threading
 import time
 import traceback
-from queue import Queue
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Generic, NamedTuple, TypeVar
@@ -18,6 +15,7 @@ import cv2 as cv
 import numpy as np
 import rclpy
 from geometry_msgs.msg import Point, PoseStamped
+from mavros_msgs.msg import Altitude
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from scipy.spatial.transform import Rotation
@@ -260,26 +258,41 @@ class ImagingNode(Node):
     def __init__(self) -> None:
         # Initialize the node
         super().__init__('imaging_node') # type: ignore
-        logs_path = Path(f'logs/{time.strftime("%m-%d %H:%M")}')
+        self.logs_path = Path(f'logs/{time.strftime("%m-%d %H:%M")}')
         
-        self.camera = Camera(logs_path / "camera")
+        self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
         self.camera_state = False # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
         self.camera.setAbsoluteZoom(self.zoom_level)
         
-        self.log(f"Logging to {logs_path}")
-        self.image_processor = ImageProcessor(logs_path / "image_processor")
+        self.log(f"Logging to {self.logs_path}")
+        self.image_processor = ImageProcessor(self.logs_path / "image_processor")
 
         # Set up ROS connections
         self.log(f"Setting up imaging node ROS connections")
         
         # Subscriptions ----
-        self.pose_provider = PoseProvider(logs_path)
+        self.pose_provider = PoseProvider(self.logs_path)
         self.pose_provider.subscribe(self.cam_auto_point)
+        
+        # Init QoS profile
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            depth = 1
+        )
+        
+        self.drone_altitude_sub = self.create_subscription(
+            Altitude,
+            '/mavros/altitude', 
+            self.log_altitude, 
+            qos_profile)
 
         # Services ----
         # Set up take picture service
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
+
+
         # Set up recenter camera service
         self.recenter_service = self.create_service(PointCam, 'recenter_service', self.request_point_cb)
         # Set up zoom camera service
@@ -290,10 +303,25 @@ class ImagingNode(Node):
         # Cleanup
         self.get_logger().info("Finished initializing imaging node")
         
-    
     @log_exceptions
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)
+
+    @log_exceptions
+    def log_altitude(self, altitude: Altitude):
+        """
+        TODO: Refactor this shit
+        """
+        logs_dir = self.logs_path / "altitudes"
+        if not self.logs_path.is_dir():
+            self.logs_path.mkdir(parents=True)
+        
+        data = {
+            "altitude": altitude
+        }
+        
+        with open(logs_dir / str(time.time()), "w") as f:
+            json.dump(data, f)
 
     @log_exceptions
     def cam_auto_point(self, current_pose: PoseDatum):
@@ -446,13 +474,15 @@ class ImagingNode(Node):
             response.detections.append(t)
 
         return response
-        
+
 
 def main(args=None) -> None:
     print('Starting imaging node...')
     rclpy.init(args=args)
     node = ImagingNode()
     rclpy.spin(node)
+
+
 
 if __name__ == '__main__':
     try:
