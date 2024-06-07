@@ -76,7 +76,7 @@ class Camera:
             
             self.buffer.put(image)
             if self.log_dir:
-                image.save(self.log_dir / f"{time.time()}.png")
+                image.save(self.log_dir / f"{time.time()}.jpg")
                 
     def start_recording(self):
         """
