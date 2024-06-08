@@ -75,7 +75,7 @@ first_valid_buff = True
 os.makedirs("/home/forge/logs_esc", exist_ok=True)
 fname = f"/home/forge/logs_esc/{strftime('%H:%M:%S')}.txt"
 
-STATUSTEXT_PERIOD = 1000
+STATUSTEXT_PERIOD = 50
 statustext_timer = STATUSTEXT_PERIOD
 
 print(f"Logging to {fname}")
@@ -104,7 +104,7 @@ while 1:
                     '-','/','|','\\'
                 ]
                 status_str = f"{sum(last_ten)/len(last_ten):.02f}V (avg) / {min(last_ten):.02f}V (min) / {max(last_ten):.02f}V (max) / {per_cell:.02f}V (live)"
-                print(f"status_str {indicators[i%len(indicators)]}",end='\r')
+                print(f"{status_str} {indicators[i%len(indicators)]}",end='\r')
 
                 statustext_timer -= 1 
                 if statustext_timer == 0:
