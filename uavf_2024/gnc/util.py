@@ -6,16 +6,23 @@ import numpy as np
 from shapely.geometry import Point, Polygon
 from uavf_2024.imaging import CertainTargetDescriptor
 
+def read_gps(fname):
+    with open(fname) as f:
+        return [tuple(map(float, line.split(','))) for line in f]
+
 def is_point_within_fence(point, geofence):
     fence_polygon = Polygon(geofence)
     point = Point(point)
     return fence_polygon.contains(point)
 
-def validate_points(point_list, geofence):
+def validate_points(point_list, geofence, has_altitudes = True):
     for point in point_list:
-        assert(len(point) == 3, "ERROR: Point does not contain all three: Lat, Lon, Alt.")
-        assert(point[2] > 0, "ERROR: Altitude must be greater than 0.")
-        assert(is_point_within_fence((point[0], point[1]), geofence), "ERROR: Point is not within Geofence.")
+        if has_altitudes:
+            assert len(point) == 3, "ERROR: Point does not contain all three: Lat, Lon, Alt."
+            assert point[2] > 0, "ERROR: Altitude must be greater than 0."
+        else:
+            assert len(point) == 2
+        assert is_point_within_fence((point[0], point[1]), geofence), "ERROR: Point is not within Geofence."
     return
 
 def read_payload_list(fname):

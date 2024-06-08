@@ -83,7 +83,7 @@ To load a safety geofence like we will have in real life you may open /home/ws/l
 
 ```
 cd /PX4-Autopilot
-PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64230 PX4_HOME_LON=-117.82683 PX4_HOME_ALT=142 make px4_sitl jmavsim
+PX4_SIM_SPEED=2 PX4_HOME_LAT=33.64210 PX4_HOME_LON=-117.82683 PX4_HOME_ALT=142 make px4_sitl jmavsim
 ```
 
 ```

@@ -107,7 +107,7 @@ class CommanderNode(rclpy.node.Node):
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
         validate_points(self.mission_wps, self.geofence)
-        validate_points(self.dropzone_bounds, self.geofence)
+        validate_points(self.dropzone_bounds, self.geofence, False)
         self.payloads = read_payload_list(args.payload_list)
 
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
