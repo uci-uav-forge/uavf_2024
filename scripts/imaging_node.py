@@ -10,6 +10,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Generic, NamedTuple, TypeVar
 import logging
+from bisect import bisect_left
 
 import cv2 as cv
 import numpy as np
@@ -18,7 +19,7 @@ from geometry_msgs.msg import Point, PoseStamped
 from mavros_msgs.msg import Altitude
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Rotation, Slerp
 
 from libuavf_2024.msg import TargetDetection
 from libuavf_2024.srv import PointCam, ResetLogDir, TakePicture, ZoomCam
@@ -94,6 +95,47 @@ class _PoseBuffer:
         
         with self.lock:
             return self._queue[-(offset + 1)]
+        
+    def get_interpolated(self, time_seconds: float) -> PoseDatum | None:
+        '''
+        Interpolates between the two closest points in the buffer for the given time.
+
+        Returns None if we don't have enough data to interpolate yet
+        '''
+
+        if self.count == 0:
+            raise ValueError("No data in the buffer to interpolate from.")
+        
+        with self.lock:
+            if self._queue[-1].time_seconds < time_seconds:
+                return None
+            closest_idx = bisect_left([d.time_seconds for d in self._queue], time_seconds)
+            times_only = [p.time_seconds for p in self._queue]
+            
+            if closest_idx == 0:
+                return self._queue[0]
+            pt_before = self._queue[closest_idx - 1]
+            pt_after = self._queue[closest_idx]
+
+            # Interpolate between the two points
+            proportion = (time_seconds - pt_before.time_seconds) / (pt_after.time_seconds - pt_before.time_seconds)
+            position = Point(
+                x = pt_before.position.x + proportion * (pt_after.position.x - pt_before.position.x),
+                y = pt_before.position.y + proportion * (pt_after.position.y - pt_before.position.y),
+                z = pt_before.position.z + proportion * (pt_after.position.z - pt_before.position.z)
+            )
+            key_times = [pt_before.time_seconds, pt_after.time_seconds]
+            rotations = Rotation.concatenate([pt_before.rotation, pt_after.rotation])
+            slerp = Slerp(key_times, rotations)
+            rotation = Rotation.from_quat(slerp([time_seconds]).as_quat()[0])
+            # go to and from quaternion to force returned
+            # object to be single rotation
+
+            return PoseDatum(
+                position = position,
+                rotation = rotation,
+                time_seconds = time_seconds
+            )
     
     def get_all(self) -> list[PoseDatum]:
         """
@@ -155,7 +197,7 @@ class PoseProvider:
         self, 
         node_context: Node,
         logs_path: str | os.PathLike | Path | None = None, 
-        buffer_size = 5
+        buffer_size = 64
     ):
         """
         Parameters:
@@ -247,6 +289,21 @@ class PoseProvider:
         Otherwise, get the freshest datum
         """
         return self._buffer.get_fresh(offset)
+    
+    def get_interpolated(self, time_seconds: float) -> tuple[PoseDatum, bool]:
+        '''
+        Gets the pose interpolated at `time_seconds`. Blocks if we don't have enough data in the queue
+        to interpolate yet, for a maximum of 5 seconds before giving up and returning the latest datum
+        regardless of its timestamp
+
+        '''
+        for _ in range(50):
+            interp_pose = self._buffer.get_interpolated(time_seconds)
+            if interp_pose is not None:
+                return (interp_pose, True)
+            else:
+                time.sleep(0.1)
+        return (self._buffer.get_fresh(), False)
     
     def _log_pose(self, pose: PoseDatum):
         if not self.logs_path:
@@ -400,10 +457,8 @@ class ImagingNode(Node):
         
         # Take picture and grab relevant data
         localizer = self.make_localizer()
-        start_angles = self.camera.getAttitude()
         img = self.camera.get_latest_image()
         timestamp = time.time()
-        end_angles = self.camera.getAttitude()
 
         if img is None:
             self.log("Could not get image from Camera.")
@@ -412,15 +467,19 @@ class ImagingNode(Node):
         detections = self.image_processor.process_image(img)
 
         # Get avg camera pose for the image
-        avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
+        angles = self.camera.getAttitudeInterpolated(timestamp)
         
         self.pose_provider.wait_for_pose()
-        pose = self.pose_provider.get()
+        # Get the pose measured 0.75 seconds before we received the image
+        # This is to account for the delay in the camera system, and was determined empirically
+        pose, is_timestamp_interpolated = self.pose_provider.get_interpolated(timestamp - 0.75) 
+        if not is_timestamp_interpolated:
+            self.log("Couldn't interpolate pose.")
 
         cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
         cur_rot_quat = pose.rotation.as_quat()
 
-        world_orientation = self.camera.orientation_in_world_frame(pose.rotation, avg_angles)
+        world_orientation = self.camera.orientation_in_world_frame(pose.rotation, angles)
         cam_pose = (cur_position_np, world_orientation)
 
         # Get 3D predictions
@@ -438,9 +497,9 @@ class ImagingNode(Node):
             'image_time': timestamp,
             'drone_position': cur_position_np.tolist(),
             'drone_q': cur_rot_quat.tolist(),
-            'gimbal_yaw': avg_angles[0],
-            'gimbal_pitch': avg_angles[1],
-            'gimbal_roll': avg_angles[2],
+            'gimbal_yaw': angles[0],
+            'gimbal_pitch': angles[1],
+            'gimbal_roll': angles[2],
             'zoom level': self.zoom_level,
             'preds_3d': [
                 {
