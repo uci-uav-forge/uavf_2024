@@ -457,10 +457,8 @@ class ImagingNode(Node):
         
         # Take picture and grab relevant data
         localizer = self.make_localizer()
-        start_angles = self.camera.getAttitude()
         img = self.camera.get_latest_image()
         timestamp = time.time()
-        end_angles = self.camera.getAttitude()
 
         if img is None:
             self.log("Could not get image from Camera.")
@@ -469,7 +467,7 @@ class ImagingNode(Node):
         detections = self.image_processor.process_image(img)
 
         # Get avg camera pose for the image
-        avg_angles = np.mean([start_angles, end_angles],axis=0) # yaw, pitch, roll
+        angles = self.camera.getAttitudeInterpolated(timestamp)
         
         self.pose_provider.wait_for_pose()
         # Get the pose measured 0.75 seconds before we received the image
@@ -481,7 +479,7 @@ class ImagingNode(Node):
         cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
         cur_rot_quat = pose.rotation.as_quat()
 
-        world_orientation = self.camera.orientation_in_world_frame(pose.rotation, avg_angles)
+        world_orientation = self.camera.orientation_in_world_frame(pose.rotation, angles)
         cam_pose = (cur_position_np, world_orientation)
 
         # Get 3D predictions
@@ -499,9 +497,9 @@ class ImagingNode(Node):
             'image_time': timestamp,
             'drone_position': cur_position_np.tolist(),
             'drone_q': cur_rot_quat.tolist(),
-            'gimbal_yaw': avg_angles[0],
-            'gimbal_pitch': avg_angles[1],
-            'gimbal_roll': avg_angles[2],
+            'gimbal_yaw': angles[0],
+            'gimbal_pitch': angles[1],
+            'gimbal_roll': angles[2],
             'zoom level': self.zoom_level,
             'preds_3d': [
                 {
