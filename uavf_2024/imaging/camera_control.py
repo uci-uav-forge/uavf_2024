@@ -64,6 +64,7 @@ class Camera:
                 img_arr = self.stream.get_frame()
                 img_stamp = time.time()
                 attitude_position = self.getAttitude()
+                zoom = self.getZoomLevel()
                 attitude_stamp = time.time()
                 
                 if img_arr is None:
@@ -83,7 +84,8 @@ class Camera:
                 json.dump(
                     {
                         "attitude": attitude_position,
-                        "timestamp": attitude_stamp
+                        "timestamp": attitude_stamp,
+                        "zoom" zoom
                     }, 
                     open(self.log_dir / f"{img_stamp}.json", 'w')
                 )
