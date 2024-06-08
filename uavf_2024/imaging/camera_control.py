@@ -29,7 +29,7 @@ class ImageBuffer:
 
 class MetadataBuffer:
     def __init__(self):
-        self._queue = deque(maxlen=64)
+        self._queue = deque(maxlen=128)
         self.lock = threading.Lock()
     
     def append(self, datum):
@@ -41,7 +41,7 @@ class MetadataBuffer:
             if self._queue[-1]['time_seconds'] < timestamp:
                 return self._queue[-1]
             if self._queue[0]['time_seconds'] > timestamp:
-                return self.queue[0]
+                return self._queue[0]
             idx = bisect_left([d['time_seconds'] for d in self._queue], timestamp)
             before = self._queue[idx-1]
             after = self._queue[idx]
