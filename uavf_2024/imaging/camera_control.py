@@ -80,10 +80,13 @@ class Camera:
             self.buffer.put(image)
             if self.log_dir:
                 image.save(self.log_dir / f"{img_stamp}.jpg")
-                json.dump({
-                    "attitude": attitude_position,
-                    "timestamp": attitude_stamp
-                }, self.log_dir / f"{img_stamp}.json")
+                json.dump(
+                    {
+                        "attitude": attitude_position,
+                        "timestamp": attitude_stamp
+                    }, 
+                    open(self.log_dir / f"{img_stamp}.json", 'w')
+                )
                 
     def start_recording(self):
         """
