@@ -8,7 +8,7 @@ import sensor_msgs.msg
 import geometry_msgs.msg 
 import libuavf_2024.srv
 from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file
+from uavf_2024.gnc.util import pose_to_xy, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
@@ -117,6 +117,9 @@ class CommanderNode(rclpy.node.Node):
         self.turn_angle_limit = 170
 
         self.cur_lap = -1
+
+        self.got_home_local_pos = False
+        self.home_local_pos = None
     
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
@@ -139,6 +142,10 @@ class CommanderNode(rclpy.node.Node):
         self.cur_pose = pose
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,]).as_rotvec()
         self.got_pose = True
+        if not self.got_home_local_pos:
+            self.got_home_local_pos = True
+            self.home_local_pose = self.cur_pose
+            self.log(f"home local pose is {self.home_local_pose}")
 
     def got_global_pos_cb(self, pos):
         #Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
@@ -147,6 +154,8 @@ class CommanderNode(rclpy.node.Node):
 
             
     def home_position_cb(self, pos):
+        if not self.got_home_pos:
+            self.log(f"home pos is {pos}")
         self.home_pos = pos
         self.got_home_pos = True
     
@@ -157,11 +166,15 @@ class CommanderNode(rclpy.node.Node):
             self.cur_lap = max(self.cur_lap, bump_lap.lap_index)
     
     def local_to_gps(self, local):
-        return convert_local_m_to_delta_gps((self.home_pos.geo.latitude,self.home_pos.geo.longitude) , local)
+        local = np.array(local)
+        return convert_local_m_to_delta_gps((self.home_pos.geo.latitude,self.home_pos.geo.longitude) , local - pose_to_xy(self.home_local_pose))
+
+    def gps_to_local(self, gps):
+        return convert_delta_gps_to_local_m((self.home_pos.geo.latitude, self.home_pos.geo.longitude), gps) + pose_to_xy(self.home_local_pose)
+
 
     def get_cur_xy(self):
-        pose = self.cur_pose.pose
-        return np.array([pose.position.x, pose.position.y])
+        return pose_to_xy(self.cur_pose)
     
     def execute_waypoints(self, waypoints, yaws = None, do_set_mode=True):
         if yaws is None:
@@ -233,9 +246,11 @@ class CommanderNode(rclpy.node.Node):
         deg_to_actuation = lambda x: (x/180)*2 - 1
         self.log("waiting for cmd long client...")
         self.cmd_long_client.wait_for_service()
+        self.log("waiting for full stop before payload drop.")
+        time.sleep(4)
         self.log_statustext("Releasing payload.")
         for t_deg in list(range(deg1+1,deg2-1,-1)) + list(range(deg2,deg1)):
-            self.log(f"setting to {t_deg}") 
+            #self.log(f"setting to {t_deg}") 
             a = deg_to_actuation(t_deg)
             self.cmd_long_client.call(
                 mavros_msgs.srv.CommandLong.Request(
@@ -251,7 +266,7 @@ class CommanderNode(rclpy.node.Node):
                 )
             )
 
-            time.sleep(.1)
+            time.sleep(.05)
         
     
     def gather_imaging_detections(self):
@@ -335,9 +350,9 @@ class CommanderNode(rclpy.node.Node):
                 time.sleep(self.args.call_imaging_period)
             
         self.request_load_payload(self.payloads[0])
+        self.dropzone_bounds_mlocal = [self.gps_to_local(x) for x in self.dropzone_bounds]
+        self.log(f"dropzone bounds = {self.dropzone_bounds_mlocal}")
         for lap in range(len(self.payloads)):
-            self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((self.home_pos.geo.latitude, self.home_pos.geo.longitude), x) for x in self.dropzone_bounds]
-
             if lap > 0:
                 self.dropzone_planner.advance_current_payload_index()
                 self.request_load_payload(self.payloads[self.dropzone_planner.current_payload_index])
