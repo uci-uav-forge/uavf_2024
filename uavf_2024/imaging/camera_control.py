@@ -6,6 +6,7 @@ from uavf_2024.imaging.imaging_types import Image, HWC
 import matplotlib.image 
 from scipy.spatial.transform import Rotation
 import numpy as np
+import json
 
 
 class ImageBuffer:
@@ -61,6 +62,9 @@ class Camera:
         while self.recording:
             try:
                 img_arr = self.stream.get_frame()
+                img_stamp = time.time()
+                attitude_position = self.getAttitude()
+                attitude_stamp = time.time()
                 
                 if img_arr is None:
                     time.sleep(0.1)
@@ -75,7 +79,11 @@ class Camera:
             
             self.buffer.put(image)
             if self.log_dir:
-                image.save(self.log_dir / f"{time.time()}.jpg")
+                image.save(self.log_dir / f"{img_stamp}.jpg")
+                json.dump({
+                    "attitude": attitude_position,
+                    "timestamp": attitude_stamp
+                }, self.log_dir / f"{img_stamp}.json")
                 
     def start_recording(self):
         """
