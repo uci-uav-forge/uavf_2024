@@ -116,10 +116,10 @@ class Camera:
             if self.log_dir:
                 image.save(self.log_dir / f"{img_stamp}.jpg")
                 metadata = {
-                        "attitude": attitude_position,
-                        "zoom" zoom,
-                        "time_seconds": attitude_stamp
-                    }
+                    "attitude": attitude_position,
+                    "zoom": zoom,
+                    "time_seconds": attitude_stamp
+                }
                 self.metadata_buffer.append(metadata)
                 json.dump(
                     metadata, 
