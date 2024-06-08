@@ -35,14 +35,14 @@ def draw_orientation(pose, cam_attitude):
     ax.set_ylim(-1, 1)
     ax.set_zlim(-1, 1)
     position = [0,0,0]
-    ax.quiver(*position, orientation.apply([1,0,0])[0], orientation.apply([1,0,0])[1], orientation.apply([1,0,0])[2], color='r')
-    ax.quiver(*position, orientation.apply([0,1,0])[0], orientation.apply([0,1,0])[1], orientation.apply([0,1,0])[2], color='g')
-    ax.quiver(*position, orientation.apply([0,0,1])[0], orientation.apply([0,0,1])[1], orientation.apply([0,0,1])[2], color='b')
+    ax.quiver(*position, *orientation.apply([1,0,0]), color='r')
+    ax.plot(*position, *orientation.apply([0,1,0]), color='g')
+    ax.plot(*position, *orientation.apply([0,0,1]), color='b')
 
 
-    ax.quiver(*position, cam_orientation.apply([1,0,0])[0], cam_orientation.apply([1,0,0])[1], cam_orientation.apply([1,0,0])[2], color='m')
-    ax.quiver(*position, cam_orientation.apply([0,1,0])[0], cam_orientation.apply([0,1,0])[1], cam_orientation.apply([0,1,0])[2], color='y')
-    ax.quiver(*position, cam_orientation.apply([0,0,1])[0], cam_orientation.apply([0,0,1])[1], cam_orientation.apply([0,0,1])[2], color='c')
+    ax.quiver(*position, *cam_orientation.apply([1,0,0]), color='m')
+    ax.plot(*position, *cam_orientation.apply([0,1,0]), color='y')
+    ax.plot(*position, *cam_orientation.apply([0,0,1]), color='c')
     # return fig as image
     fig.canvas.draw()
     image = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
