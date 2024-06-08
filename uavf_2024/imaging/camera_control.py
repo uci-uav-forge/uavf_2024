@@ -40,7 +40,7 @@ class MetadataBuffer:
         with self.lock:
             if self._queue[-1]['time_seconds'] < timestamp:
                 return self._queue[-1]
-            if self._queue[0] > timestamp:
+            if self._queue[0]['time_seconds'] > timestamp:
                 return self.queue[0]
             idx = bisect_left([d['time_seconds'] for d in self._queue], timestamp)
             before = self._queue[idx-1]
@@ -173,7 +173,7 @@ class Camera:
         return self.cam.getAttitude()
     
     def getAttitudeInterpolated(self, timestamp: float, offset: float=1):
-        return self.metadata_buffer.get_interpolated(timestamp-offset) # offset for camera lag
+        return self.metadata_buffer.get_interpolated(timestamp-offset)['attitude'] # offset for camera lag
     
     def getAttitudeSpeed(self):
         # Returns (yaw_speed, pitch_speed, roll_speed)
