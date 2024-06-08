@@ -221,6 +221,8 @@ class PoseProvider:
         self._buffer = _PoseBuffer(buffer_size)
         
         self._subscribe_pose_and_altitude(self._handle_pose_update, self._handle_altitude_update)
+
+        self.first_pose = None
         
         self.log(f"Finished intializing PoseProvider. Logging to {self.logs_path}")
         
@@ -257,6 +259,9 @@ class PoseProvider:
                 [quaternion.x, quaternion.y, quaternion.z, quaternion.w]),
             time_seconds = pose.header.stamp.sec + pose.header.stamp.nanosec / 1e9
         )
+
+        if self.first_pose is None:
+            self.first_pose = formatted
         
         self._buffer.put(formatted)
         self._log_pose(formatted)
@@ -282,6 +287,9 @@ class PoseProvider:
         
         with open(logs_dir / (str(time.time()) + ".json"), "w") as f:
             json.dump(data, f)
+        
+    def get_first_pose(self) -> PoseDatum:
+        return self.first_pose
         
     def get(self, offset: int = 0):
         """
@@ -375,19 +383,21 @@ class ImagingNode(Node):
     @log_exceptions
     def cam_auto_point(self, current_pose: PoseDatum):
         z = current_pose.position.z
+
+        alt_from_gnd = z - self.pose_provider.get_first_pose().position.z
         
         # If pointed down and close to the ground, point forward
-        if(self.camera_state and z < 3): #3 meters ~ 30 feet
+        if(self.camera_state and alt_from_gnd < 3): #3 meters ~ 30 feet
             self.camera.request_center()
             self.camera_state = False
             self.camera.stop_recording()
-            self.log(f"Crossing 3m down, pointing forward. Current position: {z}")
+            self.log(f"Crossing 3m down, pointing forward. Current altitude: {alt_from_gnd}")
         # If pointed forward and altitude is higher, point down
-        elif(not self.camera_state and z > 3):
+        elif(not self.camera_state and alt_from_gnd > 3):
             self.camera.request_down()
             self.camera_state = True
             self.camera.start_recording()
-            self.log(f"Crossing 3m up, pointing down. Current position: {z}")
+            self.log(f"Crossing 3m up, pointing down. Current altitude: {alt_from_gnd}")
         else:
             return
         self.camera.request_autofocus()
@@ -428,7 +438,8 @@ class ImagingNode(Node):
             focal_len, 
             (1920, 1080),
             (np.array([1,0,0]), np.array([0,-1, 0])),
-            2    
+            2,
+            self.pose_provider.get_first_pose().position.z - 0.15 # cube is about 15cm off ground
         )
         return localizer
 
@@ -449,6 +460,7 @@ class ImagingNode(Node):
             We want to take photo when the attitude is down only. 
         '''
         self.log("Received Down Image Request")
+        self.pose_provider.wait_for_pose()
 
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
             self.point_camera_down()
@@ -469,7 +481,6 @@ class ImagingNode(Node):
         # Get avg camera pose for the image
         angles = self.camera.getAttitudeInterpolated(timestamp)
         
-        self.pose_provider.wait_for_pose()
         # Get the pose measured 0.75 seconds before we received the image
         # This is to account for the delay in the camera system, and was determined empirically
         pose, is_timestamp_interpolated = self.pose_provider.get_interpolated(timestamp - 0.75) 
