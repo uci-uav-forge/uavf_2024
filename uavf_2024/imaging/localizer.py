@@ -64,7 +64,6 @@ class Localizer:
         # solve camera_pos + t*rotated_vector = [x,ground_coord,z] = target_position
         t = (self.ground_coordinate-camera_position[self.ground_axis])/rotated_vector[self.ground_axis]
         target_position = camera_position + t*rotated_vector
-        assert abs(target_position[self.ground_axis])<1e-3
 
         return Target3D(target_position, pred.descriptor, id=f"img_{pred.img_id}/det_{pred.det_id}")
         
