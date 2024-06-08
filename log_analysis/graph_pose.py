@@ -73,5 +73,7 @@ for (y_name, y_arr) in zip(["x_positions", "y_positions", "z_positions", "x_rota
 
 plt.figure()
 plt.title("xy positions")
+plt.xlabel("x")
+plt.ylabel("y") 
 plt.scatter(x_positions, y_positions, c=pose_timestamps, cmap='viridis', s=1)
 plt.savefig("xy_positions.png")
