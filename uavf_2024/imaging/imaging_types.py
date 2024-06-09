@@ -18,6 +18,13 @@ class Color(Enum):
     WHITE = 5
     BLACK = 6
     BROWN = 7
+    
+    @staticmethod
+    def from_str(name: str) -> "Color | None":
+        index = COLOR_INDICES.get(name.lower())
+        if index is None:
+            return None
+        return __class__(index)
 
 
 COLOR_INDICES = {
@@ -35,11 +42,22 @@ class Shape(Enum):
     STAR = 6
     CROSS = 7
     PERSON = 8
+    
+    @staticmethod
+    def from_str(name: str) -> "Shape | None":
+        index = SHAPE_INDICES.get(name.lower())
+        if index is None:
+            return None
+        return __class__(index)
 
 
 SHAPES = [
     shape.name.lower() for shape in Shape
 ]
+
+SHAPE_INDICES = {
+    shape: index for index, shape in enumerate(SHAPES)
+}
 
 # based on the letter order in letter model's raw_output[0].names
 # it is basically LETTER_NEW in alphabetical order (0-35)
@@ -58,7 +76,7 @@ class Character:
         yield from CHARACTERS
     
     def __init__(self, value: character_literal):
-        self.value = value
+        self.value = value.upper()
         
     def __eq__(self, other: Character):
         return self.value == other.value
@@ -66,6 +84,30 @@ class Character:
     @staticmethod
     def count():
         return len(CHARACTERS)
+    
+    @property
+    def index(self):
+        if self.value.isnumeric():
+            return int(self.value)
+        
+        return ord(self.value) - ord("A") + 10
+    
+    @staticmethod
+    def from_str(name: str) -> "Character | None":
+        if len(name) != 1:
+            return None
+        
+        name = name.upper()
+        
+        if name.isnumeric():
+            index = int(name)
+        else:
+            index = ord(name) - ord("A") + 10
+
+        if index < 0 or index >= len(CHARACTERS):
+            return None
+        
+        return __class__(CHARACTERS[index]) # type: ignore
 
 
 COLORS = list(COLOR_INDICES.keys())
