@@ -212,7 +212,10 @@ class CommanderNode(rclpy.node.Node):
         self.log("Pushing waypoints.")
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
-
+        self.log("Delaying before resetting mission progress.")
+        time.sleep(1)
+        self.last_wp_seq = -1
+        self.log("Set mission progress")
         if do_set_mode:
             self.log("Delaying before setting mode.")
             time.sleep(1)
@@ -223,9 +226,8 @@ class CommanderNode(rclpy.node.Node):
                 self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
                     base_mode = 0,
                     custom_mode = 'AUTO.MISSION'))
-                self.last_wp_seq = -1
                 time.sleep(0.2)
-                if self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION':
+                if (self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION') or self.last_wp_seq >= -1:
                     self.log("Success setting mode")
                     break
             else:

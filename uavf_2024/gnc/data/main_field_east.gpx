@@ -27,11 +27,11 @@
 <name>Main Field East Mission</name>
 <trkseg>
 
-<trkpt lat="33.64255" lon="-117.82553">20</trkpt>
+<trkpt lat="33.64255" lon="-117.82553"><ele>20.0</ele></trkpt>
 
-<trkpt lat="33.64235" lon="-117.82553">20</trkpt>
+<trkpt lat="33.64235" lon="-117.82553"><ele>20.0</ele></trkpt>
 
-<trkpt lat="33.64228" lon="-117.82566">20</trkpt>
+<trkpt lat="33.64228" lon="-117.82566"><ele>20.0</ele></trkpt>
 
 </trkseg>
 </trk>
