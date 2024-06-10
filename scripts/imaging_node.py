@@ -471,21 +471,25 @@ class ImagingNode(Node):
         localizer = self.make_localizer()
         img = self.camera.get_latest_image()
         timestamp = time.time()
+        self.log(f"Got image from Camera at time {timestamp}")
 
         if img is None:
             self.log("Could not get image from Camera.")
             return []
     
         detections = self.image_processor.process_image(img)
+        self.log(f"Finished image processing. Got {len(detections)} detections")
 
         # Get avg camera pose for the image
         angles = self.camera.getAttitudeInterpolated(timestamp)
+        self.log(f"Got camera attitude: {angles}")
         
         # Get the pose measured 0.75 seconds before we received the image
         # This is to account for the delay in the camera system, and was determined empirically
         pose, is_timestamp_interpolated = self.pose_provider.get_interpolated(timestamp - 0.75) 
         if not is_timestamp_interpolated:
             self.log("Couldn't interpolate pose.")
+        self.log(f"Got pose: {angles}")
 
         cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
         cur_rot_quat = pose.rotation.as_quat()
@@ -500,7 +504,6 @@ class ImagingNode(Node):
         logs_folder = self.image_processor.get_last_logs_path()
         self.log(f"This frame going to {logs_folder}")
         self.log(f"Zoom level: {self.zoom_level}")
-        self.log(f"{len(detections)} detections \t({'*'*len(detections)})")
         os.makedirs(logs_folder, exist_ok=True)
         cv.imwrite(f"{logs_folder}/image.png", img.get_array())
         log_data = {
