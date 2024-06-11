@@ -103,6 +103,9 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         if closest_idx == 0:
             return data[0]
         
+        if closest_idx == len(data):
+            return data[closest_idx - 1]
+        
         pt_before = data[closest_idx - 1]
         pt_after = data[closest_idx]
 
@@ -198,7 +201,7 @@ class ImagingNode(Node):
         alt_from_gnd = current_z - first_pose.position.z
         
         # If pointed down and close to the ground, point forward
-        if(self.camera_state and alt_from_gnd < 3): #3 meters ~ 30 feet
+        if(self.camera_state and alt_from_gnd < 3): #3 meters ~ 10 feet
             self.camera.request_center()
             self.camera_state = False
             self.camera.stop_recording()
