@@ -119,13 +119,15 @@ class CommanderNode(rclpy.node.Node):
         self.turn_angle_limit = 170
 
         self.cur_lap = -1
+        self.in_loop = False
 
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
 
     def got_state_cb(self, state):
         self.cur_state = state
-        if state not in ["AUTO.MISSION", "HOLD"]:
+        if self.in_loop and state.mode not in ["AUTO.MISSION", "AUTO.LOITER"]:
+            self.log_statustext(f"Bad mode; {state.mode}. Crashing")
             quit()
 
     def reached_cb(self, reached):
@@ -351,6 +353,7 @@ class CommanderNode(rclpy.node.Node):
             self.log_statustext(f"Pushing mission for {lap}")
             # Fly waypoint lap
             self.execute_waypoints(self.mission_wps, do_set_mode=False)
+            self.in_loop = True
 
             if self.args.exit_early:
                 return
@@ -362,3 +365,4 @@ class CommanderNode(rclpy.node.Node):
             self.log_statustext("Returning home.")
             # Fly back to home position
             self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, TAKEOFF_ALTITUDE)])
+            self.in_loop = False
