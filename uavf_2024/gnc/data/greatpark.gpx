@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.topografix.com/GPX/1/1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd http://www.topografix.com/GPX/gpx_style/0/2 http://www.topografix.com/GPX/gpx_style/0/2/gpx_style.xsd" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" xmlns:gpx_style="http://www.topografix.com/GPX/gpx_style/0/2" version="1.1" creator="https://gpx.studio">
+<trk>
+    <name>Great Park Flight Boundary</name>
+    <type>Running</type>
+    <trkseg>
+    <trkpt lat="33.67561440818659" lon="-117.73668618049582">
+    </trkpt>
+    <trkpt lat="33.67449693710444" lon="-117.73667859406305">
+    </trkpt>
+    <trkpt lat="33.67448115351059" lon="-117.73567718494246">
+    </trkpt>
+    <trkpt lat="33.67561440818659" lon="-117.735703737457">
+    </trkpt>
+    <trkpt lat="33.67561440818659" lon="-117.73668618049582">
+    </trkpt>
+    </trkseg>
+</trk>
+<trk>
+    <name>Great Park Airdrop Boundary</name>
+    <trkseg>
+    <trkpt lat="33.67531767999328" lon="-117.7364737603793">
+    </trkpt>
+    <trkpt lat="33.675052517762694" lon="-117.73646617394657">
+    </trkpt>
+    <trkpt lat="33.675052517762694" lon="-117.73595408973715">
+    </trkpt>
+    <trkpt lat="33.67531136661633" lon="-117.73601098798267">
+    </trkpt>
+    <trkpt lat="33.67531767999328" lon="-117.7364737603793">
+    </trkpt>
+    </trkseg>
+    </trk>
+<trk>
+    <name>Great Park Mission</name>
+    <trkseg>
+    <trkpt lat="33.674841018730696" lon="-117.73620064880096">
+        <ele>20.0</ele>
+    </trkpt>
+    </trkseg>
+    </trk>
+</gpx>
