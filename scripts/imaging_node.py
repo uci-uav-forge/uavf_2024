@@ -6,14 +6,12 @@ import time
 import traceback
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
-import logging
 from bisect import bisect_left
 
 import cv2 as cv
 import numpy as np
 import rclpy
 from geometry_msgs.msg import Point, PoseStamped
-from mavros_msgs.msg import Altitude
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from scipy.spatial.transform import Rotation, Slerp
@@ -71,7 +69,12 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         )
         
     def log_to_file(self, item: PoseDatum):
-        with open(self.get_logs_dir() / f"{item.time_seconds:.02f}.json", "w") as f:
+        logs_dir = self.get_logs_dir()
+        if logs_dir is None:
+            raise ValueError("Logging directory not given in initialization.")
+        
+        path = logs_dir / f"{item.time_seconds:.02f}.json"
+        with open(path, "w") as f:
             json.dump(item.to_json(), f)
             
     def format_data(self, message: PoseStamped) -> PoseDatum:
@@ -139,33 +142,6 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         return (self._buffer.get_fresh(), False)
 
 
-class AltitudeProvider(RosLoggingProvider[Altitude, Altitude]):
-    def _subscribe_to_topic(self, action: Callable[[Altitude], Any]) -> None:
-        self.node.create_subscription(
-            Altitude,
-            '/mavros/altitude', 
-            action, 
-            QOS_PROFILE
-        )
-        
-    def log_to_file(self, item: Altitude, timestamp: float | None = None):
-        if not timestamp:
-            timestamp = time.time()
-        
-        data = {
-            "amsl": float(item.amsl),
-            "local": float(item.local),
-            "relative": float(item.relative),
-            "terrain": float(item.terrain)
-        }
-        
-        with open(self.get_logs_dir() / (str(timestamp) + ".json"), "w") as f:
-            json.dump(data, f)
-    
-    def format_data(self, message: Altitude) -> Altitude:
-        return message
-
-
 class ImagingNode(Node):
     @log_exceptions
     def __init__(self) -> None:
@@ -191,10 +167,6 @@ class ImagingNode(Node):
         # Only start the recording once (when the first pose comes in)
         start_recording_once = OnceCallable(lambda _: self.camera.start_recording())
         self.pose_provider.subscribe(start_recording_once)
-        
-        # Currently just logs the altitudes to a directory.
-        # TODO: Use this to do camera pointing
-        self.altitude_provider = AltitudeProvider(self, self.logs_path / "altitudes")
 
         # Services ----
         # Set up take picture service
@@ -216,9 +188,14 @@ class ImagingNode(Node):
 
     @log_exceptions
     def cam_auto_point(self, current_pose: PoseDatum):
-        z = current_pose.position.z
+        current_z = current_pose.position.z
 
-        alt_from_gnd = z - self.pose_provider.get_first_datum().position.z
+        first_pose = self.pose_provider.get_first_datum()
+        if first_pose is None:
+            self.log("First datum not found trying to auto-point camera.")
+            return
+        
+        alt_from_gnd = current_z - first_pose.position.z
         
         # If pointed down and close to the ground, point forward
         if(self.camera_state and alt_from_gnd < 3): #3 meters ~ 30 feet
@@ -268,12 +245,18 @@ class ImagingNode(Node):
     @log_exceptions
     def make_localizer(self):
         focal_len = self.camera.getFocalLength()
+        
+        first_pose = self.pose_provider.get_first_datum()
+        if first_pose is None:
+            self.log("First datum does not exist trying to make Localizer.")
+            return
+        
         localizer = Localizer.from_focal_length(
             focal_len, 
             (1920, 1080),
             (np.array([1,0,0]), np.array([0,-1, 0])),
             2,
-            self.pose_provider.get_first_datum().position.z - 0.15 # cube is about 15cm off ground
+            first_pose.position.z - 0.15 # cube is about 15cm off ground
         )
         return localizer
 
@@ -302,13 +285,16 @@ class ImagingNode(Node):
         #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
         
         # Take picture and grab relevant data
-        localizer = self.make_localizer()
         img = self.camera.get_latest_image()
-        timestamp = time.time()
-        self.log(f"Got image from Camera at time {timestamp}")
-
         if img is None:
             self.log("Could not get image from Camera.")
+            return []
+        timestamp = time.time()
+        self.log(f"Got image from Camera at time {timestamp}")
+        
+        localizer = self.make_localizer()
+        if localizer is None:
+            self.log("Could not get Localizer")
             return []
     
         detections = self.image_processor.process_image(img)
