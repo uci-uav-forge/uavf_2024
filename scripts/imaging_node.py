@@ -267,7 +267,6 @@ class ImagingNode(Node):
             self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
             time.sleep(0.1)
         self.log("Camera pointed down")
-        self.camera.request_autofocus()
 
     @log_exceptions
     def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
@@ -281,6 +280,7 @@ class ImagingNode(Node):
 
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
             self.point_camera_down()
+        self.camera.request_autofocus()
 
         #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
         
