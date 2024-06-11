@@ -6,6 +6,9 @@ from uavf_2024.imaging.imaging_types import Image, HWC
 import matplotlib.image 
 from scipy.spatial.transform import Rotation
 import numpy as np
+import json
+from collections import deque
+from bisect import bisect_left
 
 
 class ImageBuffer:
@@ -24,6 +27,37 @@ class ImageBuffer:
         with self.lock:
             return self.image
 
+class MetadataBuffer:
+    def __init__(self):
+        self._queue = deque(maxlen=128)
+        self.lock = threading.Lock()
+    
+    def append(self, datum):
+        with self.lock:
+            self._queue.append(datum)
+        
+    def get_interpolated(self, timestamp: float):
+        with self.lock:
+            if self._queue[-1]['time_seconds'] < timestamp:
+                return self._queue[-1]
+            if self._queue[0]['time_seconds'] > timestamp:
+                return self._queue[0]
+            idx = bisect_left([d['time_seconds'] for d in self._queue], timestamp)
+            before = self._queue[idx-1]
+            after = self._queue[idx]
+            proportion = (timestamp-before['time_seconds']) / (after['time_seconds']-before['time_seconds'])
+            att_before = before['attitude']
+            att_after = after['attitude']
+            attitude = tuple([
+                att_before[i] + proportion * (att_after[i] - att_before[i])
+                for i in range(3)
+            ])
+            zoom = before['zoom'] + proportion * (after['zoom']-before['zoom'])
+            return {
+                'time_seconds': timestamp,
+                'attitude': attitude,
+                'zoom': zoom
+            }
 
 class Camera:
     def __init__(self, log_dir: str | Path | None = None):
@@ -45,14 +79,14 @@ class Camera:
         self.buffer = ImageBuffer()
         self.recording_thread: threading.Thread | None = None
         self.recording = False
-        self.start_recording()
+        self.metadata_buffer = MetadataBuffer()
     
     @staticmethod
     def _prep_log_dir(log_dir: Path):
         if not log_dir.exists():
             log_dir.mkdir(parents=True, exist_ok=True)
         
-    def set_log_dir(self, log_dir: str):
+    def set_log_dir(self, log_dir: str | Path):
         self.log_dir = Path(log_dir)
         
     def _recording_worker(self):
@@ -62,6 +96,10 @@ class Camera:
         while self.recording:
             try:
                 img_arr = self.stream.get_frame()
+                img_stamp = time.time()
+                attitude_position = self.getAttitude()
+                zoom = self.getZoomLevel()
+                attitude_stamp = time.time()
                 
                 if img_arr is None:
                     time.sleep(0.1)
@@ -76,12 +114,25 @@ class Camera:
             
             self.buffer.put(image)
             if self.log_dir:
-                image.save(self.log_dir / f"{time.time()}.png")
+                image.save(self.log_dir / f"{img_stamp}.jpg")
+                metadata = {
+                    "attitude": attitude_position,
+                    "zoom": zoom,
+                    "time_seconds": attitude_stamp
+                }
+                self.metadata_buffer.append(metadata)
+                json.dump(
+                    metadata, 
+                    open(self.log_dir / f"{img_stamp}.json", 'w')
+                )
                 
     def start_recording(self):
         """
         Currently called in __init__, but this should be changed to being called when we're in the air.
         """
+        if self.recording:
+            return
+
         self.recording_thread = threading.Thread(target=self._recording_worker)
         self.recording = True
         self.recording_thread.start()
@@ -120,6 +171,9 @@ class Camera:
     def getAttitude(self):
         ''' Returns (yaw, pitch, roll) '''
         return self.cam.getAttitude()
+    
+    def getAttitudeInterpolated(self, timestamp: float, offset: float=1):
+        return self.metadata_buffer.get_interpolated(timestamp-offset)['attitude'] # offset for camera lag
     
     def getAttitudeSpeed(self):
         # Returns (yaw_speed, pitch_speed, roll_speed)

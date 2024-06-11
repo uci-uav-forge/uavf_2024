@@ -14,8 +14,9 @@ from rclpy.node import Node
 from libuavf_2024.msg import TargetDetection
 from libuavf_2024.srv import TakePicture
 from geometry_msgs.msg import PoseStamped
+import mavros_msgs.msg
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
-from uavf_2024.gnc.util import read_gps, convert_delta_gps_to_local_m, read_gpx_file
+from uavf_2024.gnc.util import pose_to_xy, convert_delta_gps_to_local_m, read_gpx_file
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 import argparse
@@ -58,25 +59,36 @@ class MockImagingNode(Node):
         self.got_pose = False
         self.world_position_sub = self.create_subscription(PoseStamped, '/mavros/local_position/pose', self.got_pose_cb, qos_profile)
         self.got_global_pos = False
-        self.global_position_sub = self.create_subscription(NavSatFix, '/mavros/global_position/global', self.got_global_pos_cb, qos_profile)
         self.imaging_service = self.create_service(TakePicture, '/imaging_service', self.imaging_callback)
 
         self.dropzone_bounds = read_gpx_file(args.dropzone_file)['Airdrop Boundary']
         self.img_w_m = args.img_w_m
         self.img_h_m = args.img_h_m
 
+        self.got_home_local_pos = False
+        self.home_local_pos = None
+        self.got_home_pos = False
+        self.home_position_sub = self.create_subscription(
+            mavros_msgs.msg.HomePosition,
+            'mavros/home_position/home',
+            self.home_position_cb,
+            qos_profile
+        )
+
     def got_pose_cb(self, pose):
         self.cur_pose = pose
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,]).as_rotvec()
         self.got_pose = True
+        if not self.got_home_local_pos:
+            self.got_home_local_pos = True
+            self.home_local_pose = self.cur_pose
+            print(f"home local pose is {self.home_local_pose}")
 
-    def got_global_pos_cb(self, pos):
-        #Todo this feels gross - there should be a cleaner way to get home-pos through MAVROS.
-        if not self.got_global_pos:
-            self.got_global_pos = True
-            self.home_global_pos = pos
+    def home_position_cb(self, pos):
+        if self.got_home_local_pos and not self.got_home_pos:
+            self.got_home_pos = True
             
-            self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.latitude, pos.longitude), x) for x in self.dropzone_bounds]
+            self.dropzone_bounds_mlocal = [convert_delta_gps_to_local_m((pos.geo.latitude, pos.geo.longitude), x) + pose_to_xy(self.home_local_pose) for x in self.dropzone_bounds]
             print("Dropzone bounds in local coords: ", self.dropzone_bounds_mlocal)
             
             self.targets = gen_fake_targets(self.dropzone_bounds_mlocal)

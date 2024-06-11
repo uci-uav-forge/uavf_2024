@@ -51,5 +51,5 @@ ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc
 
 ```
 cd ~/ws && colcon build --merge-install && source install/setup.bash
-ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/ARC/club_field.gpx ~/ws/src/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
+ros2 run libuavf_2024 demo_commander_node.py ~/ws/src/libuavf_2024/uavf_2024/gnc/data/club_field.gpx ~/ws/src/libuavf_2024/uavf_2024/gnc/data/PAYLOAD_LIST 12 9
 ```

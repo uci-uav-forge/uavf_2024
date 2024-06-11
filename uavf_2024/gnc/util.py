@@ -127,3 +127,7 @@ def calculate_turn_angles_deg(path_coordinates):
         turn_angles.append(np.degrees(np.arccos(np.dot(norm_vectors[i], norm_vectors[i + 1]))))
     
     return turn_angles
+
+def pose_to_xy(pose):
+    pos = pose.pose.position
+    return np.array([pos.x, pos.y])
