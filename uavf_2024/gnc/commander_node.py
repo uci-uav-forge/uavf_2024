@@ -5,6 +5,7 @@ import logging
 import mavros_msgs.msg
 import mavros_msgs.srv
 import numpy as np
+from pygeodesy.geoids import GeoidPGM
 import rclpy
 import rclpy.node
 from rclpy.qos import *
@@ -104,9 +105,6 @@ class CommanderNode(rclpy.node.Node):
             qos_profile)
 
         self.default_altitude_asml = 23.0
-        self.left_intermediate_waypoint_global = (38.31605966, -76.55154921, self.default_altitude_asml)
-        self.right_intermediate_waypoint_global = (38.31542867, -76.54548898, self.default_altitude_asml)
-        self.geofence_middle_pt = (38.31470980862425, -76.54936361414539, self.default_altitude_asml)
 
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
@@ -122,6 +120,8 @@ class CommanderNode(rclpy.node.Node):
 
         self.got_home_local_pos = False
         self.home_local_pos = None
+
+        self.egm96 = GeoidPGM('/usr/share/GeographicLib/geoids/egm96-5.pgm', kind = -3)
     
     def log(self, *args, **kwargs):
         '''
@@ -166,21 +166,25 @@ class CommanderNode(rclpy.node.Node):
 
     def got_global_pos_cb(self, pos):
         '''
-        Obtain the global home position and set self.home_global_pos. This is the 
-        callback function for the subscription to the /mavros/global_position/global topic.
+        This is the callback function for the subscription to the /mavros/global_position/global topic.
         '''
         # Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
         self.last_global_pos = pos
         self.got_global_pos = True
-
             
     def home_position_cb(self, pos):
+        '''
+        This is the callback function for the subscription to the mavros/home_position/home topic.
+        '''
         if not self.got_home_pos:
             self.log(f"home pos is {pos}")
         self.home_pos = pos
         self.got_home_pos = True
     
     def status_text_cb(self, statustext):
+        '''
+        This is the callback function for the subscription to the mavros/statustext/recv topic.
+        '''
         self.log(f"recieved statustext: {statustext}")
         bump_lap = BumpLap.from_string(statustext.text)
         if bump_lap is not None:
@@ -203,6 +207,20 @@ class CommanderNode(rclpy.node.Node):
         '''
         return pose_to_xy(self.cur_pose)
     
+    def geoid_height(self, lat, lon):
+       '''
+       Calculates AMSL to ellipsoid conversion offset.
+       Uses EGM96 data with 5' grid and cubic interpolation.
+       The value returned can help you convert from meters 
+       above mean sea level (AMSL) to meters above
+       the WGS84 ellipsoid.
+   
+       If you want to go from AMSL to ellipsoid height, add the value.
+   
+       To go from ellipsoid height to AMSL, subtract this value.
+       '''
+       return self.egm96.height(lat, lon)
+
     def execute_waypoints(self, waypoints, yaws = None, do_set_mode = True):
         '''
         Fly to each of the waypoints.
@@ -382,7 +400,15 @@ class CommanderNode(rclpy.node.Node):
         By flying to the intermediate waypoint before the destination_wp, the
         geofence will not be violated.
         '''
-        return self.right_intermediate_waypoint_global if destination_wp[1] > self.geofence_middle_pt[1] else self.left_intermediate_waypoint_global
+        geoid_separation = self.geoid_height(self.last_global_pos.latitude, self.last_global_pos.longitude)
+        current_altitude = self.last_global_pos.altitude - geoid_separation
+        altitude_asml = max(self.default_altitude_asml, current_altitude)
+
+        left_intermediate_waypoint_global = (38.31605966, -76.55154921, altitude_asml)
+        right_intermediate_waypoint_global = (38.31542867, -76.54548898, altitude_asml)
+        geofence_middle_pt = (38.31470980862425, -76.54936361414539)
+
+        return right_intermediate_waypoint_global if destination_wp[1] > geofence_middle_pt[1] else left_intermediate_waypoint_global
 
     def generate_legal_waypoints(self, waypoints: list):
         '''
