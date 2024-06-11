@@ -157,6 +157,7 @@ class DropzonePlanner:
         best_match = self.target_tracker.estimate_positions(self.commander.payloads)[self.current_payload_index]
         best_match_x, best_match_y = best_match.position[0], best_match.position[1]
         self.commander.log(f"best_match_x: {best_match_x}, best_match_y: {best_match_y}")
+        self.commander.log(f"Contributing measurements: {best_match.contributing_measurement_ids()}")
 
         # Generate path of waypoints to the target to take images at
         next_wps = self.generate_wps_to_target(best_match_x, best_match_y, self.commander.cur_pose.pose.position.x, self.commander.cur_pose.pose.position.y)
