@@ -35,7 +35,7 @@ COLOR_INDICES = {
 class Shape(Enum):
     CIRCLE = 0
     SEMICIRCLE = 1
-    QUARTER_CIRCLE = 2
+    QUARTERCIRCLE = 2
     TRIANGLE = 3
     RECTANGLE = 4
     PENTAGON = 5
