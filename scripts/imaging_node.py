@@ -276,11 +276,11 @@ class ImagingNode(Node):
             We want to take photo when the attitude is down only. 
         '''
         self.log("Received Down Image Request")
+        self.camera.request_autofocus()
         self.pose_provider.wait_for_data()
 
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
             self.point_camera_down()
-        self.camera.request_autofocus()
 
         #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
         
