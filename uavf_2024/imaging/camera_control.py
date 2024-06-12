@@ -209,7 +209,7 @@ class Camera:
     def requestAbsolutePosition(self, yaw: float, pitch: float):
         return self.cam.requestAbsolutePosition(yaw, pitch)
     
-    def requestGimbalSpeed(self, yaw_speed: float, pitch_speed: float):
+    def requestGimbalSpeed(self, yaw_speed: int, pitch_speed: int):
         return self.cam.requestGimbalSpeed(yaw_speed, pitch_speed)
 
     def request_center(self):
