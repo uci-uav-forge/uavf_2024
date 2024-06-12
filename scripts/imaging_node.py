@@ -145,7 +145,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
 
         '''
         for _ in range(50):
-            interp_pose = self._interpolate_from_buffer(time_seconds)
+            interp_pose = self._interpolate_from_buffer(time_seconds, True)
             if interp_pose is not None:
                 return (interp_pose, True)
             else:
