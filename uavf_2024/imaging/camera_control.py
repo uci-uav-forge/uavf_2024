@@ -282,5 +282,5 @@ if __name__ == "__main__":
     cam = Camera()
     out = cam.get_latest_image()
     # matplotlib.image.imsave("sample_frame.png",out.get_array().transpose(2,1,0))
-    out.save("sample_frame.png")
+    if out != None: out.save("sample_frame.png")
     cam.disconnect()
