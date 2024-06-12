@@ -22,7 +22,7 @@ def get_images(images_dir: Path):
 minute = 43
 
 plt.title("Timestamp vs index")
-logs_path = Path("/media/forge/SANDISK/logs/06-11 21h01m/")
+logs_path = Path("/home/forge/ws/logs/06-12 15h27m")
 cam_path = logs_path / "camera"
 timestamps, imgs = get_images(cam_path)
 plt.scatter(range(len(timestamps)), timestamps, s=1)
