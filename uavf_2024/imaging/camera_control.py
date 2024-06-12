@@ -123,7 +123,7 @@ class Camera:
         self.log_dir = Path(log_dir)
     
     def _logging_worker(self):
-        while self.logging:
+        while self.logging and self.log_dir:
             log_data = self.log_buffer.pop_data()
             if log_data is None:
                 if not self.recording: # finish logging if recording is done
