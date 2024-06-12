@@ -26,7 +26,7 @@ class LogBuffer:
     Buffer for logging data implementing a Lock for multithreading. 
     """
     def __init__(self):
-        self.log_data = deque(maxlen=512) # ~1gb of data
+        self.log_data = deque(maxlen=128)
         self.lock = threading.Lock()
         
     def append(self, datum : LogType):
