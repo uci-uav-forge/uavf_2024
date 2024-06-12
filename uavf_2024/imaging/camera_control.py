@@ -127,6 +127,7 @@ class Camera:
             log_data = self.log_buffer.pop_data()
             if log_data is None:
                 if not self.recording: # finish logging if recording is done
+                    print("Finished buffer")
                     self.logging = False
                     break
                 time.sleep(0.1)
@@ -199,6 +200,9 @@ class Camera:
             self.recording = False
             self.recording_thread.join()
             self.recording_thread = None
+        if self.logging_thread:
+            self.logging_thread.join()
+            self.logging_thread = None
         
     def get_latest_image(self) -> Image | None:
         """
