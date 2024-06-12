@@ -155,12 +155,14 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
 
 
 class ImagingNode(Node):
+    LOGS_BASE_DIR = Path('/home/forge/ws/logs/') # '/media/forge/SANDISK/logs/'
+    
     @log_exceptions
     def __init__(self) -> None:
         # Initialize the node
         super().__init__('imaging_node') # type: ignore
-        self.logs_path = Path(f'/media/forge/SANDISK/logs/{time.strftime("%m-%d %Hh%Mm")}')
-        
+        self.logs_path = Path(__class__.LOGS_BASE_DIR / f'{time.strftime("%m-%d %Hh%Mm")}')
+
         self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
         self.camera_state = True # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
