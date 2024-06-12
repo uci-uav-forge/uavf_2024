@@ -128,7 +128,7 @@ class CommanderNode(rclpy.node.Node):
     def got_state_cb(self, state):
         self.cur_state = state
         timestamp = time.time()
-        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time < 0.2):
+        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time < 0.3):
             self.do_imaging_call()
             self.last_imaging_time = timestamp
     
