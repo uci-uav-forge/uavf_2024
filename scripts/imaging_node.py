@@ -88,18 +88,14 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
             time_seconds = new_time
         )
         
-    def _interpolate_from_buffer(self, time_seconds: float, wait: bool = False) -> PoseDatum | None:
+    def _interpolate_from_buffer(self, time_seconds: float, timeout: float = float("inf")) -> PoseDatum | None:
         """
         Returns the pose datum interpolated between the two data points before and after the time given.
         
         If this interpolation is not possible because the pose is too old, returns the oldest pose.
         If this interpolation is not possible because the poses are not old enough, wait until enough data is available if wait is enabled.
-            Otherwise, return the newest pose
-        If there is no pose available, wait if enabled. Otherwise, return None.
-        """
-        if self._buffer.count == 0:
-            return None
-        
+            Otherwise, return the newest pose on timeout.
+        """        
         data = self._buffer.get_all_reversed()
         
         closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
@@ -107,9 +103,11 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         if closest_idx == 0:
             return data[0]
         
-        # Poll every 100ms
+        # Poll every 100ms until timeout
+        start = time.time()
         while closest_idx == len(data):
-            if not wait:
+            waited = start - time.time()
+            if waited > timeout:
                 return data[closest_idx - 1]
 
             time.sleep(0.1)
@@ -147,7 +145,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
 
         '''
         for _ in range(50):
-            interp_pose = self._interpolate_from_buffer(time_seconds, True)
+            interp_pose = self._interpolate_from_buffer(time_seconds, 1.0)
             if interp_pose is not None:
                 return (interp_pose, True)
             else:
