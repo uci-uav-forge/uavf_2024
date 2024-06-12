@@ -78,13 +78,14 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
             json.dump(item.to_json(), f)
             
     def format_data(self, message: PoseStamped) -> PoseDatum:
+        new_time = time.time()
         quaternion = message.pose.orientation
         
         return PoseDatum(
             position = message.pose.position,
             rotation = Rotation.from_quat(
                 [quaternion.x, quaternion.y, quaternion.z, quaternion.w]),
-            time_seconds = message.header.stamp.sec + message.header.stamp.nanosec / 1e9
+            time_seconds = new_time
         )
         
     def _interpolate_from_buffer(self, time_seconds: float, wait: bool = False) -> PoseDatum | None:
