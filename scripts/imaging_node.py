@@ -112,6 +112,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
                 return data[closest_idx - 1]
 
             time.sleep(0.1)
+            data = self._buffer.get_all_reversed()
             closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
             
         pt_before = data[closest_idx - 1]
