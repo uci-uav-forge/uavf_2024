@@ -120,7 +120,7 @@ class CommanderNode(rclpy.node.Node):
 
         self.got_home_local_pos = False
         self.home_local_pos = None
-        self.last_imaging_time = 0
+        self.last_imaging_time = None
     
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
@@ -128,9 +128,9 @@ class CommanderNode(rclpy.node.Node):
     def got_state_cb(self, state):
         self.cur_state = state
         timestamp = time.time()
-        if self.call_imaging_at_wps and timestamp - self.last_imaging_time < 0.2:
+        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time < 0.2):
             self.do_imaging_call()
-        self.last_imaging_time = timestamp
+            self.last_imaging_time = timestamp
     
     def reached_cb(self, reached):
         if reached.wp_seq > self.last_wp_seq:
