@@ -120,20 +120,22 @@ class CommanderNode(rclpy.node.Node):
 
         self.got_home_local_pos = False
         self.home_local_pos = None
+        self.last_imaging_time = None
     
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
     
     def got_state_cb(self, state):
         self.cur_state = state
+        timestamp = time.time()
+        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time < 0.3):
+            self.do_imaging_call()
+            self.last_imaging_time = timestamp
     
     def reached_cb(self, reached):
         if reached.wp_seq > self.last_wp_seq:
             self.log(f"Reached waypoint {reached.wp_seq}")
             self.last_wp_seq = reached.wp_seq
-
-            if self.call_imaging_at_wps:
-                self.do_imaging_call()
     
     def do_imaging_call(self):
         self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
