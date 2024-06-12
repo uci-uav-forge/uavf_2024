@@ -159,7 +159,7 @@ class ImagingNode(Node):
     def __init__(self) -> None:
         # Initialize the node
         super().__init__('imaging_node') # type: ignore
-        self.logs_path = Path(f'logs/{time.strftime("%m-%d %H:%M")}')
+        self.logs_path = Path(f'/media/forge/SANDISK/logs/{time.strftime("%m-%d %Hh%Mm")}')
         
         self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
