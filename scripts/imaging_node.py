@@ -18,7 +18,7 @@ from scipy.spatial.transform import Rotation, Slerp
 
 from libuavf_2024.msg import TargetDetection
 from libuavf_2024.srv import PointCam, ResetLogDir, TakePicture, ZoomCam
-from uavf_2024.async_utils import AsyncBuffer, OnceCallable, RosLoggingProvider, Subscriptions
+from uavf_2024.logging_utils.async_utils import AsyncBuffer, OnceCallable, RosLoggingProvider, Subscriptions
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 
 
