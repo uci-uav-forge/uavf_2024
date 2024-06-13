@@ -8,7 +8,7 @@ import sensor_msgs.msg
 import geometry_msgs.msg 
 import libuavf_2024.srv
 from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
-from uavf_2024.gnc.util import pose_to_xy, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file
+from uavf_2024.gnc.util import pose_to_xy, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file, validate_points
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
 from scipy.spatial.transform import Rotation as R
 import time
@@ -36,7 +36,7 @@ class CommanderNode(rclpy.node.Node):
             durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_ALL,
             depth = 1)
-        
+
 
         self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')   
         self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
@@ -106,6 +106,8 @@ class CommanderNode(rclpy.node.Node):
         
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
+        validate_points(self.mission_wps, self.geofence)
+        validate_points(self.dropzone_bounds, self.geofence, False)
         self.payloads = read_payload_list(args.payload_list)
 
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
@@ -117,22 +119,27 @@ class CommanderNode(rclpy.node.Node):
         self.turn_angle_limit = 170
 
         self.cur_lap = -1
+        self.in_loop = False
 
         self.got_home_local_pos = False
         self.home_local_pos = None
         self.last_imaging_time = None
-    
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
-    
+
     def got_state_cb(self, state):
         self.cur_state = state
-    
+        if self.in_loop and state.mode not in ["AUTO.MISSION", "AUTO.LOITER"]:
+            self.log_statustext(f"Bad mode; {state.mode}. Crashing")
+            quit()
+
     def reached_cb(self, reached):
         if reached.wp_seq > self.last_wp_seq:
             self.log(f"Reached waypoint {reached.wp_seq}")
             self.last_wp_seq = reached.wp_seq
-    
+            if self.call_imaging_at_wps:
+                self.do_imaging_call()
+
     def do_imaging_call(self):
         self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
     
@@ -154,7 +161,7 @@ class CommanderNode(rclpy.node.Node):
         self.last_global_pos = pos
         self.got_global_pos = True
 
-            
+
     def home_position_cb(self, pos):
         if not self.got_home_pos:
             self.log(f"home pos is {pos}")
@@ -166,7 +173,7 @@ class CommanderNode(rclpy.node.Node):
         bump_lap = BumpLap.from_string(statustext.text)
         if bump_lap is not None:
             self.cur_lap = max(self.cur_lap, bump_lap.lap_index)
-    
+
     def local_to_gps(self, local):
         local = np.array(local)
         return convert_local_m_to_delta_gps((self.home_pos.geo.latitude,self.home_pos.geo.longitude) , local - pose_to_xy(self.home_local_pose))
@@ -184,7 +191,8 @@ class CommanderNode(rclpy.node.Node):
 
         self.log("Pushing waypoints")
 
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] +  waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] + waypoints
+        validate_points(waypoints, self.geofence)
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
 
@@ -269,10 +277,8 @@ class CommanderNode(rclpy.node.Node):
                     param7 = 0.0
                 )
             )
-
             time.sleep(.05)
-        
-    
+
     def gather_imaging_detections(self):
         detections = []
         self.log("Waiting for imaging detections.")
@@ -352,7 +358,7 @@ class CommanderNode(rclpy.node.Node):
                     detection_gp = self.local_to_gps(detection.position)
                     self.log(f"For detection {detection} would go to {detection_gp}")
                 time.sleep(self.args.call_imaging_period)
-            
+
         self.request_load_payload(self.payloads[0])
         self.dropzone_bounds_mlocal = [self.gps_to_local(x) for x in self.dropzone_bounds]
         self.log(f"dropzone bounds = {self.dropzone_bounds_mlocal}")
@@ -360,10 +366,10 @@ class CommanderNode(rclpy.node.Node):
             if lap > 0:
                 self.dropzone_planner.advance_current_payload_index()
                 self.request_load_payload(self.payloads[self.dropzone_planner.current_payload_index])
+
             
             self.log_statustext(f"Pushing mission for {lap}")
-            # Fly waypoint lap
-            #self.execute_waypoints(self.mission_wps, do_set_mode=False)
+            self.execute_waypoints(self.mission_wps, do_set_mode=False)
 
             if self.args.exit_early:
                 return
@@ -375,3 +381,4 @@ class CommanderNode(rclpy.node.Node):
             self.log_statustext("Returning home.")
             # Fly back to home position
             self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, TAKEOFF_ALTITUDE)])
+            self.in_loop = False
