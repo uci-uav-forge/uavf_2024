@@ -7,6 +7,7 @@ import traceback
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 from bisect import bisect_left
+import asyncio
 
 import cv2 as cv
 import numpy as np
@@ -204,9 +205,6 @@ class ImagingNode(Node):
 
     @log_exceptions
     def cam_auto_point(self, current_pose: PoseDatum):
-        self.log("Entered auto point")
-        self.start_recording_once(current_pose)
-        self.log("Finished starting recording")
         current_z = current_pose.position.z
 
         first_pose = self.pose_provider.get_first_datum()
@@ -277,23 +275,35 @@ class ImagingNode(Node):
             first_pose.position.z - 0.15 # cube is about 15cm off ground
         )
         return localizer
+    
+    @log_exceptions
+    def delay(self, time_secs: float):
+        start = time.time()
+        while time.time()-start < time_secs:
+            rclpy.spin_once(self, timeout_sec=0)
 
     @log_exceptions
     def point_camera_down(self):
         self.camera.request_down()
-        while abs(self.camera.getAttitude()[1] - -90) > 2:
-            self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
-            rclpy.spin_once(self, timeout_sec=0.1)
+        # while abs(self.camera.getAttitude()[1] - -90) > 2:
+        #     self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
+        #     # time.sleep(1)
+        # self.delay(1)
         self.log("Camera pointed down")
 
     @log_exceptions
-    def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
+    def get_image_down(self, request, response):
         '''
             autofocus, then wait till cam points down, take pic,
         
             We want to take photo when the attitude is down only. 
         '''
         self.log("Received Down Image Request")
+        # self.delay(0.1)
+        # time.sleep(1)
+        # response.detections = []
+        # return response
+
         self.camera.request_autofocus()
         self.log("Autofocused")
         try:
@@ -304,11 +314,12 @@ class ImagingNode(Node):
             return response
 
         self.log("Finished waiting for data")
-
+        
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
             self.point_camera_down()
 
         #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
+
         
         # Take picture and grab relevant data
         img = self.camera.get_latest_image()
@@ -326,9 +337,14 @@ class ImagingNode(Node):
             response.detections = []
             return response
     
-        detections_future = self.image_processor.process_image(img)
-        rclpy.spin_until_future_complete(self, detections_future)
-        detections = detections_future.result()
+        detections_coroutine = self.image_processor.process_image_async(img)
+        det_future = asyncio.ensure_future(detections_coroutine)
+        # rclpy.spin_until_future_complete(self, det_future)
+        while not det_future.done():
+            time.sleep(0.1)
+            self.log("waiting on detections 😭")
+        detections = det_future.result()
+        # detections = self.image_processor.process_image(img)
         self.log(f"Finished image processing. Got {len(detections)} detections")
 
         # Get avg camera pose for the image
@@ -355,8 +371,8 @@ class ImagingNode(Node):
         logs_folder = self.image_processor.get_last_logs_path()
         self.log(f"This frame going to {logs_folder}")
         self.log(f"Zoom level: {self.zoom_level}")
-        os.makedirs(logs_folder, exist_ok=True)
-        cv.imwrite(f"{logs_folder}/image.png", img.get_array())
+        # os.makedirs(logs_folder, exist_ok=True)
+        # cv.imwrite(f"{logs_folder}/image.png", img.get_array())
         log_data = {
             'pose_time': pose.time_seconds,
             'image_time': timestamp,
@@ -391,6 +407,7 @@ class ImagingNode(Node):
 
             response.detections.append(t)
 
+        self.log("Finished image down request")
         return response
 
 
