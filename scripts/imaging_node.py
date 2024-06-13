@@ -59,7 +59,7 @@ QOS_PROFILE = QoSProfile(
 )
 
 
-class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
+class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):        
     def _subscribe_to_topic(self, action: Callable[[PoseStamped], Any]) -> None:
         self.node.create_subscription(
             PoseStamped,
@@ -87,11 +87,14 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
             time_seconds = message.header.stamp.sec + message.header.stamp.nanosec / 1e9
         )
         
-    def _interpolate_from_buffer(self, time_seconds: float) -> PoseDatum | None:
+    def _interpolate_from_buffer(self, time_seconds: float, wait: bool = False) -> PoseDatum | None:
         """
         Returns the pose datum interpolated between the two data points before and after the time given.
         
-        If this interpolation is not possible, returns None.
+        If this interpolation is not possible because the pose is too old, returns the oldest pose.
+        If this interpolation is not possible because the poses are not old enough, wait until enough data is available if wait is enabled.
+            Otherwise, return the newest pose
+        If there is no pose available, wait if enabled. Otherwise, return None.
         """
         if self._buffer.count == 0:
             return None
@@ -103,6 +106,15 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         if closest_idx == 0:
             return data[0]
         
+        # Poll every 100ms
+        while closest_idx == len(data):
+            if not wait:
+                return data[closest_idx - 1]
+
+            time.sleep(0.1)
+            data = self._buffer.get_all_reversed()
+            closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
+            
         pt_before = data[closest_idx - 1]
         pt_after = data[closest_idx]
 
@@ -134,7 +146,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
 
         '''
         for _ in range(50):
-            interp_pose = self._interpolate_from_buffer(time_seconds)
+            interp_pose = self._interpolate_from_buffer(time_seconds, True)
             if interp_pose is not None:
                 return (interp_pose, True)
             else:
@@ -147,7 +159,7 @@ class ImagingNode(Node):
     def __init__(self) -> None:
         # Initialize the node
         super().__init__('imaging_node') # type: ignore
-        self.logs_path = Path(f'logs/{time.strftime("%m-%d %H:%M")}')
+        self.logs_path = Path(f'/media/forge/SANDISK/logs/{time.strftime("%m-%d %Hh%Mm")}')
         
         self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
@@ -161,7 +173,7 @@ class ImagingNode(Node):
         self.log(f"Setting up imaging node ROS connections")
         
         # Subscriptions ----
-        self.pose_provider = PoseProvider(self, self.logs_path / "poses")
+        self.pose_provider = PoseProvider(self, self.logs_path / "poses", 128)
         self.pose_provider.subscribe(self.cam_auto_point)
         
         # Only start the recording once (when the first pose comes in)
@@ -267,7 +279,6 @@ class ImagingNode(Node):
             self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
             time.sleep(0.1)
         self.log("Camera pointed down")
-        self.camera.request_autofocus()
 
     @log_exceptions
     def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
@@ -277,6 +288,7 @@ class ImagingNode(Node):
             We want to take photo when the attitude is down only. 
         '''
         self.log("Received Down Image Request")
+        self.camera.request_autofocus()
         self.pose_provider.wait_for_data()
 
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)

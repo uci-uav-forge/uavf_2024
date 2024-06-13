@@ -26,7 +26,7 @@ class LogBuffer:
     Buffer for logging data implementing a Lock for multithreading. 
     """
     def __init__(self):
-        self.log_data = deque(maxlen=128) # ~256mb of data
+        self.log_data = deque(maxlen=128)
         self.lock = threading.Lock()
         
     def append(self, datum : LogType):
@@ -123,7 +123,7 @@ class Camera:
         self.log_dir = Path(log_dir)
     
     def _logging_worker(self):
-        while self.logging:
+        while self.logging and self.log_dir:
             log_data = self.log_buffer.pop_data()
             if log_data is None:
                 if not self.recording: # finish logging if recording is done
@@ -209,7 +209,7 @@ class Camera:
     def requestAbsolutePosition(self, yaw: float, pitch: float):
         return self.cam.requestAbsolutePosition(yaw, pitch)
     
-    def requestGimbalSpeed(self, yaw_speed: float, pitch_speed: float):
+    def requestGimbalSpeed(self, yaw_speed: int, pitch_speed: int):
         return self.cam.requestGimbalSpeed(yaw_speed, pitch_speed)
 
     def request_center(self):
@@ -282,5 +282,5 @@ if __name__ == "__main__":
     cam = Camera()
     out = cam.get_latest_image()
     # matplotlib.image.imsave("sample_frame.png",out.get_array().transpose(2,1,0))
-    out.save("sample_frame.png")
+    if out != None: out.save("sample_frame.png")
     cam.disconnect()

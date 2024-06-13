@@ -71,6 +71,10 @@ class DropzonePlanner:
         fwd_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), h_unit)))
         fwd_yaw += 90
         fwd_yaw %= 360
+
+        side_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), w_unit)))
+        side_yaw += 90
+        side_yaw %= 360
         
         # Step 2: Generate a "zigzag" pattern to sweep the entire dropzone.
         result_wps = []
@@ -84,9 +88,15 @@ class DropzonePlanner:
                 wps_col.append(dropzone_coords[closest_idx] + w_unit * offset_w + h_unit * offset_h)
             
             if col % 2:
-                result_wps += [(x, (fwd_yaw + 180)%360) for x in wps_col[::-1]]
+                wps_col = [(x, (fwd_yaw + 180)%360) for x in wps_col[::-1]]
             else:
-                result_wps += [(x, fwd_yaw) for x in wps_col]
+                wps_col = [(x, fwd_yaw) for x in wps_col]
+            
+            # add intermediate WP to guide PX4 to make the right turn
+            if col > 0:
+                fx,_ = wps_col[0]
+                result_wps.append((fx,(side_yaw if col % 2 else -side_yaw)))
+            result_wps += wps_col
 
         return result_wps
 
@@ -164,6 +174,7 @@ class DropzonePlanner:
         best_match = self.target_tracker.estimate_positions(self.commander.payloads)[self.current_payload_index]
         best_match_x, best_match_y = best_match.position[0], best_match.position[1]
         self.commander.log(f"best_match_x: {best_match_x}, best_match_y: {best_match_y}")
+        self.commander.log(f"Contributing measurements: {best_match.contributing_measurement_ids()}")
 
         # Generate path of waypoints to the target to take images at
         next_wps = self.generate_wps_to_target(best_match_x, best_match_y, self.commander.cur_pose.pose.position.x, self.commander.cur_pose.pose.position.y)

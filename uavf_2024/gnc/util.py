@@ -10,13 +10,28 @@ def read_gps(fname):
     with open(fname) as f:
         return [tuple(map(float, line.split(','))) for line in f]
 
+def is_point_within_fence(point, geofence):
+    fence_polygon = Polygon(geofence)
+    point = Point(point)
+    return fence_polygon.contains(point)
+
+def validate_points(point_list, geofence, has_altitudes = True):
+    for point in point_list:
+        if has_altitudes:
+            assert len(point) == 3, "ERROR: Point does not contain all three: Lat, Lon, Alt."
+            assert point[2] > 0, "ERROR: Altitude must be greater than 0."
+        else:
+            assert len(point) == 2
+        assert is_point_within_fence((point[0], point[1]), geofence), "ERROR: Point is not within Geofence."
+    return
+
 def read_payload_list(fname):
     payload_list = []
     with open(fname) as f:
         for line in f:
             shape_col, shape, letter_col, letter = line.split()
             payload_list.append(CertainTargetDescriptor(shape_col, shape, letter_col, letter))
-    
+
     return payload_list
 
 def extract_track_label(track: gpxpy.gpx.GPXTrack):
@@ -72,23 +87,23 @@ def convert_delta_gps_to_local_m(gp1, gp2):
 
     # sets up the following triangle to convert to local coordinates:
     #  X - - - - - - - - - - - gp2
-    #  |          (g1)    
+    #  |          (g1)
     #  | (g0)
     #  |
     # gp1
-    
+
     # azi1 corresponds to the angle of each line:
     # it will be (+90=east, -90=west) for g1 and (0 = north, 180 = south) for g0
     # s12 is the distance.
 
-    
+
     geod = Geodesic.WGS84
     g0 = geod.Inverse(*gp1, gp2[0], gp1[1])
     g1 = geod.Inverse(gp2[0], gp1[1], *gp2)
     return np.array([g1['s12']*(1 if g1['azi1'] > 0 else -1), g0['s12']*(-1 if g0['azi1'] > 90 else 1)])
 
 def convert_local_m_to_delta_gps(gp0, dm):
-    
+
     # first travel dm[1] meters north/south
     # then travel dm[0] meters east/west
 
