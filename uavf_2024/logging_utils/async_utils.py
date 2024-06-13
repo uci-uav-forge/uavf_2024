@@ -124,9 +124,9 @@ class Subscriptions(Generic[InputT]):
         with self.lock:
             for index, callback in enumerate(self._callbacks.values()):
                 try:
-                    self.logger.log(logging.INFO, f"Calling callback {index}")
+                    # self.logger.log(logging.INFO, f"Calling callback {index}")
                     callback(new_value)
-                    self.logger.log(logging.INFO, "Called callback")
+                    # self.logger.log(logging.INFO, "Called callback")
                 except Exception as e:
                     self.logger.log(logging.INFO, f"Callback failed: {e}")
 
@@ -238,10 +238,10 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
             self._first_value = formatted
             
         self._buffer.put(formatted)
-        self.log("Put pose in buffer")
+        # self.log("Put pose in buffer")
         
         self._subscribers.notify(formatted)
-        self.log("Notified subscribers")
+        # self.log("Notified subscribers")
         
         
         if self._logs_dir is not None:
