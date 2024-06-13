@@ -51,7 +51,7 @@ class PoseDatum(NamedTuple):
         
         return PoseDatum(
             position = position,
-            rotation = Rotation.from_quat(orientation),
+            rotation = Rotation.from_quat(quaternion),
             time_seconds = message.timestamp_seconds
         )
 
@@ -193,7 +193,8 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         node_context: Node,
         logs_dir: str | os.PathLike | Path | None = None, 
         buffer_size = 64,
-        logger_name: str | None = None
+        logger_name: str | None = None,
+        callback_group = None,
     ):
         """
         Parameters:
@@ -206,9 +207,9 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         
         # Initialize logger
         if logger_name:
-            self.logger = logging.getLogger()
+            self.logger = self.node.get_logger()
         else:
-            self.logger = logging.getLogger("RosLoggingProvider" + str(__class__.LOGGER_INDEX))
+            self.logger = self.node.get_logger()#logging.getLogger("RosLoggingProvider" + str(__class__.LOGGER_INDEX))
             __class__.LOGGER_INDEX += 1
         
         self._first_value: LoggingBufferT | None = None
@@ -224,15 +225,15 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         
         self._buffer: AsyncBuffer[LoggingBufferT] = AsyncBuffer(buffer_size)
         
-        self._subscribe_to_topic(self._handle_update)
+        self._subscribe_to_topic(self._handle_update, callback_group)
         
         self.log(f"Finished intializing RosLoggingProvider. Logging to {self._logs_dir}")
         
     def log(self, message, level = logging.INFO):
-        self.logger.log(level, message)
+        self.logger.info(message)
 
     @abstractmethod
-    def _subscribe_to_topic(self, action: Callable[[MessageT], Any]) -> None:
+    def _subscribe_to_topic(self, action: Callable[[MessageT], Any], callback_group) -> None:
         """
         Abstract method for inherited class to implement to allow subscription to the topic.
         
@@ -284,10 +285,10 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
             self._first_value = formatted
             
         self._buffer.put(formatted)
-        self.log("Put pose in buffer")
+        # self.log("Put pose in buffer")
         
         self._subscribers.notify(formatted)
-        self.log("Notified subscribers")
+        # self.log("Notified subscribers")
         
         
         if self._logs_dir is not None:

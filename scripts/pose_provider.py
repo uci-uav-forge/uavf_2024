@@ -14,6 +14,7 @@ import rclpy
 from geometry_msgs.msg import Point, PoseStamped
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.callback_groups import ReentrantCallbackGroup,MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from scipy.spatial.transform import Rotation, Slerp
 
@@ -46,13 +47,14 @@ QOS_PROFILE = QoSProfile(
 
 
 class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):        
-    def _subscribe_to_topic(self, action: Callable[[PoseStamped], Any]) -> None:
+    def _subscribe_to_topic(self, action: Callable[[PoseStamped], Any], callback_group) -> None:
         self.node.create_subscription(
             PoseStamped,
             '/mavros/local_position/pose',
             action,
             # lambda _: self.log("Got pose from mavros"),
-            QOS_PROFILE
+            QOS_PROFILE,
+            callback_group = callback_group
         )
         
     def log_to_file(self, item: PoseDatum):
@@ -84,9 +86,12 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         If this interpolation is not possible because the poses are not old enough, wait until enough data is available if wait is enabled.
             Otherwise, return the newest pose on timeout.
         """        
+        self.log("Entered inner inteprolate")
         data = self._buffer.get_all_reversed()
         
+        self.log("Before bisect")
         closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
+        self.log("After bisect")
         
         if closest_idx == 0:
             return data[0]
@@ -133,7 +138,9 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         regardless of its timestamp
 
         '''
+        self.log("Kill me")
         interp_pose = self._interpolate_from_buffer(time_seconds)
+        self.log(f"now: {interp_pose}")
         if interp_pose is not None:
             return (interp_pose, True)
             
@@ -145,26 +152,30 @@ class PoseProviderNode(Node):
     
     @log_exceptions
     def __init__(self) -> None:
+        group1 = MutuallyExclusiveCallbackGroup()
+        group2 = MutuallyExclusiveCallbackGroup()
+        group3 = MutuallyExclusiveCallbackGroup()
         # Initialize the node
         super().__init__('pose_provider_node') # type: ignore
         self.logs_path = Path(__class__.LOGS_BASE_DIR / f'{time.strftime("%m-%d %Hh%Mm")}')
 
         # Subscriptions ----
-        self.pose_provider = PoseProvider(self, self.logs_path / "poses", 512)
+        self.pose_provider = PoseProvider(self, self.logs_path / "poses", 512, callback_group=group1, logger_name="pose provider")
         self.pose_provider.subscribe(self.cam_auto_point)
         self.log("Created pose provider and subscribed")
         self.camera_state = True # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
         
-        self.create_subscription(
-            PoseStamped,
-            '/mavros/local_position/pose',
-            lambda x: self.cam_auto_point(PoseProvider.format_data(x)), # type: ignore
-            QOS_PROFILE
-        )
+        # self.create_subscription(
+        #     PoseStamped,
+        #     '/mavros/local_position/pose',
+        #     lambda x: self.cam_auto_point(PoseProvider.format_data(x)), # type: ignore
+        #     QOS_PROFILE,
+        #     callback_group=group2
+        # )
 
-        self.get_pose_service = self.create_service(GetPose, 'get_pose_service', self.get_pose_cb)
-        self.get_first_pose_service = self.create_service(GetFirstPose, 'get_first_pose_service', self.get_first_pose_cb)
-        self.point_cam_client = self.create_client(PointCam, 'recenter_service')
+        self.get_pose_service = self.create_service(GetPose, 'get_pose_service', self.get_pose_cb, callback_group=group2)
+        self.get_first_pose_service = self.create_service(GetFirstPose, 'get_first_pose_service', self.get_first_pose_cb, callback_group=group3)
+        # self.point_cam_client = self.create_client(PointCam, 'recenter_service', callback_group=cb_group)
         
         self.log("Finished initializing pose provider")
         
@@ -175,161 +186,55 @@ class PoseProviderNode(Node):
     @log_exceptions
     def get_pose_cb(self, request, response):
         self.log("Got into pose callback")
-        timestamp = request.timestamp
-        response.pose = self.pose_provider.get_interpolated(timestamp).to_ros()
+        timestamp = request.timestamp_seconds
+        response.pose = self.pose_provider.get_interpolated(timestamp)[0].to_ros()
+        self.log(f"About to return {response.pose}")
         return response
 
     @log_exceptions
     def get_first_pose_cb(self, request, response):
         self.log("Got into first pose callback")
         response.pose = self.pose_provider.get_first_datum().to_ros()
-        self.log("aksdjakljdlakjdsklaj")
-        return response # wtf
+        self.log(f"About to return {response.pose}")
+        return response
 
     @log_exceptions
     def cam_auto_point(self, current_pose: PoseDatum):
         current_z = current_pose.position.z
 
-        first_pose = self.pose_provider.get_first_datum()
-        if first_pose is None:
-            self.log("First datum not found trying to auto-point camera.")
-            return
+        # first_pose = self.pose_provider.get_first_datum()
+        # if first_pose is None:
+        #     self.log("First datum not found trying to auto-point camera.")
+        #     return
         
-        alt_from_gnd = current_z - first_pose.position.z
+        # alt_from_gnd = current_z - first_pose.position.z
         
-        threshold = 3
+        # threshold = 3
         # If pointed down and close to the ground, point forward
-        if self.point_cam_client.wait_for_service(0.1):
-            if self.camera_state and alt_from_gnd < threshold: #3 meters ~ 30 feet
-                self.camera_state = False
-                req = PointCam.Request()
-                req.down = False
-                self.log("Making point cam request")
-                self.point_cam_client.call_async(req)
-                self.log(f"Crossing 3m down, pointing forward. Current altitude: {alt_from_gnd}")
-            # If pointed forward and altitude is higher, point down
-            elif not self.camera_state and alt_from_gnd > threshold:
-                self.camera_state = True
-                req = PointCam.Request()
-                req.down = True
-                self.log("Making point cam request")
-                self.point_cam_client.call_async(req)
-                self.log(f"Crossing 3m up, pointing down. Current altitude: {alt_from_gnd}")
-
-    @log_exceptions
-    def get_image_down(self, request, response: list[TargetDetection]) -> list[TargetDetection]:
-        '''
-            autofocus, then wait till cam points down, take pic,
-        
-            We want to take photo when the attitude is down only. 
-        '''
-
-        self.log("Received Down Image Request")
-        self.camera.request_autofocus()
-        self.log("Autofocused")
-        try:
-            self.pose_provider.wait_for_data(1)
-        except TimeoutError:
-            self.log("Pose timeout, returning empty list")
-            response.detections = []
-            return response
-
-        self.log("Finished waiting for data")
-
-        if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
-            self.point_camera_down()
-
-        #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
-        
-        # Take picture and grab relevant data
-        img = self.camera.get_latest_image()
-        # img = None
-        # time.sleep(1)
-        if img is None:
-            self.log("Could not get image from Camera.")
-            response.detections = []
-            return response
-
-        timestamp = time.time()
-        self.log(f"Got image from Camera at time {timestamp}")
-        
-        localizer = self.make_localizer()
-        if localizer is None:
-            self.log("Could not get Localizer")
-            response.detections = []
-            return response
-    
-        detections = self.image_processor.process_image(img)
-        self.log(f"Finished image processing. Got {len(detections)} detections")
-
-        # Get avg camera pose for the image
-        angles = self.camera.getAttitudeInterpolated(timestamp)
-        self.log(f"Got camera attitude: {angles}")
-        
-        # Get the pose measured 0.75 seconds before we received the image
-        # This is to account for the delay in the camera system, and was determined empirically
-        pose, is_timestamp_interpolated = self.pose_provider.get_interpolated(timestamp - 0.75) 
-        if not is_timestamp_interpolated:
-            self.log("Couldn't interpolate pose.")
-        self.log(f"Got pose: {angles}")
-
-        cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
-        cur_rot_quat = pose.rotation.as_quat()
-
-        world_orientation = self.camera.orientation_in_world_frame(pose.rotation, angles)
-        cam_pose = (cur_position_np, world_orientation)
-
-        # Get 3D predictions
-        preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
-
-        # Log data
-        logs_folder = self.image_processor.get_last_logs_path()
-        self.log(f"This frame going to {logs_folder}")
-        self.log(f"Zoom level: {self.zoom_level}")
-        os.makedirs(logs_folder, exist_ok=True)
-        cv.imwrite(f"{logs_folder}/image.png", img.get_array())
-        log_data = {
-            'pose_time': pose.time_seconds,
-            'image_time': timestamp,
-            'drone_position': cur_position_np.tolist(),
-            'drone_q': cur_rot_quat.tolist(),
-            'gimbal_yaw': angles[0],
-            'gimbal_pitch': angles[1],
-            'gimbal_roll': angles[2],
-            'zoom level': self.zoom_level,
-            'preds_3d': [
-                {
-                    'position': p.position.tolist(),
-                    'id': p.id,
-                } for p in preds_3d
-            ]
-        }
-        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
-
-        response.detections = []
-        for i, p in enumerate(preds_3d):
-            t = TargetDetection(
-                timestamp = int(timestamp*1000),
-                x = p.position[0],
-                y = p.position[1],
-                z = p.position[2],
-                shape_conf = p.descriptor.shape_probs.tolist(),
-                letter_conf = p.descriptor.letter_probs.tolist(),
-                shape_color_conf = p.descriptor.shape_col_probs.tolist(),
-                letter_color_conf = p.descriptor.letter_col_probs.tolist(),
-                id = p.id
-            )
-
-            response.detections.append(t)
-
-        return response
-
+        # if self.point_cam_client.wait_for_service(0.1):
+        #     if self.camera_state and alt_from_gnd < threshold: #3 meters ~ 30 feet
+        #         self.camera_state = False
+        #         req = PointCam.Request()
+        #         req.down = False
+        #         self.log("Making point cam request")
+        #         self.point_cam_client.call_async(req)
+        #         self.log(f"Crossing 3m down, pointing forward. Current altitude: {alt_from_gnd}")
+        #     # If pointed forward and altitude is higher, point down
+        #     elif not self.camera_state and alt_from_gnd > threshold:
+        #         self.camera_state = True
+        #         req = PointCam.Request()
+        #         req.down = True
+        #         self.log("Making point cam request")
+        #         self.point_cam_client.call_async(req)
+        #         self.log(f"Crossing 3m up, pointing down. Current altitude: {alt_from_gnd}")
 
 def main(args=None) -> None:
     print('Starting pose provider node...')
     rclpy.init(args=args)
     node = PoseProviderNode()
-    rclpy.spin(node)
+    executor = MultiThreadedExecutor(4)
+    executor.add_node(node)
+    executor.spin()
 
 if __name__ == '__main__':
     main()

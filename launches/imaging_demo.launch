@@ -1,4 +1,4 @@
 <launch>
-    <!-- <node pkg="libuavf_2024" exec="imaging_node.py" name="imaging_server" /> -->
+    <node pkg="libuavf_2024" exec="imaging_node.py" name="imaging_server" />
     <node pkg="libuavf_2024" exec="pose_provider.py" name="pose_provider_server" />
 </launch>

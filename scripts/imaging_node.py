@@ -14,6 +14,7 @@ import rclpy
 from geometry_msgs.msg import Point, PoseStamped
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from scipy.spatial.transform import Rotation, Slerp
 
@@ -43,6 +44,7 @@ class ImagingNode(Node):
     def __init__(self) -> None:
         # Initialize the node
         super().__init__('imaging_node') # type: ignore
+        cb_group = ReentrantCallbackGroup()
         self.logs_path = Path(__class__.LOGS_BASE_DIR / f'{time.strftime("%m-%d %Hh%Mm")}')
 
         self.camera = Camera(self.logs_path / "camera")
@@ -57,20 +59,20 @@ class ImagingNode(Node):
         
         # Services ----
         # Set up take picture service
-        self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
+        self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down, callback_group=cb_group)
 
         # Set up recenter camera service
-        self.recenter_service = self.create_service(PointCam, 'recenter_service', self.request_point_cb)
+        self.recenter_service = self.create_service(PointCam, 'recenter_service', self.request_point_cb, callback_group=cb_group)
         # Set up zoom camera service
-        self.zoom_service = self.create_service(ZoomCam, 'zoom_service', self.setAbsoluteZoom_cb)
+        self.zoom_service = self.create_service(ZoomCam, 'zoom_service', self.setAbsoluteZoom_cb, callback_group=cb_group)
         # Set up reset log directory service
-        self.reset_log_dir_service = self.create_service(ResetLogDir, 'reset_log_dir', self.reset_log_dir_cb)
+        self.reset_log_dir_service = self.create_service(ResetLogDir, 'reset_log_dir', self.reset_log_dir_cb, callback_group=cb_group)
 
-        self.get_pose_client = self.create_client(GetPose, 'get_pose_service')
-        self.get_first_pose_client = self.create_client(GetFirstPose, 'get_first_pose_service')
+        self.get_pose_client = self.create_client(GetPose, 'get_pose_service', callback_group=cb_group)
+        self.get_first_pose_client = self.create_client(GetFirstPose, 'get_first_pose_service', callback_group=cb_group)
 
-        while not self.get_first_pose_client.wait_for_service(5):
-            self.log('First pose client not available. waiting 5 sec and retrying')
+        # while not self.get_first_pose_client.wait_for_service(5):
+        #     self.log('First pose client not available. waiting 5 sec and retrying')
 
         # Cleanup
         self.camera.start_recording()
@@ -114,32 +116,37 @@ class ImagingNode(Node):
     def make_localizer(self):
         focal_len = self.camera.getFocalLength()
         
-        if self.first_pose is None:
+        if False and self.first_pose is None:
             req = GetFirstPose.Request()
             self.log("Making first pose request")
             future = self.get_first_pose_client.call_async(req)
             self.log("Got future")
-            rclpy.spin_until_future_complete(self, future)
+            # while not future.done():
+            #     self.log("Waiting on future")
+            #     pass
+            self.executor.spin_until_future_complete(future, timeout_sec = 1.0)
+            self.log("finished spinning")
             res = future.result()
+            # res = self.get_first_pose_client.call(req)
             self.log("Got res")
-            self.first_pose = PoseDatum.from_ros(res)
-            self.log("Finished getting first pose") # should run immediately after printing the previous thing
+            self.first_pose = PoseDatum.from_ros(res.pose) if res is not None else None
+            self.log(f"Finished getting first pose: {self.first_pose}") # should run immediately after printing the previous thing
         
         localizer = Localizer.from_focal_length(
             focal_len, 
             (1920, 1080),
             (np.array([1,0,0]), np.array([0,-1, 0])),
             2,
-            first_pose.position.z - 0.15 # cube is about 15cm off ground
+            self.first_pose.position.z -0.15 if self.first_pose is not None else 0 # cube is about 15cm off ground
         )
         return localizer
 
     @log_exceptions
     def point_camera_down(self):
         self.camera.request_down()
-        while abs(self.camera.getAttitude()[1] - -90) > 2:
-            self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
-            time.sleep(0.1)
+        # while abs(self.camera.getAttitude()[1] - -90) > 2:
+        #     self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
+        #     time.sleep(0.1)
         self.log("Camera pointed down")
 
     @log_exceptions
@@ -151,6 +158,14 @@ class ImagingNode(Node):
         '''
 
         self.log("Received Down Image Request")
+        # time.sleep(0.5)
+        # req = GetPose.Request()
+        # timestamp = time.time()
+        # req.timestamp_seconds = timestamp
+        # pose = PoseDatum.from_ros(self.get_pose_client.call(req).pose)
+        # self.log(f"Got pose: {pose}")
+        # response.detections = []
+        # return response
         self.camera.request_autofocus()
         self.log("Autofocused")
 
@@ -186,8 +201,14 @@ class ImagingNode(Node):
         
         # Get the pose measured 0.75 seconds before we received the image
         # This is to account for the delay in the camera system, and was determined empirically
-        req = GetPose.Request()
-        pose = PoseDatum.from_ros(self.get_pose_cb.call(req))
+        # req = GetPose.Request()
+        # req.timestamp_seconds = timestamp
+        # pose = PoseDatum.from_ros(self.get_pose_client.call(req).pose)
+        pose = PoseDatum(
+            Point(x=0.0,y=0.0,z=0.0),
+            Rotation.identity(),
+            0
+        )
         self.log(f"Got pose: {pose}")
 
         cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
@@ -203,8 +224,8 @@ class ImagingNode(Node):
         logs_folder = self.image_processor.get_last_logs_path()
         self.log(f"This frame going to {logs_folder}")
         self.log(f"Zoom level: {self.zoom_level}")
-        os.makedirs(logs_folder, exist_ok=True)
-        cv.imwrite(f"{logs_folder}/image.png", img.get_array())
+        # os.makedirs(logs_folder, exist_ok=True)
+        # cv.imwrite(f"{logs_folder}/image.png", img.get_array())
         log_data = {
             'pose_time': pose.time_seconds,
             'image_time': timestamp,
@@ -247,7 +268,8 @@ def main(args=None) -> None:
     rclpy.init(args=args)
     node = ImagingNode()
     executor = MultiThreadedExecutor(4)
-    rclpy.spin(node, executor)
+    executor.add_node(node)
+    executor.spin()
 
 
 
