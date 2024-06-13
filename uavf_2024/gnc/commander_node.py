@@ -134,6 +134,7 @@ class CommanderNode(rclpy.node.Node):
             self.last_wp_seq = reached.wp_seq
     
     def do_imaging_call(self):
+        self.log("Requested imaging take picture")
         self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
     
     def got_pose_cb(self, pose):
@@ -178,7 +179,7 @@ class CommanderNode(rclpy.node.Node):
     def get_cur_xy(self):
         return pose_to_xy(self.cur_pose)
     
-    def execute_waypoints(self, waypoints, yaws = None, do_set_mode=True):
+    def execute_waypoints(self, waypoints, yaws = None, do_set_mode=False):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
