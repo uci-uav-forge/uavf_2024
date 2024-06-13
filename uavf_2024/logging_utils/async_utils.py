@@ -6,9 +6,55 @@ from pathlib import Path
 import random
 import threading
 import time
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, NamedTuple
+from geometry_msgs.msg import Point, PoseStamped
+import numpy as np
+from scipy.spatial.transform import Rotation, Slerp
 
+from libuavf_2024.msg import UAVFPose
 from rclpy.node import Node
+
+class PoseDatum(NamedTuple):
+    """
+    Our representation of the pose data from the Cube.
+    """
+    position: Point
+    rotation: Rotation
+    time_seconds: float
+    
+    def to_json(self):
+        return {
+            "position": [self.position.x, self.position.y, self.position.z],
+            "rotation": list(self.rotation.as_quat()),
+            "time_seconds": self.time_seconds
+        }
+    
+    def to_ros(self):
+        message = UAVFPose()
+        message.orientation = self.rotation.as_quat()
+        message.position = np.array([self.position.x, self.position.y, self.position.z])
+        message.timestamp_seconds = self.time_seconds
+        return message
+    
+    def write_to_obj(self, message: UAVFPose):
+        message.orientation = self.rotation.as_quat()
+        message.position = np.array([self.position.x, self.position.y, self.position.z])
+        message.timestamp_seconds = self.time_seconds
+    
+    @staticmethod
+    def from_ros(message: UAVFPose):
+        quaternion = message.orientation
+        position = Point()
+        position.x = message.position[0]
+        position.y = message.position[1]
+        position.z = message.position[2]
+        
+        return PoseDatum(
+            position = position,
+            rotation = Rotation.from_quat(orientation),
+            time_seconds = message.timestamp_seconds
+        )
+
 
 class OnceCallable():
     """
@@ -234,6 +280,7 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         formatted: LoggingBufferT = self.format_data(item)
         
         if not self._first_value:
+            self.log("Provider got first pose!")
             self._first_value = formatted
             
         self._buffer.put(formatted)

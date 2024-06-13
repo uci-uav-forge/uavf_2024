@@ -38,6 +38,7 @@ include_directories(include)
 
 set(msg_files
   "msg/TargetDetection.msg"
+  "msg/UAVFPose.msg"
 )
 set(srv_files
   "srv/TakePicture.srv"
@@ -45,6 +46,8 @@ set(srv_files
   "srv/ResetLogDir.srv"
   "srv/PointCam.srv"
   "srv/ZoomCam.srv"
+  "srv/GetPose.srv"
+  "srv/GetFirstPose.srv"
 )
 
 rosidl_generate_interfaces(libuavf_2024
@@ -64,6 +67,7 @@ install(PROGRAMS
   scripts/perception_clients/continuous_image_taking.py
   scripts/imaging_node.py
   scripts/mock_imaging_node.py
+  scripts/pose_provider.py
   DESTINATION lib/${PROJECT_NAME}
 )
 install(DIRECTORY include/${PROJECT_NAME}/

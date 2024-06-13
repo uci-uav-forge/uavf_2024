@@ -14,11 +14,12 @@ import rclpy
 from geometry_msgs.msg import Point, PoseStamped
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.executors import MultiThreadedExecutor
 from scipy.spatial.transform import Rotation, Slerp
 
 from libuavf_2024.msg import TargetDetection
-from libuavf_2024.srv import PointCam, ResetLogDir, TakePicture, ZoomCam
-from uavf_2024.logging_utils.async_utils import AsyncBuffer, OnceCallable, RosLoggingProvider, Subscriptions
+from libuavf_2024.srv import PointCam, ResetLogDir, TakePicture, ZoomCam, GetPose, GetFirstPose
+from uavf_2024.logging_utils.async_utils import AsyncBuffer, OnceCallable, RosLoggingProvider, Subscriptions, PoseDatum
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
 
 
@@ -35,124 +36,6 @@ def log_exceptions(func):
             self.get_logger().error(traceback.format_exc())
     return wrapped_fn
 
-
-class PoseDatum(NamedTuple):
-    """
-    Our representation of the pose data from the Cube.
-    """
-    position: Point
-    rotation: Rotation
-    time_seconds: float
-    
-    def to_json(self):
-        return {
-            "position": [self.position.x, self.position.y, self.position.z],
-            "rotation": list(self.rotation.as_quat()),
-            "time_seconds": self.time_seconds
-        }
-
-
-QOS_PROFILE = QoSProfile(
-    reliability=ReliabilityPolicy.BEST_EFFORT,
-    durability=DurabilityPolicy.VOLATILE,
-    depth = 1
-)
-
-
-class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):        
-    def _subscribe_to_topic(self, action: Callable[[PoseStamped], Any]) -> None:
-        self.node.create_subscription(
-            PoseStamped,
-            '/mavros/local_position/pose',
-            action,
-            # lambda _: self.log("Got pose from mavros"),
-            QOS_PROFILE
-        )
-        
-    def log_to_file(self, item: PoseDatum):
-        logs_dir = self.get_logs_dir()
-        if logs_dir is None:
-            raise ValueError("Logging directory not given in initialization.")
-        
-        path = logs_dir / f"{item.time_seconds:.02f}.json"
-        with open(path, "w") as f:
-            json.dump(item.to_json(), f)
-            
-    def format_data(self, message: PoseStamped) -> PoseDatum:
-        new_time = time.time()
-        quaternion = message.pose.orientation
-        
-        return PoseDatum(
-            position = message.pose.position,
-            rotation = Rotation.from_quat(
-                [quaternion.x, quaternion.y, quaternion.z, quaternion.w]),
-            time_seconds = new_time
-        )
-        
-    def _interpolate_from_buffer(self, time_seconds: float, timeout: float = float("inf")) -> PoseDatum | None:
-        """
-        Returns the pose datum interpolated between the two data points before and after the time given.
-        
-        If this interpolation is not possible because the pose is too old, returns the oldest pose.
-        If this interpolation is not possible because the poses are not old enough, wait until enough data is available if wait is enabled.
-            Otherwise, return the newest pose on timeout.
-        """        
-        data = self._buffer.get_all_reversed()
-        
-        closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
-        
-        if closest_idx == 0:
-            return data[0]
-        
-        # Poll every 100ms until timeout
-        start = time.time()
-        while closest_idx == len(data):
-            waited = time.time() - start
-            self.log(f"Waiting for new pose. Waited {waited} secs")
-            if waited > timeout:
-                return data[closest_idx - 1]
-
-            time.sleep(0.1)
-            data = self._buffer.get_all_reversed()
-            closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
-            
-        pt_before = data[closest_idx - 1]
-        pt_after = data[closest_idx]
-
-        # Interpolate between the two points
-        proportion = (time_seconds - pt_before.time_seconds) / (pt_after.time_seconds - pt_before.time_seconds)
-        position = Point(
-            x = pt_before.position.x + proportion * (pt_after.position.x - pt_before.position.x),
-            y = pt_before.position.y + proportion * (pt_after.position.y - pt_before.position.y),
-            z = pt_before.position.z + proportion * (pt_after.position.z - pt_before.position.z)
-        )
-        key_times = [pt_before.time_seconds, pt_after.time_seconds]
-        rotations = Rotation.concatenate([pt_before.rotation, pt_after.rotation])
-        slerp = Slerp(key_times, rotations)
-        rotation = Rotation.from_quat(slerp([time_seconds]).as_quat()[0])
-        # go to and from quaternion to force returned
-        # object to be single rotation
-
-        return PoseDatum(
-            position = position,
-            rotation = rotation,
-            time_seconds = time_seconds
-        )
-
-    def get_interpolated(self, time_seconds: float) -> tuple[PoseDatum, bool]:
-        '''
-        Gets the pose interpolated at `time_seconds`. Blocks if we don't have enough data in the queue
-        to interpolate yet, for a maximum of 5 seconds before giving up and returning the latest datum
-        regardless of its timestamp
-
-        '''
-        interp_pose = self._interpolate_from_buffer(time_seconds, 3.0)
-        if interp_pose is not None:
-            return (interp_pose, True)
-            
-        return (self._buffer.get_fresh(), False)
-
-
 class ImagingNode(Node):
     LOGS_BASE_DIR = Path('/home/forge/ws/logs/') # '/media/forge/SANDISK/logs/'
     
@@ -164,7 +47,6 @@ class ImagingNode(Node):
 
         self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
-        self.camera_state = True # True if camera is pointing down for auto-cam-point. Only for auto-point FSM
         self.camera.setAbsoluteZoom(self.zoom_level)
         
         self.log(f"Logging to {self.logs_path}")
@@ -173,14 +55,6 @@ class ImagingNode(Node):
         # Set up ROS connections
         self.log(f"Setting up imaging node ROS connections")
         
-        # Subscriptions ----
-        self.pose_provider = PoseProvider(self, self.logs_path / "poses", 128)
-        # self.pose_provider.subscribe(self.cam_auto_point)
-        
-        # Only start the recording once (when the first pose comes in)
-        self.start_recording_once = OnceCallable(lambda _: self.camera.start_recording())
-        self.pose_provider.subscribe(self.start_recording_once)
-
         # Services ----
         # Set up take picture service
         self.imaging_service = self.create_service(TakePicture, 'imaging_service', self.get_image_down)
@@ -192,49 +66,21 @@ class ImagingNode(Node):
         # Set up reset log directory service
         self.reset_log_dir_service = self.create_service(ResetLogDir, 'reset_log_dir', self.reset_log_dir_cb)
 
+        self.get_pose_client = self.create_client(GetPose, 'get_pose_service')
+        self.get_first_pose_client = self.create_client(GetFirstPose, 'get_first_pose_service')
+
+        while not self.get_first_pose_client.wait_for_service(5):
+            self.log('First pose client not available. waiting 5 sec and retrying')
+
         # Cleanup
-        self.get_logger().info("Finished initializing imaging node")
+        self.camera.start_recording()
+        self.first_pose = None
+
+        self.log("Finished initializing imaging node")
         
     @log_exceptions
     def log(self, *args, **kwargs):
         self.get_logger().info(*args, **kwargs)
-
-    @log_exceptions
-    def cam_auto_point(self, current_pose: PoseDatum):
-        self.log("Entered auto point")
-        self.start_recording_once(current_pose)
-        self.log("Finished starting recording")
-        current_z = current_pose.position.z
-
-        self.log("Getting first datum")
-        first_pose = self.pose_provider.get_first_datum()
-        self.log("Got first datum")
-        if first_pose is None:
-            self.log("First datum not found trying to auto-point camera.")
-            return
-        
-        alt_from_gnd = current_z - first_pose.position.z
-        
-        # If pointed down and close to the ground, point forward
-        if self.camera_state and alt_from_gnd < 3 : #3 meters ~ 30 feet
-            self.log("First branch")
-            self.camera.request_center()
-            self.log("first branch 2")
-            self.camera_state = False
-            self.log(f"Crossing 3m down, pointing forward. Current altitude: {alt_from_gnd}")
-        # If pointed forward and altitude is higher, point down
-        elif not self.camera_state and alt_from_gnd > 3:
-            self.log("Second branch")
-            self.camera.request_down()
-            self.log("second branch 2")
-            self.camera_state = True
-            self.log(f"Crossing 3m up, pointing down. Current altitude: {alt_from_gnd}")
-        else:
-            self.log("Third branch. Returning")
-            return
-        self.log("Autofocusing from auto point")
-        self.camera.request_autofocus()
-
 
     @log_exceptions
     def request_point_cb(self, request, response):
@@ -268,10 +114,16 @@ class ImagingNode(Node):
     def make_localizer(self):
         focal_len = self.camera.getFocalLength()
         
-        first_pose = self.pose_provider.get_first_datum()
-        if first_pose is None:
-            self.log("First datum does not exist trying to make Localizer.")
-            return
+        if self.first_pose is None:
+            req = GetFirstPose.Request()
+            self.log("Making first pose request")
+            future = self.get_first_pose_client.call_async(req)
+            self.log("Got future")
+            rclpy.spin_until_future_complete(self, future)
+            res = future.result()
+            self.log("Got res")
+            self.first_pose = PoseDatum.from_ros(res)
+            self.log("Finished getting first pose") # should run immediately after printing the previous thing
         
         localizer = Localizer.from_focal_length(
             focal_len, 
@@ -297,15 +149,10 @@ class ImagingNode(Node):
         
             We want to take photo when the attitude is down only. 
         '''
+
         self.log("Received Down Image Request")
         self.camera.request_autofocus()
         self.log("Autofocused")
-        try:
-            self.pose_provider.wait_for_data(1)
-        except TimeoutError:
-            self.log("Pose timeout, returning empty list")
-            response.detections = []
-            return response
 
         self.log("Finished waiting for data")
 
@@ -339,10 +186,9 @@ class ImagingNode(Node):
         
         # Get the pose measured 0.75 seconds before we received the image
         # This is to account for the delay in the camera system, and was determined empirically
-        pose, is_timestamp_interpolated = self.pose_provider.get_interpolated(timestamp - 0.75) 
-        if not is_timestamp_interpolated:
-            self.log("Couldn't interpolate pose.")
-        self.log(f"Got pose: {angles}")
+        req = GetPose.Request()
+        pose = PoseDatum.from_ros(self.get_pose_cb.call(req))
+        self.log(f"Got pose: {pose}")
 
         cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])
         cur_rot_quat = pose.rotation.as_quat()
@@ -400,7 +246,8 @@ def main(args=None) -> None:
     print('Starting imaging node...')
     rclpy.init(args=args)
     node = ImagingNode()
-    rclpy.spin(node)
+    executor = MultiThreadedExecutor(4)
+    rclpy.spin(node, executor)
 
 
 

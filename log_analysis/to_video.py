@@ -10,8 +10,8 @@ from mpl_toolkits.mplot3d import Axes3D # Unused, but necessary for 3D plotting
 import numpy as np
 from uavf_2024.imaging import Camera
 
-logs_dir = Path('/home/forge/ws/logs/06-12 17h23m')
-video = cv.VideoWriter('video_0612_1846.mp4', cv.VideoWriter_fourcc(*'mp4v'), 15, (1920, 1080))
+logs_dir = Path('/home/forge/ws/src/libuavf_2024/flight_logs/06-12 22h43m')
+video = cv.VideoWriter('video_boys.mp4', cv.VideoWriter_fourcc(*'mp4v'), 15, (1920, 1080))
 
 pose_stamps = sorted([float(fname.stem) for fname in (logs_dir / 'poses').glob('*.json')])
 
@@ -76,23 +76,23 @@ for frame_fname in tqdm(sorted((logs_dir / 'camera').glob('*.jpg'))):
     try:
 
         frame = cv.imread(str(frame_fname))
-        timestamp = float(frame_fname.stem)
-        pose = closest_pose(timestamp)
-        gimbal_data = closest_gimbal_data(timestamp)
-        time_mod_10000 = timestamp - (timestamp // 10000) * 10000
-        cv.putText(frame, f"Time % 10,000: {time_mod_10000:.2f}", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv.LINE_AA)
-        if pose is None:
-            cv.putText(frame, "No pose", (10, 70), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv.LINE_AA)
-        else:
-            position_str = f"Position: {[round(x, 2) for x in pose['position']]}"
-            cv.putText(frame, position_str, (10, 70), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv.LINE_AA)
-            orientation_drawing = draw_orientation(pose, gimbal_data['attitude'])
-            # draw on top right
-            if plot_mask is None:
-                # create mask that only includes pixels that aren't pure white in the orientation drawing
-                # since it never changes, we just calculate it on the first frame and reuse it
-                plot_mask = np.any(orientation_drawing != 255, axis=2)
-            frame[0:orientation_drawing.shape[0], -orientation_drawing.shape[1]:][plot_mask] = orientation_drawing[plot_mask]
+        # timestamp = float(frame_fname.stem)
+        # pose = closest_pose(timestamp)
+        # gimbal_data = closest_gimbal_data(timestamp)
+        # time_mod_10000 = timestamp - (timestamp // 10000) * 10000
+        # cv.putText(frame, f"Time % 10,000: {time_mod_10000:.2f}", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv.LINE_AA)
+        # if pose is None:
+        #     cv.putText(frame, "No pose", (10, 70), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv.LINE_AA)
+        # else:
+        #     position_str = f"Position: {[round(x, 2) for x in pose['position']]}"
+        #     cv.putText(frame, position_str, (10, 70), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv.LINE_AA)
+        #     orientation_drawing = draw_orientation(pose, gimbal_data['attitude'])
+        #     # draw on top right
+        #     if plot_mask is None:
+        #         # create mask that only includes pixels that aren't pure white in the orientation drawing
+        #         # since it never changes, we just calculate it on the first frame and reuse it
+        #         plot_mask = np.any(orientation_drawing != 255, axis=2)
+        #     frame[0:orientation_drawing.shape[0], -orientation_drawing.shape[1]:][plot_mask] = orientation_drawing[plot_mask]
         video.write(frame)
     except:
         print(f"Error processing frame {frame_fname}")
