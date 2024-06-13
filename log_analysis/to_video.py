@@ -10,8 +10,8 @@ from mpl_toolkits.mplot3d import Axes3D # Unused, but necessary for 3D plotting
 import numpy as np
 from uavf_2024.imaging import Camera
 
-logs_dir = Path('/home/ericp/uavf_2024/flight_logs/perception_logs_608/06-08 01:34')
-video = cv.VideoWriter('video_0608_0134.mp4', cv.VideoWriter_fourcc(*'mp4v'), 15, (1920, 1080))
+logs_dir = Path('/home/forge/ws/logs/06-12 17h23m')
+video = cv.VideoWriter('video_0612_1846.mp4', cv.VideoWriter_fourcc(*'mp4v'), 15, (1920, 1080))
 
 pose_stamps = sorted([float(fname.stem) for fname in (logs_dir / 'poses').glob('*.json')])
 

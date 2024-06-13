@@ -43,7 +43,8 @@ class AsyncBuffer(Generic[BufItemT]):
     
     @property
     def count(self):
-        return len(self._queue)
+        with self.lock:
+            return len(self._queue)
         
     def __bool__(self):
         return bool(self.count)
@@ -93,6 +94,8 @@ class Subscriptions(Generic[InputT]):
     def __init__(self):
         self._callbacks: dict[float, Callable[[InputT], Any]] = {}
         self.lock = threading.Lock()
+        
+        self.logger = logging.getLogger()
     
     def add(self, callback: Callable[[InputT], Any]) -> Callable[[], None]:
         """
@@ -118,8 +121,13 @@ class Subscriptions(Generic[InputT]):
         Locks so that subscriptions will have to wait after a round of notifications.
         """
         with self.lock:
-            for callback in self._callbacks.values():
-                callback(new_value)
+            for index, callback in enumerate(self._callbacks.values()):
+                try:
+                    self.logger.log(logging.INFO, f"Calling callback {index}")
+                    callback(new_value)
+                    self.logger.log(logging.INFO, "Called callback")
+                except Exception as e:
+                    self.logger.log(logging.INFO, f"Callback failed: {e}")
 
 
 MessageT = TypeVar("MessageT")
@@ -222,13 +230,18 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         return self._logs_dir
         
     def _handle_update(self, item: MessageT):
+        self.log("Got pose in provider")
         formatted: LoggingBufferT = self.format_data(item)
         
         if not self._first_value:
             self._first_value = formatted
             
         self._buffer.put(formatted)
+        self.log("Put pose in buffer")
+        
         self._subscribers.notify(formatted)
+        self.log("Notified subscribers")
+        
         
         if self._logs_dir is not None:
             self.log_to_file(formatted)
@@ -256,7 +269,9 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         start = time.time()
         
         while self._buffer.count == 0:
-            if time.time() - start >= timeout_seconds:
+            diff = time.time() - start
+            self.log(f"Waiting. diff: {diff}")
+            if diff >= timeout_seconds:
                 raise TimeoutError("Timed out waiting for datum")
             
             time.sleep(0.1)

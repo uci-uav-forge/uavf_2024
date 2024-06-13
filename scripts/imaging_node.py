@@ -65,6 +65,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
             PoseStamped,
             '/mavros/local_position/pose',
             action,
+            # lambda _: self.log("Got pose from mavros"),
             QOS_PROFILE
         )
         
@@ -106,7 +107,8 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         # Poll every 100ms until timeout
         start = time.time()
         while closest_idx == len(data):
-            waited = start - time.time()
+            waited = time.time() - start
+            self.log(f"Waiting for new pose. Waited {waited} secs")
             if waited > timeout:
                 return data[closest_idx - 1]
 
@@ -144,12 +146,10 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         regardless of its timestamp
 
         '''
-        for _ in range(50):
-            interp_pose = self._interpolate_from_buffer(time_seconds, 1.0)
-            if interp_pose is not None:
-                return (interp_pose, True)
-            else:
-                time.sleep(0.1)
+        interp_pose = self._interpolate_from_buffer(time_seconds, 3.0)
+        if interp_pose is not None:
+            return (interp_pose, True)
+            
         return (self._buffer.get_fresh(), False)
 
 
@@ -175,11 +175,11 @@ class ImagingNode(Node):
         
         # Subscriptions ----
         self.pose_provider = PoseProvider(self, self.logs_path / "poses", 128)
-        self.pose_provider.subscribe(self.cam_auto_point)
+        # self.pose_provider.subscribe(self.cam_auto_point)
         
         # Only start the recording once (when the first pose comes in)
-        start_recording_once = OnceCallable(lambda _: self.camera.start_recording())
-        self.pose_provider.subscribe(start_recording_once)
+        self.start_recording_once = OnceCallable(lambda _: self.camera.start_recording())
+        self.pose_provider.subscribe(self.start_recording_once)
 
         # Services ----
         # Set up take picture service
@@ -201,9 +201,14 @@ class ImagingNode(Node):
 
     @log_exceptions
     def cam_auto_point(self, current_pose: PoseDatum):
+        self.log("Entered auto point")
+        self.start_recording_once(current_pose)
+        self.log("Finished starting recording")
         current_z = current_pose.position.z
 
+        self.log("Getting first datum")
         first_pose = self.pose_provider.get_first_datum()
+        self.log("Got first datum")
         if first_pose is None:
             self.log("First datum not found trying to auto-point camera.")
             return
@@ -211,19 +216,23 @@ class ImagingNode(Node):
         alt_from_gnd = current_z - first_pose.position.z
         
         # If pointed down and close to the ground, point forward
-        if(self.camera_state and alt_from_gnd < 3): #3 meters ~ 30 feet
+        if self.camera_state and alt_from_gnd < 3 : #3 meters ~ 30 feet
+            self.log("First branch")
             self.camera.request_center()
+            self.log("first branch 2")
             self.camera_state = False
-            self.camera.stop_recording()
             self.log(f"Crossing 3m down, pointing forward. Current altitude: {alt_from_gnd}")
         # If pointed forward and altitude is higher, point down
-        elif(not self.camera_state and alt_from_gnd > 3):
+        elif not self.camera_state and alt_from_gnd > 3:
+            self.log("Second branch")
             self.camera.request_down()
+            self.log("second branch 2")
             self.camera_state = True
-            self.camera.start_recording()
             self.log(f"Crossing 3m up, pointing down. Current altitude: {alt_from_gnd}")
         else:
+            self.log("Third branch. Returning")
             return
+        self.log("Autofocusing from auto point")
         self.camera.request_autofocus()
 
 
@@ -290,7 +299,15 @@ class ImagingNode(Node):
         '''
         self.log("Received Down Image Request")
         self.camera.request_autofocus()
-        self.pose_provider.wait_for_data()
+        self.log("Autofocused")
+        try:
+            self.pose_provider.wait_for_data(1)
+        except TimeoutError:
+            self.log("Pose timeout, returning empty list")
+            response.detections = []
+            return response
+
+        self.log("Finished waiting for data")
 
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
             self.point_camera_down()
@@ -301,14 +318,17 @@ class ImagingNode(Node):
         img = self.camera.get_latest_image()
         if img is None:
             self.log("Could not get image from Camera.")
-            return []
+            response.detections = []
+            return response
+
         timestamp = time.time()
         self.log(f"Got image from Camera at time {timestamp}")
         
         localizer = self.make_localizer()
         if localizer is None:
             self.log("Could not get Localizer")
-            return []
+            response.detections = []
+            return response
     
         detections = self.image_processor.process_image(img)
         self.log(f"Finished image processing. Got {len(detections)} detections")
