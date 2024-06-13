@@ -13,6 +13,7 @@ import numpy as np
 import rclpy
 from geometry_msgs.msg import Point, PoseStamped
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from scipy.spatial.transform import Rotation, Slerp
 
@@ -61,12 +62,14 @@ QOS_PROFILE = QoSProfile(
 
 class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):        
     def _subscribe_to_topic(self, action: Callable[[PoseStamped], Any]) -> None:
+        my_callback_group = ReentrantCallbackGroup()
         self.node.create_subscription(
             PoseStamped,
             '/mavros/local_position/pose',
             action,
             # lambda _: self.log("Got pose from mavros"),
-            QOS_PROFILE
+            QOS_PROFILE,
+            callback_group = my_callback_group
         )
         
     def log_to_file(self, item: PoseDatum):
@@ -112,7 +115,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
             if waited > timeout:
                 return data[closest_idx - 1]
 
-            time.sleep(0.1)
+            rclpy.spin_once(self.node, timeout_sec = 0.1)
             data = self._buffer.get_all_reversed()
             closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
             
@@ -175,7 +178,7 @@ class ImagingNode(Node):
         
         # Subscriptions ----
         self.pose_provider = PoseProvider(self, self.logs_path / "poses", 128)
-        # self.pose_provider.subscribe(self.cam_auto_point)
+        self.pose_provider.subscribe(self.cam_auto_point)
         
         # Only start the recording once (when the first pose comes in)
         self.start_recording_once = OnceCallable(lambda _: self.camera.start_recording())
@@ -206,9 +209,7 @@ class ImagingNode(Node):
         self.log("Finished starting recording")
         current_z = current_pose.position.z
 
-        self.log("Getting first datum")
         first_pose = self.pose_provider.get_first_datum()
-        self.log("Got first datum")
         if first_pose is None:
             self.log("First datum not found trying to auto-point camera.")
             return
@@ -217,20 +218,15 @@ class ImagingNode(Node):
         
         # If pointed down and close to the ground, point forward
         if self.camera_state and alt_from_gnd < 3 : #3 meters ~ 30 feet
-            self.log("First branch")
             self.camera.request_center()
-            self.log("first branch 2")
             self.camera_state = False
             self.log(f"Crossing 3m down, pointing forward. Current altitude: {alt_from_gnd}")
         # If pointed forward and altitude is higher, point down
         elif not self.camera_state and alt_from_gnd > 3:
-            self.log("Second branch")
             self.camera.request_down()
-            self.log("second branch 2")
             self.camera_state = True
             self.log(f"Crossing 3m up, pointing down. Current altitude: {alt_from_gnd}")
         else:
-            self.log("Third branch. Returning")
             return
         self.log("Autofocusing from auto point")
         self.camera.request_autofocus()
@@ -287,7 +283,7 @@ class ImagingNode(Node):
         self.camera.request_down()
         while abs(self.camera.getAttitude()[1] - -90) > 2:
             self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
-            time.sleep(0.1)
+            rclpy.spin_once(self, timeout_sec=0.1)
         self.log("Camera pointed down")
 
     @log_exceptions
@@ -330,7 +326,9 @@ class ImagingNode(Node):
             response.detections = []
             return response
     
-        detections = self.image_processor.process_image(img)
+        detections_future = self.image_processor.process_image(img)
+        rclpy.spin_until_future_complete(self, detections_future)
+        detections = detections_future.result()
         self.log(f"Finished image processing. Got {len(detections)} detections")
 
         # Get avg camera pose for the image

@@ -10,6 +10,7 @@ from .shape_detection import ShapeDetector
 from .color_classification import ColorClassifier
 from . import profiler
 from memory_profiler import profile as mem_profile
+import asyncio
 
 def nms_process(shape_results: DetectionResult, thresh_iou):
     #Given shape_results and some threshold iou, determines if there are intersecting bounding boxes that exceed the threshold iou and takes the
@@ -195,6 +196,10 @@ class ImageProcessor:
 
         self.num_processed += 1
         return total_results
+    
+    async def process_image_async(self, img: Image):
+        # TODO: fix race condition with num processed
+        return self.process_image(img)
     
     def process_image_lightweight(self, img : Image) -> list[FullBBoxPrediction]:
         '''

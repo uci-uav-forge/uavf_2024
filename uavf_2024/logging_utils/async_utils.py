@@ -8,6 +8,7 @@ import threading
 import time
 from typing import Any, Callable, Generic, TypeVar
 
+import rclpy
 from rclpy.node import Node
 
 class OnceCallable():
@@ -274,4 +275,4 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
             if diff >= timeout_seconds:
                 raise TimeoutError("Timed out waiting for datum")
             
-            time.sleep(0.1)
+            rclpy.spin_once(self.node, timeout_sec=0.1)
