@@ -123,7 +123,7 @@ class CommanderNode(rclpy.node.Node):
 
         self.got_home_local_pos = False
         self.home_local_pos = None
-
+        self.last_imaging_time = None
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
 
@@ -137,7 +137,6 @@ class CommanderNode(rclpy.node.Node):
         if reached.wp_seq > self.last_wp_seq:
             self.log(f"Reached waypoint {reached.wp_seq}")
             self.last_wp_seq = reached.wp_seq
-
             if self.call_imaging_at_wps:
                 self.do_imaging_call()
 
@@ -148,6 +147,10 @@ class CommanderNode(rclpy.node.Node):
         self.cur_pose = pose
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,]).as_rotvec()
         self.got_pose = True
+        timestamp = time.time()
+        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time < 0.3):
+            self.do_imaging_call()
+            self.last_imaging_time = timestamp
         if not self.got_home_local_pos:
             self.got_home_local_pos = True
             self.home_local_pose = self.cur_pose
@@ -215,17 +218,17 @@ class CommanderNode(rclpy.node.Node):
         self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
 
         self.log("Delaying before pushing waypoints.")
-        time.sleep(1)
+        time.sleep(.5)
         self.log("Pushing waypoints.")
         
         self.waypoints_client.call(mavros_msgs.srv.WaypointPush.Request(start_index = 0, waypoints = waypoint_msgs))
         self.log("Delaying before resetting mission progress.")
-        time.sleep(1)
+        time.sleep(.5)
         self.last_wp_seq = -1
         self.log("Set mission progress")
         if do_set_mode:
             self.log("Delaying before setting mode.")
-            time.sleep(1)
+            time.sleep(.5)
             self.log("Setting mode.")
             # mavros/px4 doesn't consistently set the mode the first time this function is called...
             # retry or fail the script.
@@ -233,7 +236,7 @@ class CommanderNode(rclpy.node.Node):
                 self.mode_client.call(mavros_msgs.srv.SetMode.Request( \
                     base_mode = 0,
                     custom_mode = 'AUTO.MISSION'))
-                time.sleep(0.2)
+                time.sleep(0.05)
                 if (self.cur_state != None and self.cur_state.mode == 'AUTO.MISSION') or self.last_wp_seq >= -1:
                     self.log("Success setting mode")
                     break
@@ -256,7 +259,7 @@ class CommanderNode(rclpy.node.Node):
         self.log("waiting for cmd long client...")
         self.cmd_long_client.wait_for_service()
         self.log("waiting for full stop before payload drop.")
-        time.sleep(4)
+        time.sleep(2)
         self.log_statustext("Releasing payload.")
         for t_deg in list(range(deg1+1,deg2-1,-1)) + list(range(deg2,deg1)):
             #self.log(f"setting to {t_deg}") 
@@ -366,9 +369,7 @@ class CommanderNode(rclpy.node.Node):
 
             
             self.log_statustext(f"Pushing mission for {lap}")
-            # Fly waypoint lap
             self.execute_waypoints(self.mission_wps, do_set_mode=False)
-            self.in_loop = True
 
             if self.args.exit_early:
                 return

@@ -11,6 +11,36 @@ from collections import deque
 from bisect import bisect_left
 
 
+class LogType:
+
+    def __init__(self, image : Image, metadata : dict, timestamp : float):
+        self.image = image
+        self.metadata = metadata
+        self.timestamp = timestamp
+
+    def get_data(self):
+        return self.image, self.metadata, self.timestamp
+
+class LogBuffer:
+    """
+    Buffer for logging data implementing a Lock for multithreading. 
+    """
+    def __init__(self):
+        self.log_data = deque(maxlen=128)
+        self.lock = threading.Lock()
+        
+    def append(self, datum : LogType):
+        with self.lock:
+            self.log_data.append(datum)
+        
+    def get_latest(self) -> LogType | None:
+        with self.lock:
+            return self.log_data[-1]
+        
+    def pop_data(self) -> LogType | None:
+        with self.lock:
+            return self.log_data.popleft() if len(self.log_data) > 0 else None
+
 class ImageBuffer:
     """
     Buffer for one Image implementing a Lock for multithreading. 
@@ -23,10 +53,10 @@ class ImageBuffer:
         with self.lock:
             self.image = image
             
-    def get(self) -> Image | None:
+    def get_latest(self) -> Image | None:
         with self.lock:
             return self.image
-
+    
 class MetadataBuffer:
     def __init__(self):
         self._queue = deque(maxlen=128)
@@ -77,6 +107,9 @@ class Camera:
         
         # Buffer for taking the latest image, logging it, and returning it in get_latest_image
         self.buffer = ImageBuffer()
+        self.log_buffer = LogBuffer()
+        self.logging_thread: threading.Thread | None = None
+        self.logging = False
         self.recording_thread: threading.Thread | None = None
         self.recording = False
         self.metadata_buffer = MetadataBuffer()
@@ -88,7 +121,23 @@ class Camera:
         
     def set_log_dir(self, log_dir: str | Path):
         self.log_dir = Path(log_dir)
-        
+    
+    def _logging_worker(self):
+        while self.logging and self.log_dir:
+            log_data = self.log_buffer.pop_data()
+            if log_data is None:
+                if not self.recording: # finish logging if recording is done
+                    self.logging = False
+                    break
+                time.sleep(0.1)
+                continue
+            image, metadata, timestamp = log_data.get_data()
+            image.save(self.log_dir / f"{timestamp}.jpg")
+            json.dump(
+                metadata, 
+                open(self.log_dir / f"{timestamp}.json", 'w')
+            )
+
     def _recording_worker(self):
         """
         Worker function that continuously gets frames from the stream and puts them in the buffer as well as logging them.
@@ -111,20 +160,15 @@ class Camera:
                 continue
             
             image = Image(img_arr, HWC)
-            
             self.buffer.put(image)
-            if self.log_dir:
-                image.save(self.log_dir / f"{img_stamp}.jpg")
-                metadata = {
+            metadata = {
                     "attitude": attitude_position,
                     "zoom": zoom,
                     "time_seconds": attitude_stamp
                 }
-                self.metadata_buffer.append(metadata)
-                json.dump(
-                    metadata, 
-                    open(self.log_dir / f"{img_stamp}.json", 'w')
-                )
+            self.metadata_buffer.append(metadata) # allows for interpolation of attitude and zoom
+            log_data = LogType(image, metadata, img_stamp)
+            self.log_buffer.append(log_data)
                 
     def start_recording(self):
         """
@@ -132,11 +176,24 @@ class Camera:
         """
         if self.recording:
             return
-
         self.recording_thread = threading.Thread(target=self._recording_worker)
         self.recording = True
         self.recording_thread.start()
-        
+        self.start_logging()
+    
+    def start_logging(self):
+        if self.logging or not self.log_dir or not self.recording:
+            return
+        self.logging_thread = threading.Thread(target=self._logging_worker)
+        self.logging = True
+        self.logging_thread.start()
+
+    def stop_logging(self):
+        if self.logging_thread:
+            self.logging = False
+            self.logging_thread.join()
+            self.logging_thread = None
+
     def stop_recording(self):
         if self.recording_thread:
             self.recording = False
@@ -147,12 +204,12 @@ class Camera:
         """
         Returns the latest Image (HWC) from the buffer.
         """
-        return self.buffer.get()
+        return self.buffer.get_latest()
     
     def requestAbsolutePosition(self, yaw: float, pitch: float):
         return self.cam.requestAbsolutePosition(yaw, pitch)
     
-    def requestGimbalSpeed(self, yaw_speed: float, pitch_speed: float):
+    def requestGimbalSpeed(self, yaw_speed: int, pitch_speed: int):
         return self.cam.requestGimbalSpeed(yaw_speed, pitch_speed)
 
     def request_center(self):
@@ -225,5 +282,5 @@ if __name__ == "__main__":
     cam = Camera()
     out = cam.get_latest_image()
     # matplotlib.image.imsave("sample_frame.png",out.get_array().transpose(2,1,0))
-    out.save("sample_frame.png")
+    if out != None: out.save("sample_frame.png")
     cam.disconnect()
