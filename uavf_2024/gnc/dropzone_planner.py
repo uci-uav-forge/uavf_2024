@@ -70,9 +70,6 @@ class DropzonePlanner:
         fwd_yaw += 90
         fwd_yaw %= 360
 
-        side_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), w_unit)))
-        side_yaw += 90
-        side_yaw %= 360
         
         # Step 2: Generate a "zigzag" pattern to sweep the entire dropzone.
         result_wps = []
@@ -93,7 +90,14 @@ class DropzonePlanner:
             # add intermediate WP to guide PX4 to make the right turn
             if col > 0:
                 fx,_ = wps_col[0]
-                result_wps.append((fx,(side_yaw if col % 2 else -side_yaw)))
+                side_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), w_unit)))
+                if col%2 == 0:
+                    side_yaw += 90
+                else:
+                    side_yaw -= 90
+                side_yaw %= 360
+                    
+                result_wps.append((fx,side_yaw))
             result_wps += wps_col
 
         return result_wps
