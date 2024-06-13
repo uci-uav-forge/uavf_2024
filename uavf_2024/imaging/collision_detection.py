@@ -9,6 +9,63 @@ from filterpy.kalman import predict
 
 
 
+
+# ----------
+from typing import Generator, List
+import numpy as np
+import torch
+from .imaging_types import ProbabilisticTargetDescriptor, Tile
+from itertools import islice
+def make_ortho_vectors(v: torch.Tensor, m: int):
+    '''
+    `v` is a (n,3) tensor
+    make m unit vectors that are orthogonal to each v_i, and evenly spaced around v_i's radial symmetry
+    
+    to visualize: imagine each v_i is the vector coinciding 
+    with a lion's face direction, and we wish to make m vectors for the lion's mane.
+
+    it does this by making a "lion's mane" around the vector (0,0,1), which is easy with parameterizing
+    with theta and using (cos(theta), sin(theta), 0). Then, it figures out the 2DOF R_x @ R_y rotation matrix
+    that would rotate (0,0,1) into v_i, and applies it to those mane vectors.
+
+    returns a tensor of shape (n,m,3)
+    '''
+    n = v.shape[0]
+    thetas = torch.linspace(0, 2*torch.pi, m).to(v.device)
+
+    phi_y = torch.atan2(v[:, 0], v[:, 2])
+    square_sum = v[:,0]**2 + v[:,2]**2
+    inverted = 1/torch.sqrt(square_sum)#fast_inv_sqrt(square_sum)
+    phi_x = torch.atan(v[:, 1] * inverted) # This line is responsible for like 20-25% of the runtime of this function, so unironically if we implement fast inverse square root in pytorch we can get huge performance gains
+
+    cos_y = torch.cos(phi_y)
+    sin_y = torch.sin(phi_y)
+    cos_x = torch.cos(phi_x)
+    sin_x = torch.sin(phi_x)
+
+
+    R = torch.stack(
+            [cos_y, -sin_y*sin_x, sin_y*cos_x,
+            torch.zeros_like(cos_x), cos_x, sin_x,
+            -sin_y, -cos_y*sin_x, cos_y*cos_x]
+    ).T.reshape(n,3,3)
+    # (n,3,3)
+
+
+    vectors = torch.stack(
+        [
+            torch.cos(thetas), 
+            torch.sin(thetas), 
+            torch.zeros_like(thetas)
+        ],
+    ) # (3,m)
+
+    return torch.matmul(R, vectors).permute(0, 2, 1) # (n, m, 3)
+
+# -------------
+
+
+
 def is_point_in_ellipsoid(point, mean, cov, std=1):
     """
     Check if a 3D point is inside the ellipsoid defined by a mean and covariance matrix.
@@ -82,6 +139,9 @@ def collision_prediction(drone_positions, current_pos, next_wp,dt=0.1,time_pred=
     plt.show()
     plt.close(fig)
 
+
+
+
 def _get_last_ellipse(mean, covar, F, time_pred, dt):
     """
         Predicts the covar and mean with a state transition of F.
@@ -104,6 +164,7 @@ def _get_all_polytopes(drone_positions, dt,time_pred):
     for drone_info, drone_covar in drone_positions:
         start_ellipse = drone_info, drone_covar
         end_ellipse = _get_last_ellipse(drone_info, drone_covar, F, time_pred, dt)
+        
         print(end_ellipse)
         
 
