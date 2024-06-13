@@ -116,7 +116,7 @@ class DropzonePlanner:
         dropzone_yaws = [yaw for wp, yaw in dropzone_plan]
         dropzone_wps = [dropzone_wps[0]] + dropzone_wps
         dropzone_yaws = [float('NaN')] + dropzone_yaws
-        self.commander.execute_waypoints(dropzone_wps, dropzone_yaws)
+        self.commander.execute_waypoints(dropzone_wps, dropzone_yaws, in_dropzone = True)
         self.commander.call_imaging_at_wps = False
         detections = self.commander.gather_imaging_detections()
         self.target_tracker.update(detections)
@@ -183,7 +183,7 @@ class DropzonePlanner:
         # Fly along the path of waypoints to the target
         self.commander.call_imaging_at_wps = True
         self.commander.log_statustext(f"Going to target. gps = {self.commander.local_to_gps((best_match_x, best_match_y))}")
-        self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp), np.array([altitude]))) for wp in next_wps])
+        self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp), np.array([altitude]))) for wp in next_wps], in_dropzone = True)
         self.commander.call_imaging_at_wps = False
         detections = self.commander.gather_imaging_detections()
         self.target_tracker.update(detections)

@@ -5,7 +5,6 @@ import logging
 import mavros_msgs.msg
 import mavros_msgs.srv
 import numpy as np
-from pygeodesy.geoids import GeoidPGM
 import rclpy
 import rclpy.node
 from rclpy.qos import *
@@ -123,8 +122,6 @@ class CommanderNode(rclpy.node.Node):
 
         self.got_home_local_pos = False
         self.home_local_pos = None
-
-        self.egm96 = GeoidPGM('/usr/share/GeographicLib/geoids/egm96-5.pgm', kind = -3)
     
         self.last_imaging_time = None
         
@@ -217,26 +214,12 @@ class CommanderNode(rclpy.node.Node):
         Get current drone position.
         '''
         return pose_to_xy(self.cur_pose)
-    
-    def geoid_height(self, lat, lon):
-       '''
-       Calculates AMSL to ellipsoid conversion offset.
-       Uses EGM96 data with 5' grid and cubic interpolation.
-       The value returned can help you convert from meters 
-       above mean sea level (AMSL) to meters above
-       the WGS84 ellipsoid.
-   
-       If you want to go from AMSL to ellipsoid height, add the value.
-   
-       To go from ellipsoid height to AMSL, subtract this value.
-       '''
-       return self.egm96.height(lat, lon)
 
-    def execute_waypoints(self, waypoints, yaws = None, do_set_mode = True):
+    def execute_waypoints(self, waypoints, yaws = None, do_set_mode = True, in_dropzone = False):
         '''
         Fly to each of the waypoints.
         '''
-        if self.args.is_maryland:
+        if self.args.is_maryland and not in_dropzone:
             waypoints = self.generate_legal_waypoints(waypoints)
 
         if yaws is None:
@@ -412,13 +395,11 @@ class CommanderNode(rclpy.node.Node):
         By flying to the intermediate waypoint before the destination_wp, the
         geofence will not be violated.
         '''
-        geoid_separation = self.geoid_height(self.last_global_pos.latitude, self.last_global_pos.longitude)
-        current_altitude = self.last_global_pos.altitude - geoid_separation
-        altitude_asml = max(self.default_altitude_asml, current_altitude)
+        altitude_asml = destination_wp[2]
 
         left_intermediate_waypoint_global = (38.31605966, -76.55154921, altitude_asml)
         right_intermediate_waypoint_global = (38.31542867, -76.54548898, altitude_asml)
-        geofence_middle_pt = (38.31470980862425, -76.54936361414539)
+        geofence_middle_pt = (38.31470980862425, -76.54936361414539, altitude_asml)
 
         return right_intermediate_waypoint_global if destination_wp[1] > geofence_middle_pt[1] else left_intermediate_waypoint_global
 
