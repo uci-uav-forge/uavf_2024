@@ -33,12 +33,16 @@ class MockCommander:
         for i in range(len(waypoints) - 1):
             start_wp = waypoints[i]
             destination_wp = waypoints[i + 1]
-            path = LineString([start_wp, destination_wp])
-
+            
             legal_waypoints.append(start_wp)
+
+            if start_wp[0] == destination_wp[0] and start_wp[1] == destination_wp[1]:
+                continue
+
+            path = LineString([start_wp, destination_wp])
             if not path.within(geofence_bounds):
                 legal_waypoints.append(self.get_closest_intermediate_point(destination_wp))
-
+                
         legal_waypoints.append(waypoints[-1])
 
         return legal_waypoints
