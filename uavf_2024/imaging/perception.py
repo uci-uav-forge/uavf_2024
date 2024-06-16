@@ -9,12 +9,12 @@ import logging
 import os
 from pathlib import Path
 import time
-from typing import Literal
+from typing import Literal, Sequence
 
 import numpy as np
 import cv2
 
-from . import ImageProcessor, Camera, Localizer, PoseProvider, PoseDatum, Target3D
+from . import ImageProcessor, Camera, Localizer, PoseProvider, PoseDatum, Target3D, Image
 
 
 LOGS_PATH = Path(f'logs/{time.strftime("%m-%d %Hh%Mm")}')
@@ -160,7 +160,41 @@ class Perception:
         calling get_image_down in a separate process.
         """
         return self.processor_pool.submit(self.get_image_down)
+    
+    def _log_image_down(
+        self, 
+        preds_3d: list[Target3D], 
+        img: Image[np.ndarray], 
+        timestamp: float,
+        pose: PoseDatum,
+        angles: Sequence[float], 
+        cur_position_np: np.ndarray,
+        cur_rot_quat: np.ndarray
+    ):
+        logs_folder = self.image_processor.get_last_logs_path()
+        os.makedirs(logs_folder, exist_ok=True)
+        cv2.imwrite(f"{logs_folder}/image.png", img.get_array())
         
+        self.log(f"Logging inference frame at zoom level {self.zoom_level} to {logs_folder}")
+        
+        log_data = {
+            'pose_time': pose.time_seconds,
+            'image_time': timestamp,
+            'drone_position': cur_position_np.tolist(),
+            'drone_q': cur_rot_quat.tolist(),
+            'gimbal_yaw': angles[0],
+            'gimbal_pitch': angles[1],
+            'gimbal_roll': angles[2],
+            'zoom level': self.zoom_level,
+            'preds_3d': [
+                {
+                    'position': p.position.tolist(),
+                    'id': p.id,
+                } for p in preds_3d
+            ]
+        }
+        
+        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
 
     def get_image_down(self) -> list[Target3D]:
         """
@@ -216,27 +250,6 @@ class Perception:
         preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         # Log data
-        logs_folder = self.image_processor.get_last_logs_path()
-        self.log(f"This frame going to {logs_folder}")
-        self.log(f"Zoom level: {self.zoom_level}")
-        os.makedirs(logs_folder, exist_ok=True)
-        cv2.imwrite(f"{logs_folder}/image.png", img.get_array())
-        log_data = {
-            'pose_time': pose.time_seconds,
-            'image_time': timestamp,
-            'drone_position': cur_position_np.tolist(),
-            'drone_q': cur_rot_quat.tolist(),
-            'gimbal_yaw': angles[0],
-            'gimbal_pitch': angles[1],
-            'gimbal_roll': angles[2],
-            'zoom level': self.zoom_level,
-            'preds_3d': [
-                {
-                    'position': p.position.tolist(),
-                    'id': p.id,
-                } for p in preds_3d
-            ]
-        }
-        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
+        self._log_image_down(preds_3d, img, timestamp, pose, angles, cur_position_np, cur_rot_quat)
 
         return preds_3d
