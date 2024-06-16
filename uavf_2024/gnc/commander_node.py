@@ -1,4 +1,4 @@
-from concurrent.futures import Future
+from concurrent.futures import Future, as_completed
 from datetime import datetime
 import time
 import logging
@@ -281,21 +281,22 @@ class CommanderNode(rclpy.node.Node):
             )
             time.sleep(.05)
 
-    def gather_imaging_detections(self):
+    def gather_imaging_detections(self, timeout: float | None = None):
         """
         Waits for all imaging detections to be completed and returns them.
         """
         detections: list[Target3D] = []
         self.log("Waiting for imaging detections.")
-        for future in self.perception_futures:
-            while not future.done():
-                pass
-            
-            detections.extend(future.result())
+        try:
+            for future in as_completed(self.perception_futures, timeout=timeout):
+                detections.extend(future.result())
+                
+            self.log(f"Successfully retrieved imaging detections: {detections}")
+        except TimeoutError:
+            self.log("Timed out waiting for imaging detections.")
 
         self.perception_futures = []
         
-        self.log(f"Successfully retrieved imaging detections: {detections}")
         return detections
     
     def request_load_payload(self, payload):
