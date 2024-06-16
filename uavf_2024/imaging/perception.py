@@ -9,7 +9,7 @@ import logging
 import os
 from pathlib import Path
 import time
-from typing import Literal, NamedTuple
+from typing import Literal
 
 import numpy as np
 import cv2
