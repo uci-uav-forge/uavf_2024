@@ -49,11 +49,11 @@ class ImageBuffer:
         self.image = None
         self.lock = threading.Lock()
         
-    def put(self, image: Image):
+    def put(self, image: Image[np.ndarray]):
         with self.lock:
             self.image = image
             
-    def get_latest(self) -> Image | None:
+    def get_latest(self) -> Image[np.ndarray] | None:
         with self.lock:
             return self.image
     
@@ -200,7 +200,7 @@ class Camera:
             self.recording_thread.join()
             self.recording_thread = None
         
-    def get_latest_image(self) -> Image | None:
+    def get_latest_image(self) -> Image[np.ndarray] | None:
         """
         Returns the latest Image (HWC) from the buffer.
         """
