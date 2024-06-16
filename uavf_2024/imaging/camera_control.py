@@ -128,10 +128,6 @@ class Camera:
         Currently starts recording and logging as soon as constructed.
         This should be changed to after takeoff.
         """
-        self.log_dir = Path(log_dir) if log_dir is not None else None
-        if self.log_dir:
-            self._prep_log_dir(self.log_dir)
-            self.threaded_logger = CameraLogger(self.log_dir)
         
         self.cam = SIYISDK(server_ip = "192.168.144.25", port= 37260,debug=False)
         self.stream = SIYISTREAM(server_ip = "192.168.144.25", port = 8554,debug=False)
@@ -146,14 +142,11 @@ class Camera:
         self.recording = False
         
         # Controls whether images and data are submitted to the `threaded_logger`
-        self.logging = False
+        if log_dir:
+            self.threaded_logger = CameraLogger(Path(log_dir))
+        self.logging = True
         
         self.metadata_buffer = MetadataBuffer()
-    
-    @staticmethod
-    def _prep_log_dir(log_dir: Path):
-        if not log_dir.exists():
-            log_dir.mkdir(parents=True, exist_ok=True)
         
     def set_log_dir(self, log_dir: str | Path):
         self.log_dir = Path(log_dir)
