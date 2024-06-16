@@ -7,3 +7,5 @@ from .camera_control import Camera
 from .tracker import TargetTracker
 from .imaging_types import ProbabilisticTargetDescriptor, CertainTargetDescriptor, Target3D, Image, BoundingBox
 from .drone_tracker import DroneTracker
+from .pose import PoseProvider, PoseDatum
+from .perception import Perception
