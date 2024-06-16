@@ -74,3 +74,12 @@ class UtilizationLogger:
         while self.logging:
             self.pool.submit(self.log)
             time.sleep(self.period)
+
+
+if __name__ == '__main__':
+    logger = UtilizationLogger(Path('utilization.csv'))
+    logger.start()
+    time.sleep(10)
+    logger.stop()
+    
+    print('Done!')
