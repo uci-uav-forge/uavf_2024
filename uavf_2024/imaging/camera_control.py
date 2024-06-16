@@ -186,9 +186,6 @@ class Camera:
                 self.threaded_logger.log_async(image, metadata, img_stamp)
                 
     def start_recording(self):
-        """
-        Currently called in __init__, but this should be changed to being called when we're in the air.
-        """
         if self.recording:
             return
         self.recording_thread = threading.Thread(target=self._recording_worker)
