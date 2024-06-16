@@ -3,7 +3,7 @@ Perception class to supercede ImagingNode by using Python-native async functiona
 """
 
 
-from concurrent.futures import Future, ProcessPoolExecutor
+from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
 import json
 import logging
 import os
@@ -61,6 +61,8 @@ class Perception:
         
         # There can only be one process because it uses the GPU
         self.processor_pool = ProcessPoolExecutor(1)
+        
+        self.logging_pool = ThreadPoolExecutor(2)
         
         # This has to be injected because it needs to subscribe to the mavros topic
         self.pose_provider = pose_provider
@@ -253,7 +255,10 @@ class Perception:
         # Get 3D predictions
         preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
-        # Log data
-        self._log_image_down(preds_3d, img, timestamp, pose, angles, cur_position_np, cur_rot_quat)
+        # Log data asynchronously
+        self.logging_pool.submit(
+            self._log_image_down, 
+            preds_3d, img, timestamp, pose, angles, cur_position_np, cur_rot_quat
+        )
 
         return preds_3d
