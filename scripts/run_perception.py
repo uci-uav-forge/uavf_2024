@@ -23,11 +23,12 @@ class PerceptionMinimalNode(Node):
         self.get_logger().info(msg)
 
     def timer_cb(self):
+        self.log("Calling timer cb")
         self.perception_futures.append(self.perception.get_image_down_async())
         self.time_alive += 1
         if self.time_alive > 10:
             self.log('Shutting down...')
-            self.log(f"results: {self.collect_results()}")
+            # self.log(f"results: {self.collect_results()}")
             self.destroy_node()
             rclpy.shutdown()
     

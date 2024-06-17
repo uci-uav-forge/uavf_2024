@@ -167,6 +167,7 @@ class Perception:
         Non-blocking implementation of the infrence pipeline,
         calling get_image_down in a separate process.
         """
+        self.log("Got into async guy")
         return self.processor_pool.submit(self.get_image_down)
     
     def _log_image_down(
