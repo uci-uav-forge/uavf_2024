@@ -63,7 +63,7 @@ class Perception:
         self.image_processor = ImageProcessor(self.logs_path / 'image_processor')
         
         # There can only be one process because it uses the GPU
-        self.processor_pool = ProcessPoolExecutor(1)
+        self.processor_pool = ThreadPoolExecutor(1)
         
         self.logging_pool = ThreadPoolExecutor(2)
         
