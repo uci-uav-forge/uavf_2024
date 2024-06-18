@@ -139,7 +139,7 @@ class Camera:
         """
         while self.recording:
             try:
-                img_arr = np.random.randint(0, 255, (1080, 1920, 3))/255.0
+                img_arr = np.random.randint(0, 255, (1080, 1920, 3)).astype(np.float32)
                 img_stamp = time.time()
                 attitude_position = self.getAttitude()
                 zoom = self.getZoomLevel()
