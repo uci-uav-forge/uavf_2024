@@ -55,11 +55,16 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
     def format_data(self, message: PoseStamped) -> PoseDatum:
         quaternion = message.pose.orientation
         
+        USE_PYTHON_TIME = True # TODO: refactor to make this easier to change
+        # this is important if we're replaying the ros topic offline, because other code relies on the timestamp being close to the current time
+
+        time_seconds = time.time() if USE_PYTHON_TIME else message.header.stamp.sec + message.header.stamp.nanosec / 1e9
+
         return PoseDatum(
             position = message.pose.position,
             rotation = Rotation.from_quat(
                 [quaternion.x, quaternion.y, quaternion.z, quaternion.w]),
-            time_seconds = message.header.stamp.sec + message.header.stamp.nanosec / 1e9
+            time_seconds = time_seconds 
         )
         
     def _interpolate_from_buffer(self, time_seconds: float, wait: bool = False) -> PoseDatum | None:
