@@ -70,6 +70,10 @@ class ProbabilisticTargetDescriptor:
                 {NEWLINE.join([f"{COLORS[i]}: {self.letter_col_probs[i]:.{3}f}" for i in range(len(self.letter_col_probs))])}
         )
         '''
+    
+    def compact_repr(self):
+        certain = self.collapse_to_certain()
+        return f"{certain.shape_col} ({self.shape_col_probs.max():.2f}) {certain.shape} ({self.shape_probs.max():.2f}), {certain.letter_col} ({self.letter_col_probs.max():.2f}) {certain.letter} ({self.letter_probs.max():.2f})"
 
     @staticmethod
     def from_string(string: str) -> ProbabilisticTargetDescriptor:
@@ -284,6 +288,9 @@ class Target3D:
             ),
             msg.id
         )
+    def __repr__(self):
+        position_str = ",".join(f"{a:.2f}" for a in self.position)
+        return f"{{{self.descriptor.compact_repr()} at ({position_str}) <{self.id}>}}"
 
 @dataclass
 class ROSDetectionMessage:
