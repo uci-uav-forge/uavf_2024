@@ -47,19 +47,20 @@ class Perception:
         else:
             Perception._INSTANCE = self
         
-        print("Initializing Perception. Logging to", LOGS_PATH)
+        self.zoom_level = zoom_level
+        self.logs_path = logs_path
+
+        print("Initializing Perception. Logging to", self.logs_path)
         
         self.logger = logging.getLogger('perception')
         
-        self.zoom_level = zoom_level
-        self.logs_path = logs_path
         
         # Set up camera
-        self.camera = MockCamera(LOGS_PATH / 'camera')
+        self.camera = MockCamera(self.logs_path / 'camera')
         self.camera.setAbsoluteZoom(zoom_level)
         self.camera_state = False
         
-        self.image_processor = ImageProcessor(LOGS_PATH / 'image_processor')
+        self.image_processor = ImageProcessor(self.logs_path / 'image_processor')
         
         # There can only be one process because it uses the GPU
         self.processor_pool = ProcessPoolExecutor(1)
