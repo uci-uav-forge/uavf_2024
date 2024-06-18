@@ -21,10 +21,23 @@ class Color(Enum):
     
     @staticmethod
     def from_str(name: str) -> "Color | None":
+        if Color.is_shape_color(name):
+            name = name[6:]
+        elif Color.is_char_color(name):
+            name = name[5:]
+        
         index = COLOR_INDICES.get(name.lower())
         if index is None:
             return None
         return __class__(index)
+    
+    @staticmethod
+    def is_shape_color(name: str) -> bool:
+        return name.upper().startswith("SHAPE:")
+
+    @staticmethod
+    def is_char_color(name: str) -> bool:
+        return name.upper().startswith("CHAR:")
 
 
 COLOR_INDICES = {
