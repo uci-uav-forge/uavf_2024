@@ -37,7 +37,7 @@ class Perception:
         """
         return Perception._INSTANCE
     
-    def __init__(self, pose_provider: PoseProvider, zoom_level: int = 3, logs_path: Path = LOGS_PATH):
+    def __init__(self, pose_provider: PoseProvider, zoom_level: int = 3, logs_path: Path = LOGS_PATH, logger = None):
         """
         A PoseProvder must be injected because it depends on a MAVROS subscription.
         This might not be neccessary in the future if we can get that data from MAVSDK.
@@ -52,7 +52,7 @@ class Perception:
 
         print("Initializing Perception. Logging to", self.logs_path)
         
-        self.logger = logging.getLogger('perception')
+        self.logger = logging.getLogger('perception') if logger is None else logger
         
         
         # Set up camera

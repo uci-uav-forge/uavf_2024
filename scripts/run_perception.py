@@ -16,7 +16,7 @@ class PerceptionMinimalNode(Node):
     def __init__(self) -> None:
         super().__init__('perception_test_node')
         logs_dir = Path(f"/home/forge/ws/logs/{strftime('%m-%d %Hh%Mm')}")
-        self.perception = Perception(PoseProvider(self, logs_dir / 'pose'), logs_path = logs_dir)
+        self.perception = Perception(PoseProvider(self, logs_dir / 'pose'), logs_path = logs_dir, logger = self.get_logger())
         self.perception.camera.start_recording()
         self.timer_period = 1.0  # seconds
         self.create_timer(self.timer_period, self.timer_cb)
