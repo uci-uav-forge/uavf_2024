@@ -4,6 +4,8 @@ import rclpy
 from rclpy.node import Node
 from uavf_2024.imaging import Perception, PoseProvider
 from concurrent.futures import as_completed
+from time import strftime
+from pathlib import Path
 import traceback
 
 class PerceptionMinimalNode(Node):
@@ -13,7 +15,9 @@ class PerceptionMinimalNode(Node):
 
     def __init__(self) -> None:
         super().__init__('perception_test_node')
-        self.perception = Perception(PoseProvider(self))
+        logs_dir = Path(f"/home/forge/ws/logs/{strftime('%m-%d %Hh%Mm')}")
+        self.perception = Perception(PoseProvider(self, logs_dir / 'pose'), logs_path = logs_dir)
+        self.perception.camera.start_recording()
         self.timer_period = 1.0  # seconds
         self.create_timer(self.timer_period, self.timer_cb)
         self.perception_futures = []
