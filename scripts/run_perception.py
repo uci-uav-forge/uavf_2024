@@ -27,20 +27,20 @@ class PerceptionMinimalNode(Node):
         self.get_logger().info(msg)
 
     def timer_cb(self):
-        self.log("Calling timer cb")
         self.perception_futures.append(self.perception.get_image_down_async())
         self.time_alive += 1
-        if self.time_alive > 10:
+        if self.time_alive > 5:
+            self.log('Collecting results')
+            self.log(f"results: {self.collect_results()}")
             self.log('Shutting down...')
-            # self.log(f"results: {self.collect_results()}")
-            self.destroy_node()
-            rclpy.shutdown()
+            quit()
     
     def collect_results(self):
         detections = []
         timeout = 2.0
         try:
             for future in as_completed(self.perception_futures, timeout=timeout):
+                self.log("Got result!")
                 detections.extend(future.result())
 
             self.log(f"Successfully retrieved imaging detections: {detections}")
