@@ -121,6 +121,13 @@ class Character:
             return None
         
         return __class__(CHARACTERS[index]) # type: ignore
+    
+    @staticmethod
+    def from_index(index: int) -> "Character":
+        if index < 0 or index >= len(CHARACTERS):
+            raise ValueError(f"Index {index} out of bounds")
+        
+        return __class__(CHARACTERS[index]) # type: ignore
 
 
 COLORS = list(COLOR_INDICES.keys())
