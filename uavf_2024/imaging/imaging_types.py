@@ -128,6 +128,12 @@ class Character:
             raise ValueError(f"Index {index} out of bounds")
         
         return __class__(CHARACTERS[index]) # type: ignore
+    
+    def __repr__(self):
+        return f"Character({self.value})"
+    
+    def __str__(self):
+        return self.value
 
 
 COLORS = list(COLOR_INDICES.keys())
