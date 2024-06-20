@@ -416,7 +416,7 @@ class Image(Generic[_UnderlyingImageT]):
         if array.shape[channels_index] != 3:
             raise ValueError("Image array must have 3 channels, got " + str(array[channels_index]))
         
-        self._array = array
+        self._array: _UnderlyingImageT = array
         
     def __getitem__(self, key):
         return self._array[key]
@@ -443,10 +443,10 @@ class Image(Generic[_UnderlyingImageT]):
         """
         return Image(self._array * other, self._dim_order)
     
-    def get_array(self):
+    def get_array(self) -> _UnderlyingImageT:
         return self._array
     
-    def make_sub_image(self, x_coord, y_coord, width, height) -> 'Image':
+    def make_sub_image(self, x_coord, y_coord, width, height) -> 'Image[_UnderlyingImageT]':
         """
         Does not copy the underlying array.
         """

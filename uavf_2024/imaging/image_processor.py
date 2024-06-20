@@ -90,7 +90,7 @@ class ImageProcessor:
 
         return nms_predictions
 
-    def write_debug_img(self, img: Image, detection_results: list[DetectionResult]) -> None:
+    def write_debug_img(self, img: Image[np.ndarray], detection_results: list[DetectionResult]) -> None:
         if self.debug_dir is None:
             warnings.warn("No debug directory set, skipping debug image writing")
             return
