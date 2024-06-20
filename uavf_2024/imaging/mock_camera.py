@@ -26,7 +26,7 @@ class LogBuffer:
     Buffer for logging data implementing a Lock for multithreading. 
     """
     def __init__(self):
-        self.log_data = deque(maxlen=128)
+        self.log_data = deque(maxlen=4)
         self.lock = threading.Lock()
         
     def append(self, datum : LogType):
@@ -132,6 +132,10 @@ class Camera:
                 metadata, 
                 open(self.log_dir / f"{timestamp}.json", 'w')
             )
+            time.sleep(0.05)
+        
+    def _get_image(self):
+        return np.random.randint(0, 255, (1080, 1920, 3)).astype(np.float32)
 
     def _recording_worker(self):
         """
@@ -139,7 +143,7 @@ class Camera:
         """
         while self.recording:
             try:
-                img_arr = np.random.randint(0, 255, (1080, 1920, 3)).astype(np.float32)
+                img_arr = self._get_image()
                 img_stamp = time.time()
                 attitude_position = self.getAttitude()
                 zoom = self.getZoomLevel()
@@ -164,6 +168,7 @@ class Camera:
             self.metadata_buffer.append(metadata) # allows for interpolation of attitude and zoom
             log_data = LogType(image, metadata, img_stamp)
             self.log_buffer.append(log_data)
+            time.sleep(0.1)
                 
     def start_recording(self):
         """
@@ -199,7 +204,8 @@ class Camera:
         """
         Returns the latest Image (HWC) from the buffer.
         """
-        return self.buffer.get_latest()
+        # return self.buffer.get_latest()
+        return Image(self._get_image(), HWC)
     
     def requestAbsolutePosition(self, yaw: float, pitch: float):
         return True
@@ -225,7 +231,8 @@ class Camera:
         return (0,-90,0)
     
     def getAttitudeInterpolated(self, timestamp: float, offset: float=1):
-        return self.metadata_buffer.get_interpolated(timestamp-offset)['attitude'] # offset for camera lag
+        # return self.metadata_buffer.get_interpolated(timestamp-offset)['attitude'] # offset for camera lag
+        return self.getAttitude()
     
     def getAttitudeSpeed(self):
         # Returns (yaw_speed, pitch_speed, roll_speed)
