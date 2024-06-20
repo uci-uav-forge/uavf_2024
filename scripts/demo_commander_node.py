@@ -14,7 +14,6 @@ import sys
 if __name__ == '__main__':
     rclpy.init()
     
-
     parser = argparse.ArgumentParser()
     parser.add_argument('gpx_file')
     parser.add_argument('payload_list')
@@ -23,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--exit-early', action='store_true')
     parser.add_argument('--servo-test', action='store_true')
     parser.add_argument('--call-imaging', action='store_true')
+    parser.add_argument('--is-maryland', action='store_true')
     parser.add_argument('--call-imaging-period', type = float, default = 5)
     parser.add_argument('--demo-setpoint-loop', action='store_true')
     args = parser.parse_args()
@@ -33,7 +33,6 @@ if __name__ == '__main__':
     spinner.start()
 
     node.execute_mission_loop()
-
 
     node.destroy_node()
     rclpy.shutdown()

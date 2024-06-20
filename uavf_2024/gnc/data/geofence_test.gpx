@@ -51,16 +51,16 @@
   <trk>
     <name>Mission</name>
     <trkseg>
-      <trkpt lat="38.31660018" lon="-76.55120614">
+      <trkpt lat="38.31633" lon="-76.55578">
         <ele>20</ele>
       </trkpt>
       <trkpt lat="38.31813167" lon="-76.55120605">
         <ele>20</ele>
       </trkpt>
-      <trkpt lat="38.31723052" lon="-76.5466322">
+      <trkpt lat="38.31813136" lon="-76.54606035">
         <ele>20</ele>
       </trkpt>
-      <trkpt lat="38.31452756" lon="-76.54320225">
+      <trkpt lat="38.31497788" lon="-76.54205873">
         <ele>20</ele>
       </trkpt>
     </trkseg>

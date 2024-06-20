@@ -1,23 +1,22 @@
-import std_msgs.msg
+from datetime import datetime
+import geometry_msgs.msg 
+import libuavf_2024.srv
+import logging
 import mavros_msgs.msg
 import mavros_msgs.srv
+import numpy as np
 import rclpy
 import rclpy.node
 from rclpy.qos import *
+from scipy.spatial.transform import Rotation as R
 import sensor_msgs.msg
-import geometry_msgs.msg 
-import libuavf_2024.srv
+from shapely.geometry import Point, Polygon, LineString
+import std_msgs.msg
+import time
 from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
 from uavf_2024.gnc.util import pose_to_xy, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file, validate_points
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
-from scipy.spatial.transform import Rotation as R
-import time
-import logging
-from datetime import datetime
-import numpy as np
 from uavf_2024.gnc.mission_messages import *
-
-TAKEOFF_ALTITUDE = 20.0
 
 class CommanderNode(rclpy.node.Node):
     '''
@@ -25,6 +24,11 @@ class CommanderNode(rclpy.node.Node):
     '''
 
     def __init__(self, args):
+        '''
+        Initialize all clients, subscriptions, and variables needed. Check out 
+        http://wiki.ros.org/mavros and http://wiki.ros.org/mavros_msgs to read 
+        more about the MAVROS messages and services the drone relies on.
+        '''
         super().__init__('uavf_commander_node')
 
         np.set_printoptions(precision=8)
@@ -37,7 +41,6 @@ class CommanderNode(rclpy.node.Node):
             history=HistoryPolicy.KEEP_ALL,
             depth = 1)
 
-
         self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')   
         self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
         self.takeoff_client = self.create_client(mavros_msgs.srv.CommandTOL, 'mavros/cmd/takeoff')
@@ -49,14 +52,12 @@ class CommanderNode(rclpy.node.Node):
             mavros_msgs.msg.StatusText,
             'mavros/statustext/recv',
             self.status_text_cb,
-            qos_profile
-        )
+            qos_profile)
 
         self.msg_pub = self.create_publisher(
             mavros_msgs.msg.StatusText,
             'mavros/statustext/send',
-            qos_profile
-        )
+            qos_profile)
 
         self.cur_state = None
         self.state_sub = self.create_subscription(
@@ -95,45 +96,56 @@ class CommanderNode(rclpy.node.Node):
             mavros_msgs.msg.HomePosition,
             'mavros/home_position/home',
             self.home_position_cb,
-            qos_profile
-        )
+            qos_profile)
 
         self.setpoint_pub = self.create_publisher(
             geometry_msgs.msg.PoseStamped,
             'mavros/setpoint_position/local',
-            qos_profile
-        )
-        
+            qos_profile)
+
+        self.default_altitude_asml = 23.0
+
         self.gpx_track_map = read_gpx_file(args.gpx_file)
         self.mission_wps, self.dropzone_bounds, self.geofence = self.gpx_track_map['Mission'], self.gpx_track_map['Airdrop Boundary'], self.gpx_track_map['Flight Boundary']
         validate_points(self.mission_wps, self.geofence)
         validate_points(self.dropzone_bounds, self.geofence, False)
         self.payloads = read_payload_list(args.payload_list)
-
+        
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
         self.args = args
 
         self.call_imaging_at_wps = False
         self.imaging_futures = []
 
-        self.turn_angle_limit = 170
-
         self.cur_lap = -1
         self.in_loop = False
 
         self.got_home_local_pos = False
         self.home_local_pos = None
+    
         self.last_imaging_time = None
+        
     def log(self, *args, **kwargs):
+        '''
+        Log message. Intended for convenience and debugging purposes.
+        '''
         logging.info(*args, **kwargs)
 
     def got_state_cb(self, state):
+        '''
+        Set self.cur_state. This is the callback function for the subscription to 
+        the mavros/state topic.
+        '''
         self.cur_state = state
         if self.in_loop and state.mode not in ["AUTO.MISSION", "AUTO.LOITER"]:
             self.log_statustext(f"Bad mode; {state.mode}. Crashing")
             quit()
 
     def reached_cb(self, reached):
+        '''
+        Set self.last_wp_seq. This is the callback function for the subscrption to the 
+        mavros/mission/reached topic.
+        '''
         if reached.wp_seq > self.last_wp_seq:
             self.log(f"Reached waypoint {reached.wp_seq}")
             self.last_wp_seq = reached.wp_seq
@@ -144,6 +156,10 @@ class CommanderNode(rclpy.node.Node):
         self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
     
     def got_pose_cb(self, pose):
+        '''
+        Obtain the current local position. This is the callback function for the 
+        subscription to the /mavros/local_position/pose topic.
+        '''
         self.cur_pose = pose
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,]).as_rotvec()
         self.got_pose = True
@@ -157,42 +173,63 @@ class CommanderNode(rclpy.node.Node):
             self.log(f"home local pose is {self.home_local_pose}")
 
     def got_global_pos_cb(self, pos):
-        #Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
+        '''
+        This is the callback function for the subscription to the /mavros/global_position/global topic.
+        '''
+        # Todo this feels messy - there should be a cleaner way to get home-pos through MAVROS.
         self.last_global_pos = pos
         self.got_global_pos = True
 
-
     def home_position_cb(self, pos):
+        '''
+        This is the callback function for the subscription to the mavros/home_position/home topic.
+        '''
         if not self.got_home_pos:
             self.log(f"home pos is {pos}")
         self.home_pos = pos
         self.got_home_pos = True
     
     def status_text_cb(self, statustext):
+        '''
+        This is the callback function for the subscription to the mavros/statustext/recv topic.
+        '''
         self.log(f"recieved statustext: {statustext}")
         bump_lap = BumpLap.from_string(statustext.text)
         if bump_lap is not None:
             self.cur_lap = max(self.cur_lap, bump_lap.lap_index)
 
     def local_to_gps(self, local):
+        '''
+        Convert local coordinates to global coordinates by simply calling 
+        the convert_local_m_to_delta_gps() utility function.
+        '''
         local = np.array(local)
-        return convert_local_m_to_delta_gps((self.home_pos.geo.latitude,self.home_pos.geo.longitude) , local - pose_to_xy(self.home_local_pose))
+        return convert_local_m_to_delta_gps((self.home_pos.geo.latitude, self.home_pos.geo.longitude), local - pose_to_xy(self.home_local_pose))
 
     def gps_to_local(self, gps):
         return convert_delta_gps_to_local_m((self.home_pos.geo.latitude, self.home_pos.geo.longitude), gps) + pose_to_xy(self.home_local_pose)
 
-
     def get_cur_xy(self):
+        '''
+        Get current drone position.
+        '''
         return pose_to_xy(self.cur_pose)
-    
-    def execute_waypoints(self, waypoints, yaws = None, do_set_mode=True):
+
+    def execute_waypoints(self, waypoints, yaws = None, do_set_mode = True, in_dropzone = False):
+        '''
+        Fly to each of the waypoints.
+        '''
+        if self.args.is_maryland and not in_dropzone:
+            waypoints = self.generate_legal_waypoints(waypoints)
+
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 
         self.log("Pushing waypoints")
 
-        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, TAKEOFF_ALTITUDE)] + waypoints
+        waypoints = [(self.last_global_pos.latitude, self.last_global_pos.longitude, self.default_altitude_asml)] + waypoints
         validate_points(waypoints, self.geofence)
+        
         yaws = [float('NaN')] + yaws
         self.log(f"Waypoints: {waypoints} Yaws: {yaws}")
 
@@ -213,7 +250,6 @@ class CommanderNode(rclpy.node.Node):
                     z_alt = wp[2])
 
                 for wp,yaw in zip(waypoints, yaws)]
-
         
         self.clear_mission_client.call(mavros_msgs.srv.WaypointClear.Request())
 
@@ -252,6 +288,10 @@ class CommanderNode(rclpy.node.Node):
             pass
     
     def release_payload(self):
+        '''
+        Send signal to release the payload. The drone has reached the target in the drop 
+        zone that matches the payload.
+        '''
         deg1 = 180
         deg2 = 100
 
@@ -277,11 +317,17 @@ class CommanderNode(rclpy.node.Node):
                     param7 = 0.0
                 )
             )
+            
             time.sleep(.05)
 
     def gather_imaging_detections(self):
+        '''
+        Collect the imaging detections stored in self.imaging_futures. self.imaging_futures
+        contains the results collected from calling the TakePicture service.
+        '''
         detections = []
         self.log("Waiting for imaging detections.")
+        
         for future in self.imaging_futures:
             while not future.done():
                 pass
@@ -289,11 +335,16 @@ class CommanderNode(rclpy.node.Node):
                 detections.append(Target3D.from_ros(ROSDetectionMessage(detection.timestamp, detection.x, detection.y, detection.z,
                                                                         detection.shape_conf, detection.letter_conf, 
                                                                         detection.shape_color_conf, detection.letter_color_conf, detection.id)))
+        
         self.imaging_futures = []
         self.log(f"Successfully retrieved imaging detections: {detections}")
+        
         return detections
     
     def request_load_payload(self, payload):
+        '''
+        Wait for a signal indicating that the drone should takeoff and start next lap.
+        '''
         payload_request = RequestPayload(shape=payload.shape, shape_col=payload.shape_col, letter=payload.letter, letter_col=payload.letter_col)
         request_msg = payload_request.to_string()
         self.log(f"Requesting {request_msg}.")
@@ -338,7 +389,52 @@ class CommanderNode(rclpy.node.Node):
             self.setpoint(float(x),float(y),float(z))
             time.sleep(0.05)
 
+    def get_closest_intermediate_point(self, destination_wp):
+        '''
+        Get an intermediate waypoint to fly to before flying to the destination_wp.
+        By flying to the intermediate waypoint before the destination_wp, the
+        geofence will not be violated.
+        '''
+        altitude_asml = destination_wp[2]
+
+        left_intermediate_waypoint_global = (38.31605966, -76.55154921, altitude_asml)
+        right_intermediate_waypoint_global = (38.31542867, -76.54548898, altitude_asml)
+        geofence_middle_pt = (38.31470980862425, -76.54936361414539, altitude_asml)
+
+        return right_intermediate_waypoint_global if destination_wp[1] > geofence_middle_pt[1] else left_intermediate_waypoint_global
+
+    def generate_legal_waypoints(self, waypoints: list):
+        '''
+        Check if the given waypoints produces a flight path that will violate the geofence
+        and return a legal set of waypoints that ensures the drone will stay within the
+        geofence when it travels to each waypoint.
+        '''
+        legal_waypoints = []
+        geofence_bounds = Polygon(self.geofence)
+        
+        for i in range(len(waypoints) - 1):
+            start_wp = waypoints[i]
+            destination_wp = waypoints[i + 1]
+            
+            legal_waypoints.append(start_wp)
+
+            if start_wp[0] == destination_wp[0] and start_wp[1] == destination_wp[1]:
+                continue
+
+            path = LineString([start_wp, destination_wp])
+            if not path.within(geofence_bounds):
+                legal_waypoints.append(self.get_closest_intermediate_point(destination_wp))
+                
+        legal_waypoints.append(waypoints[-1])
+
+        return legal_waypoints
+
     def execute_mission_loop(self):
+        '''
+        Execute one mission loop which consists of flying one waypoint lap, flying to the drop zone,
+        releasing the payload in the drop zone, and flying back to the home position.
+        '''
+        
         while not self.got_global_pos or not self.got_home_pos:
             pass
 
@@ -380,5 +476,5 @@ class CommanderNode(rclpy.node.Node):
             
             self.log_statustext("Returning home.")
             # Fly back to home position
-            self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, TAKEOFF_ALTITUDE)])
+            self.execute_waypoints([(self.home_pos.geo.latitude, self.home_pos.geo.longitude, self.default_altitude_asml)])
             self.in_loop = False
