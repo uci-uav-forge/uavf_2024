@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 import warnings
 from ultralytics import YOLO
 from ultralytics.engine.results import Results, Boxes
@@ -7,15 +8,13 @@ from ..imaging_types import Tile, DetectionResult, img_coord_t, SHAPES
 import os
 from .. import profiler
 
-CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
-
 
 class YOLODetector:
     """
     Wrapper class for YOLO-based detection.
     """
-    def __init__(self, img_size: int, model_path: str, confusion_matrix: dict[str, list[float]]):
-        self.yolo = YOLO(model_path)
+    def __init__(self, img_size: int, model_path: str | Path, confusion_matrix: dict[str, list[float]]):
+        self.yolo = YOLO(Path(model_path))
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
         self.yolo.predict(list(rand_input), verbose=False)
         self.num_processed = 0

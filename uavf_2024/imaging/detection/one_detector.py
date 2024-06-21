@@ -1,4 +1,9 @@
+import os
+from pathlib import Path
 from .yolo_detector import YOLODetector
+
+
+_CURRENT_FILE_DIR = Path(os.path.realpath(__file__)).parent
 
 
 class OneDetector(YOLODetector):
@@ -20,6 +25,6 @@ class OneDetector(YOLODetector):
     ):
         super().__init__(
             img_size,
-            model_path,
+            _CURRENT_FILE_DIR / model_path,
             confusion_matrix if confusion_matrix is not None else OneDetector.CONFUSION_MATRIX
         )
