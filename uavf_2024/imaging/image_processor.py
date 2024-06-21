@@ -165,6 +165,6 @@ class ImageProcessor:
         # backwards-compatible for now.
         full_bbox_results = self._create_full_bbox_results(
             detection_results,
-            itertools.repeat(ProbabilisticTargetDescriptor())
+            itertools.repeat(ProbabilisticTargetDescriptor.make_dummy())
         )
         return full_bbox_results

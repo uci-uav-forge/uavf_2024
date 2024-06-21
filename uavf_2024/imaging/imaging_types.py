@@ -191,6 +191,15 @@ class ProbabilisticTargetDescriptor:
             COLORS[np.argmax(self.letter_col_probs)],
             LEGACY_LETTERS[np.argmax(self.letter_probs)]
         )
+        
+    @staticmethod
+    def make_dummy():
+        return ProbabilisticTargetDescriptor(
+            np.ones(len(SHAPES)) / len(SHAPES),
+            np.ones(len(LEGACY_LETTERS)) / len(LEGACY_LETTERS),
+            np.ones(len(COLORS)) / len(COLORS),
+            np.ones(len(COLORS)) / len(COLORS)
+        )
 
 
 class CertainTargetDescriptor:
