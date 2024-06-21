@@ -12,9 +12,17 @@ class OneDetector(YOLODetector):
     """
 
     # Placeholder
-    # TODO: Update with actual confusion matrix
+    # TODO: Update with actual confusion matrix. These are copied values.
     CONFUSION_MATRIX: dict[str, list[float]] = {
-        'target': [0.9, 0.1]
+        'circle': [0.83, 0, 0, 0, 0, .01, 0, 0, 0],
+        'semicircle': [.01, .67, .28, .02, .05, .03, 0, 0, .01],
+        'quartercircle': [0, .18, .43, 0, .41, .17, 0, 0, 0],
+        'triangle': [0, .03, 0, .91, .01, 0, 0, 0, 0],
+        'rectangle': [.01, 0, .19, 0, .46, .08, 0, 0, 0],
+        'pentagon': [.10, .03, .08, 0, .01, .68, 0, 0, 0],
+        'star': [0, .01, 0, .04, 0, 0, .97, .02, 0],
+        'cross': [0, .04, 0, .01, 0, 0, 0, .96, .03],
+        'person': [0, .01, 0, .01, .01, 0, 0, 0, .91]
     }
 
     def __init__(
