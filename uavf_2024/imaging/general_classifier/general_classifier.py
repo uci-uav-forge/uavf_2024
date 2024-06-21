@@ -38,6 +38,7 @@ class GeneralClassifier:
         self.model = model_factory([len(SHAPES), len(COLORS), len(CHARACTERS), len(COLORS)])
         self.model.load_state_dict(torch.load(self.model_path))
         self.model.to(device=self.device)
+        self.model.eval()
 
     @staticmethod
     def _format_image(image: Image) -> Image:
@@ -58,17 +59,19 @@ class GeneralClassifier:
         square_crops_chw = map(__class__._format_image, images_batch)
         gpu_batch = self.create_gpu_tensor_batch(square_crops_chw)
         
-        # List of batches, one for each of the heads
-        # I.e., the shape is (category, batch_size, num_classes)
-        raw: list[torch.Tensor] = self.model(gpu_batch)
-        shape_dists, shape_color_dists, character_dists, character_color_dists = raw
+        with torch.no_grad():
+            # List of batches, one for each of the heads
+            # I.e., the shape is (category, batch_size, num_classes)
+            raw: list[torch.Tensor] = self.model(gpu_batch)
+            shape_dists, shape_color_dists, character_dists, character_color_dists = raw
 
-        return [
-            ProbabilisticTargetDescriptor(
-                *map(lambda t: t.cpu().numpy(), tensors)
-            ) for tensors
-            in zip(shape_dists, shape_color_dists, character_dists, character_color_dists)
-        ]
+            
+            return [
+                ProbabilisticTargetDescriptor(
+                    *map(lambda t: t.cpu().numpy(), tensors)
+                ) for tensors
+                in zip(shape_dists, shape_color_dists, character_dists, character_color_dists)
+            ]
     
     def create_gpu_tensor_batch(self, images_batch: Iterable[Image]) -> torch.Tensor:
         return torch.stack(
