@@ -131,9 +131,6 @@ class ImageProcessor:
         Zips/combines the detection results and classifier outputs into FullBBoxPredictions
         """
         for detection, classification in zip(detection_results, classifier_outputs):
-            detection: DetectionResult
-            classification: ProbabilisticTargetDescriptor
-
             yield FullBBoxPrediction(
                 detection.x,
                 detection.y,
