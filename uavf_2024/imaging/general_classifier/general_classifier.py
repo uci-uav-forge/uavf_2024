@@ -4,9 +4,8 @@ from typing import Callable, Iterable, Sequence
 
 import numpy as np
 import torch
-import torch.nn as nn
 
-from ..imaging_types import SHAPES, COLORS, CHARACTERS, Image, ProbabilisticTargetDescriptor
+from uavf_2024.imaging.imaging_types import SHAPES, COLORS, CHARACTERS, Image, ProbabilisticTargetDescriptor, CHW
 from . import ResNet, resnet18
 
 
@@ -40,11 +39,24 @@ class GeneralClassifier:
         self.model.load_state_dict(torch.load(self.model_path))
         self.model.to(device=self.device)
 
+    @staticmethod
+    def _format_image(image: Image) -> Image:
+        """
+        Formats the image to be passed to the model.
+        
+        Pad and resize the image to 224x224, change the dimension order to CHW, and normalize to [0, 1] float32.
+        """
+        arr = image.make_square(224).get_array().astype(np.float32) / 255.0
+        square = Image(arr, image.dim_order)
+        square.change_dim_order(CHW)
+        return square
+    
     def predict(self, images_batch: Iterable[Image]) -> list[ProbabilisticTargetDescriptor]:
         """
         Passes the input through the model and transforms the output into a ProbabilisticTargetDescriptor.
         """
-        gpu_batch = self.create_gpu_tensor_batch(images_batch)
+        square_crops_chw = map(__class__._format_image, images_batch)
+        gpu_batch = self.create_gpu_tensor_batch(square_crops_chw)
         
         # List of batches, one for each of the heads
         # I.e., the shape is (category, batch_size, num_classes)
@@ -53,12 +65,12 @@ class GeneralClassifier:
 
         return [
             ProbabilisticTargetDescriptor(
-                *map(np.array, tensors)
+                *map(lambda t: t.cpu().numpy(), tensors)
             ) for tensors
             in zip(shape_dists, shape_color_dists, character_dists, character_color_dists)
         ]
     
-    def create_gpu_tensor_batch(self, images_batch: Iterable[Image[np.ndarray]]) -> torch.Tensor:
+    def create_gpu_tensor_batch(self, images_batch: Iterable[Image]) -> torch.Tensor:
         return torch.stack(
             [torch.tensor(img.get_array()) for img in images_batch]
         ).to(device=self.device)

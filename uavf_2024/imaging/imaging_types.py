@@ -529,7 +529,33 @@ class Image(Generic[_UnderlyingImageT]):
         
         else:
             raise TypeError("array_type must be np.ndarray or torch.Tensor")
+    
+    def make_square(self, target_size: int) -> 'Image[np.ndarray]':
+        height, width = self.height, self.width
         
+        if self._dim_order == HWC:
+            arr = np.array(self._array)
+        elif self._dim_order == CHW:
+            # Lightweight operations because we're not copying the array
+            new_image = Image(self._array, CHW)
+            new_image.change_dim_order(HWC)
+            arr = np.array(new_image.get_array())
+        
+        if height > width:
+            left_pad = (height - width) // 2
+            right_pad = height - width - left_pad
+            arr = cv2.copyMakeBorder(arr, 0, 0, left_pad, right_pad, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        elif width > height:
+            top_pad = (width - height) // 2
+            bottom_pad = width - height - top_pad
+            arr = cv2.copyMakeBorder(arr, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        
+        arr = cv2.resize(arr, (target_size, target_size))
+        
+        res = Image(arr, self.dim_order)
+        res.change_dim_order(self.dim_order)
+        
+        return res
     
     def change_dim_order(self, target_dim_order: ImageDimensionsOrder) -> None:
         """
