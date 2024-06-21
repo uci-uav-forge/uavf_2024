@@ -52,7 +52,7 @@ class GeneralClassifier:
         square.change_dim_order(CHW)
         return square
     
-    def predict(self, images_batch: Iterable[Image]) -> list[ProbabilisticTargetDescriptor]:
+    def predict(self, images_batch: Iterable[Image]) -> Iterable[ProbabilisticTargetDescriptor]:
         """
         Passes the input through the model and transforms the output into a ProbabilisticTargetDescriptor.
         """
@@ -63,15 +63,14 @@ class GeneralClassifier:
             # List of batches, one for each of the heads
             # I.e., the shape is (category, batch_size, num_classes)
             raw: list[torch.Tensor] = self.model(gpu_batch)
-            shape_dists, shape_color_dists, character_dists, character_color_dists = raw
-
             
-            return [
-                ProbabilisticTargetDescriptor(
-                    *map(lambda t: t.cpu().numpy(), tensors)
-                ) for tensors
-                in zip(shape_dists, shape_color_dists, character_dists, character_color_dists)
-            ]
+            for shape_dist, shape_color_dist, character_dist, character_color_dist in zip(*raw):
+                yield ProbabilisticTargetDescriptor(
+                    shape_dist.cpu().numpy(),
+                    character_dist.cpu().numpy(),
+                    shape_color_dist.cpu().numpy(),
+                    character_color_dist.cpu().numpy()
+                )
     
     def create_gpu_tensor_batch(self, images_batch: Iterable[Image]) -> torch.Tensor:
         return torch.stack(
