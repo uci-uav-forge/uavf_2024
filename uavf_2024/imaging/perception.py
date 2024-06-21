@@ -15,7 +15,6 @@ import numpy as np
 import cv2
 
 from . import ImageProcessor, Camera, Localizer, PoseProvider, PoseDatum, Target3D, Image
-from .mock_camera import Camera as MockCamera
 
 
 LOGS_PATH = Path(f'logs/{time.strftime("%m-%d %Hh%Mm")}')
@@ -56,7 +55,7 @@ class Perception:
         
         
         # Set up camera
-        self.camera = MockCamera(self.logs_path / 'camera')
+        self.camera = Camera(self.logs_path / 'camera')
         self.camera.setAbsoluteZoom(zoom_level)
         self.camera_state = False
         
