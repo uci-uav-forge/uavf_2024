@@ -38,6 +38,16 @@ class Color(Enum):
     @staticmethod
     def is_char_color(name: str) -> bool:
         return name.upper().startswith("CHAR:")
+    
+    @staticmethod
+    def from_index(index: int) -> "Color":
+        if index < 0 or index >= len(COLORS):
+            raise ValueError(f"Index {index} out of bounds")
+        
+        return __class__(index)
+    
+    def __str__(self):
+        return self.name.lower()
 
 
 COLOR_INDICES = {
@@ -62,6 +72,16 @@ class Shape(Enum):
         if index is None:
             return None
         return __class__(index)
+    
+    @staticmethod
+    def from_index(index: int) -> "Shape":
+        if index < 0 or index >= len(SHAPES):
+            raise ValueError(f"Index {index} out of bounds")
+        
+        return __class__(index)
+    
+    def __str__(self):
+        return self.name.lower()
 
 
 SHAPES = [
@@ -186,10 +206,10 @@ class ProbabilisticTargetDescriptor:
     
     def collapse_to_certain(self) -> CertainTargetDescriptor:
         return CertainTargetDescriptor(
-            COLORS[np.argmax(self.shape_col_probs)],
-            SHAPES[np.argmax(self.shape_probs)],
-            COLORS[np.argmax(self.letter_col_probs)],
-            LEGACY_LETTERS[np.argmax(self.letter_probs)]
+            Color.from_index(int(np.argmax(self.shape_col_probs))).__str__(),
+            Shape.from_index(int(np.argmax(self.shape_probs))).__str__(),
+            Color.from_index(int(np.argmax(self.letter_col_probs))).__str__(),
+            Character.from_index(int(np.argmax(self.letter_probs))).__str__()
         )
         
     @staticmethod
