@@ -11,7 +11,7 @@ import cv2 as cv
 from .general_classifier import GeneralClassifier
 from .utils import batched
 from .imaging_types import FullBBoxPrediction, Image, DetectionResult, ProbabilisticTargetDescriptor, Tile
-from .detection import OneDetector
+from .detection import OneDetector, ShapeDetector
 
 
 def non_max_suppress(shape_results: list[DetectionResult], thresh_iou: float) -> list[DetectionResult]:
@@ -70,7 +70,7 @@ class ImageProcessor:
         self.detector_batch_size = detector_batch_size
         self.classifier_batch_size = classifier_batch_size
 
-        self.yolo_detector = OneDetector()
+        self.yolo_detector = ShapeDetector()
         self.general_classifier = GeneralClassifier()
 
         self.num_processed = 0
