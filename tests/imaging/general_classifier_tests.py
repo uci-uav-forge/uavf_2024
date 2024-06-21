@@ -15,8 +15,10 @@ class ResNetTests(TestCase):
         
         output: list[torch.Tensor] = model(data)
         
+        self.assertEqual(len(output), len(ResNetTests.NUM_CLASSES))
+        
         for i, tensor in enumerate(output):
-            self.assertEqual(tensor.shape, (ResNetTests.INPUT_SHAPE[0], 1, 1, ResNetTests.NUM_CLASSES[i]))
+            self.assertEqual(tensor.shape, (ResNetTests.INPUT_SHAPE[0], ResNetTests.NUM_CLASSES[i]))
     
     def test_resnet18(self):
         model = resnet18(ResNetTests.NUM_CLASSES)
