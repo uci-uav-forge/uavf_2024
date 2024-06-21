@@ -176,6 +176,13 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         
     def log(self, message, level = logging.INFO):
         self.logger.log(level, message)
+        
+    def set_log_dir(self, new_dir: str | os.PathLike | Path):
+        self._logs_dir = Path(new_dir)
+        if not self._logs_dir.exists():
+            self._logs_dir.mkdir(parents=True)
+        elif not self._logs_dir.is_dir():
+            raise FileExistsError(f"{self._logs_dir} exists but is not a directory")
 
     @abstractmethod
     def _subscribe_to_topic(self, action: Callable[[MessageT], Any]) -> None:

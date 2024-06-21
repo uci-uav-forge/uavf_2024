@@ -1,21 +1,26 @@
-import std_msgs.msg
-import mavros_msgs.msg
-import mavros_msgs.srv
+from concurrent.futures import Future, as_completed
+from datetime import datetime
+import time
+import logging
+
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
 import rclpy
 import rclpy.node
 from rclpy.qos import *
+
+import mavros_msgs.msg
+import mavros_msgs.srv
 import sensor_msgs.msg
 import geometry_msgs.msg 
 import libuavf_2024.srv
-from uavf_2024.imaging.imaging_types import ROSDetectionMessage, Target3D
+
 from uavf_2024.gnc.util import pose_to_xy, convert_delta_gps_to_local_m, convert_local_m_to_delta_gps, read_payload_list, read_gpx_file, validate_points
 from uavf_2024.gnc.dropzone_planner import DropzonePlanner
-from scipy.spatial.transform import Rotation as R
-import time
-import logging
-from datetime import datetime
-import numpy as np
 from uavf_2024.gnc.mission_messages import *
+
+from uavf_2024.imaging import Perception, PoseProvider, Target3D
 
 TAKEOFF_ALTITUDE = 20.0
 
@@ -85,10 +90,6 @@ class CommanderNode(rclpy.node.Node):
             'mavros/mission/reached',
             self.reached_cb,
             qos_profile)
-        
-        self.imaging_client = self.create_client(
-            libuavf_2024.srv.TakePicture,
-            '/imaging_service')
 
         self.got_home_pos = False
         self.home_position_sub = self.create_subscription(
@@ -113,8 +114,9 @@ class CommanderNode(rclpy.node.Node):
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
         self.args = args
 
+        self.perception = Perception(PoseProvider(self))
+        self.perception_futures: list[Future[list[Target3D]]] = []
         self.call_imaging_at_wps = False
-        self.imaging_futures = []
 
         self.turn_angle_limit = 170
 
@@ -141,7 +143,7 @@ class CommanderNode(rclpy.node.Node):
                 self.do_imaging_call()
 
     def do_imaging_call(self):
-        self.imaging_futures.append(self.imaging_client.call_async(libuavf_2024.srv.TakePicture.Request()))
+        self.perception_futures.append(self.perception.get_image_down_async())
     
     def got_pose_cb(self, pose):
         self.cur_pose = pose
@@ -279,18 +281,22 @@ class CommanderNode(rclpy.node.Node):
             )
             time.sleep(.05)
 
-    def gather_imaging_detections(self):
-        detections = []
+    def gather_imaging_detections(self, timeout: float | None = None):
+        """
+        Waits for all imaging detections to be completed and returns them.
+        """
+        detections: list[Target3D] = []
         self.log("Waiting for imaging detections.")
-        for future in self.imaging_futures:
-            while not future.done():
-                pass
-            for detection in future.result().detections:
-                detections.append(Target3D.from_ros(ROSDetectionMessage(detection.timestamp, detection.x, detection.y, detection.z,
-                                                                        detection.shape_conf, detection.letter_conf, 
-                                                                        detection.shape_color_conf, detection.letter_color_conf, detection.id)))
-        self.imaging_futures = []
-        self.log(f"Successfully retrieved imaging detections: {detections}")
+        try:
+            for future in as_completed(self.perception_futures, timeout=timeout):
+                detections.extend(future.result())
+                
+            self.log(f"Successfully retrieved imaging detections: {detections}")
+        except TimeoutError:
+            self.log("Timed out waiting for imaging detections.")
+
+        self.perception_futures = []
+        
         return detections
     
     def request_load_payload(self, payload):
