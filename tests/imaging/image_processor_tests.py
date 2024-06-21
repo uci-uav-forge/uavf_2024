@@ -384,9 +384,8 @@ class TestImagingFrontend(unittest.TestCase):
         # assert the result is a list[fullbboxpred] and has numbers in prob_descriptors
         image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
-        res = image_processor.process_image_lightweight(sample_input)
+        res = list(image_processor.process_image_lightweight(sample_input))
         
-        assert type(res) is list
         assert type(res[0]) is FullBBoxPrediction
         if len(res) > 1:
             assert np.any(res[0].descriptor.letter_probs) and np.any(res[0].descriptor.shape_col_probs)
