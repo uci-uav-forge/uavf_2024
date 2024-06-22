@@ -23,7 +23,8 @@ class MockSIYISTREAM:
     
 class MockSIYISDK:
     def __init__(self, server_ip="192.168.144.25", port=37260, debug=False):
-        pass
+        self.zoom = 1
+        self.attitude = (0,0,0)
 
     def resetVars(self):
         return True
@@ -65,7 +66,7 @@ class MockSIYISDK:
         return True
 
     def requestAbsolutePosition(self, yaw, pitch):
-        return True
+        self.attitude = (yaw, pitch, 0)
 
     def requestZoomIn(self):
         return True
@@ -105,8 +106,9 @@ class MockSIYISDK:
 
     def requestFollowMode(self):
         return True
+
     def getAttitude(self):
-        return (0,0,0)
+        return self.attitude
 
     def getAttitudeSpeed(self):
         return (0,0,0)
@@ -130,7 +132,8 @@ class MockSIYISDK:
         return 0
 
     def getZoomLevel(self):
-        return 1
+        return self.zoom
 
     def setAbsoluteZoom(self, level : float) -> bool:
+        self.zoom = level
         return True
