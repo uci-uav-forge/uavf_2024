@@ -3,26 +3,19 @@
 import rclpy
 from rclpy.node import Node
 from uavf_2024.imaging import Camera
-from time import sleep
+from time import sleep, strftime
 
 class CameraTestNode(Node):
     def __init__(self) -> None:
         super().__init__('imaging_node')
-        self.camera = Camera()
+        self.camera = Camera(log_dir = f"/home/forge/ws/logs/{strftime('%m-%d %Hh%Mm')}/camera")
+        self.camera.start_recording()
         self.camera.setAbsoluteZoom(1)
-        self.camera.cam.requestAbsolutePosition(0, 0)
-        sleep(2)
+        self.camera.request_center()
 
     def loop(self):
-        while True:
-            print(self.camera.cam.getAttitude())
-            sleep(1/10)
-            # if self.camera.cam.requestGimbalAttitude():
-            #     attitude = self.camera.cam.getAttitude()
-            #     self.get_logger().info(str(attitude))
-            # else:
-            #     self.get_logger().info(":(")
-            # sleep(1)
+        for _ in range(1000):
+            sleep(0.1)
                 
 
 def main(args=None) -> None:

@@ -4,7 +4,6 @@ import threading
 import time
 from siyi_sdk import MockSIYISTREAM as SIYISTREAM, MockSIYISDK as SIYISDK
 from uavf_2024.imaging.imaging_types import Image, HWC
-import matplotlib.image 
 from scipy.spatial.transform import Rotation
 import numpy as np
 import json
@@ -184,6 +183,7 @@ class Camera:
             
             if self.logging:
                 self.threaded_logger.log_async(image, metadata, img_stamp)
+            time.sleep(0.1)
                 
     def start_recording(self):
         if self.recording:
