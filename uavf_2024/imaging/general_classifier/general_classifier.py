@@ -18,7 +18,7 @@ class GeneralClassifier:
     """
     def __init__(
         self, 
-        model_relative_path: str = "best_69.pt", 
+        model_relative_path: str = "general_classifier_best.pt", 
         model_factory: Callable[[Sequence[int]], ResNet] = resnet18, 
         device=torch.device("cuda:0")
     ):
