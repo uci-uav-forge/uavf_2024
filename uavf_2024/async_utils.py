@@ -139,7 +139,8 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         node_context: Node,
         logs_dir: str | os.PathLike | Path | None = None, 
         buffer_size = 64,
-        logger_name: str | None = None
+        logger_name: str | None = None,
+        callback_group = None
     ):
         """
         Parameters:
@@ -149,6 +150,7 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
                 for offsetted access.
         """
         self.node = node_context
+        self.callback_group = callback_group
         
         # Initialize logger
         if logger_name:

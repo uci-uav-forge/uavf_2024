@@ -40,7 +40,8 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
             PoseStamped,
             '/mavros/local_position/pose',
             action,
-            QOS_PROFILE
+            QOS_PROFILE,
+            callback_group=self.callback_group,
         )
         
     def log_to_file(self, item: PoseDatum):

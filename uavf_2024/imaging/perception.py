@@ -4,6 +4,7 @@ Perception class to supercede ImagingNode by using Python-native async functiona
 
 
 from concurrent.futures import Future, ProcessPoolExecutor, ThreadPoolExecutor
+from collections import deque
 import json
 import logging
 import os
@@ -64,10 +65,12 @@ class Perception:
         # There can only be one process because it uses the GPU
         self.processor_pool = ThreadPoolExecutor(1)
         
-        self.logging_pool = ThreadPoolExecutor(2)
+        self.logging_pool = ThreadPoolExecutor(4)
         
         # This has to be injected because it needs to subscribe to the mavros topic
         self.pose_provider = pose_provider
+        self.jobs = deque(maxlen=64)
+        self.completed = {}
         self.pose_provider.subscribe(self.cam_auto_point)
     
     def log(self, *args, **kwargs):
@@ -162,12 +165,20 @@ class Perception:
             time.sleep(0.1)
         self.log("Camera pointed down")
 
-    def get_image_down_async(self) -> Future[list[Target3D]]:
+    async def get_image_down_async(self) -> Future[list[Target3D]]:
         """
         Non-blocking implementation of the infrence pipeline,
         calling get_image_down in a separate process.
         """
-        return self.processor_pool.submit(self.get_image_down)
+        return []
+        job_timestamp = self.get_image_down()
+
+        while job_timestamp not in self.completed:
+            time.sleep(0.1)
+
+        result = self.completed[job_timestamp]
+        del self.completed[job_timestamp]
+        return result
     
     def _log_image_down(
         self, 
@@ -204,7 +215,7 @@ class Perception:
         
         json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
 
-    def get_image_down(self) -> list[Target3D]:
+    def get_image_down(self) -> float:
         """
         Blocking implementation of the infrence pipeline.
         
@@ -215,6 +226,7 @@ class Perception:
         self.log("Received Down Image Request")
         self.camera.request_autofocus()
         self.pose_provider.wait_for_data()
+        self.log("Autofocused and found first pose")
 
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
             self.point_camera_down()
@@ -223,12 +235,20 @@ class Perception:
         
         # Take picture and grab relevant data
         img = self.camera.get_latest_image()
-        if img is None:
-            self.log("Could not get image from Camera.")
-            return []
         timestamp = time.time()
-        self.log(f"Got image from Camera at time {timestamp}")
+    
+        self.jobs.append([img, timestamp])
+        self.log(f"Queued up job {timestamp}")
+        return timestamp
+
+    def run_work(self) -> None:
+        self.log(f"{len(self.jobs)} jobs to run :(")
+        if len(self.jobs) == 0:
+            return
         
+        img, timestamp = self.jobs.pop()
+        self.log(f"Running job {timestamp}")
+    
         localizer = self.make_localizer()
         if localizer is None:
             self.log("Could not get Localizer")
@@ -263,4 +283,4 @@ class Perception:
             preds_3d, img, timestamp, pose, angles, cur_position_np, cur_rot_quat
         )
 
-        return preds_3d
+        self.completed[timestamp] = preds_3d
