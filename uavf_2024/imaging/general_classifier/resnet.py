@@ -246,6 +246,9 @@ class ResNet(nn.Module):
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(
+                nn.Dropout2d(0.1)
+            )
+            layers.append(
                 block(
                     self.inplanes,
                     planes,
