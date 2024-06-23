@@ -149,23 +149,6 @@ class Camera:
         
     def set_log_dir(self, log_dir: str | Path):
         self.log_dir = Path(log_dir)
-    
-    def _logging_worker(self):
-        while self.logging and self.log_dir:
-            log_data = self.log_buffer.pop_data()
-            if log_data is None:
-                if not self.recording: # finish logging if recording is done
-                    print("Finished buffer")
-                    self.logging = False
-                    break
-                time.sleep(0.1)
-                continue
-            image, metadata, timestamp = log_data.get_data()
-            image.save(self.log_dir / f"{timestamp}.jpg")
-            json.dump(
-                metadata, 
-                open(self.log_dir / f"{timestamp}.json", 'w')
-            )
 
     def _recording_worker(self):
         """
@@ -221,9 +204,7 @@ class Camera:
             self.recording = False
             self.recording_thread.join()
             self.recording_thread = None
-        if self.logging_thread:
-            self.logging_thread.join()
-            self.logging_thread = None
+        del self.threaded_logger
         
     def get_latest_image(self) -> Image[np.ndarray] | None:
         """

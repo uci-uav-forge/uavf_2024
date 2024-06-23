@@ -7,7 +7,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from geometry_msgs.msg import Point, PoseStamped
 from scipy.spatial.transform import Rotation, Slerp
 
-from uavf_2024.async_utils import RosLoggingProvider
+from uavf_2024.logging_utils.async_utils import RosLoggingProvider
 
 
 class PoseDatum(NamedTuple):

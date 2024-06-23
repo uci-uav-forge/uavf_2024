@@ -242,6 +242,23 @@ class FullBBoxPrediction:
     '''
     img_id: int = None
     det_id: int = None
+    @staticmethod
+    def from_ros(ros_obj):
+        img_id, det_id = map(int, ros_obj.id.split('/'))
+        return FullBBoxPrediction(
+            ros_obj.x,
+            ros_obj.y,
+            ros_obj.w,
+            ros_obj.h,
+            ProbabilisticTargetDescriptor(
+                ros_obj.shape_conf,
+                ros_obj.letter_conf,
+                ros_obj.shape_color_conf,
+                ros_obj.letter_color_conf,
+            ),
+            img_id,
+            det_id
+        )
 
 @dataclass
 class FullBBoxGroundTruth:

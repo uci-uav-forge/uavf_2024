@@ -66,8 +66,8 @@ class ShapeDetector:
                 confidences[new_cls] = prob
                 full_results.append(
                     DetectionResult(
-                        x=img_coord_t(x.item())+tiles[img_index].x,
-                        y=img_coord_t(y.item())+tiles[img_index].y,
+                        x=img_coord_t(img_coord_t(x.item())+tiles[img_index].x),
+                        y=img_coord_t(img_coord_t(y.item())+tiles[img_index].y),
                         width=img_coord_t(w.item()),
                         height=img_coord_t(h.item()),
                         confidences = np.array(self.cnf_matrix[SHAPES[new_cls]]),

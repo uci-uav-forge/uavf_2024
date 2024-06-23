@@ -20,8 +20,10 @@ from scipy.spatial.transform import Rotation, Slerp
 
 from libuavf_2024.msg import TargetDetection
 from libuavf_2024.srv import PointCam, ResetLogDir, TakePicture, ZoomCam, GetPose, GetFirstPose
+from libuavf_2024.srv import ProcessImage
 from uavf_2024.logging_utils.async_utils import AsyncBuffer, OnceCallable, RosLoggingProvider, Subscriptions, PoseDatum
 from uavf_2024.imaging import Camera, ImageProcessor, Localizer
+from uavf_2024.imaging.imaging_types import FullBBoxPrediction
 
 
 def log_exceptions(func):
@@ -46,13 +48,13 @@ class ImagingNode(Node):
         super().__init__('imaging_node') # type: ignore
         cb_group = ReentrantCallbackGroup()
         self.logs_path = Path(__class__.LOGS_BASE_DIR / f'{time.strftime("%m-%d %Hh%Mm")}')
+        self.num_processed = 0
 
         self.camera = Camera(self.logs_path / "camera")
         self.zoom_level = 3
         self.camera.setAbsoluteZoom(self.zoom_level)
         
         self.log(f"Logging to {self.logs_path}")
-        self.image_processor = ImageProcessor(self.logs_path / "image_processor")
 
         # Set up ROS connections
         self.log(f"Setting up imaging node ROS connections")
@@ -69,6 +71,8 @@ class ImagingNode(Node):
         self.reset_log_dir_service = self.create_service(ResetLogDir, 'reset_log_dir', self.reset_log_dir_cb, callback_group=cb_group)
 
         self.get_pose_client = self.create_client(GetPose, 'get_pose_service', callback_group=cb_group)
+        self.process_image_client = self.create_client(ProcessImage, 'process_image_service', callback_group=cb_group)
+
         self.get_first_pose_client = self.create_client(GetFirstPose, 'get_first_pose_service', callback_group=cb_group)
 
         # while not self.get_first_pose_client.wait_for_service(5):
@@ -104,10 +108,9 @@ class ImagingNode(Node):
 
     @log_exceptions
     def reset_log_dir_cb(self, request, response):
-        new_logs_dir = Path('logs/{strftime("%m-%d %H:%M")}')
+        new_logs_dir = Path(f'logs/{time.strftime("%m-%d %H:%M")}')
         self.log(f"Starting new log directory at {new_logs_dir}")
         os.makedirs(new_logs_dir, exist_ok = True)
-        self.image_processor.reset_log_directory(new_logs_dir / 'image_processor')
         self.camera.set_log_dir(new_logs_dir / 'camera')
         response.success = True
         return response
@@ -137,7 +140,7 @@ class ImagingNode(Node):
             (1920, 1080),
             (np.array([1,0,0]), np.array([0,-1, 0])),
             2,
-            self.first_pose.position.z -0.15 if self.first_pose is not None else 0 # cube is about 15cm off ground
+            # self.first_pose.position.z -0.15 if self.first_pose is not None else 0 # cube is about 15cm off ground
         )
         return localizer
 
@@ -154,7 +157,7 @@ class ImagingNode(Node):
         '''
             autofocus, then wait till cam points down, take pic,
         
-            We want to take photo when the attitude is down only. 
+            We want to take photo when the imaging.attitude is down only. 
         '''
 
         self.log("Received Down Image Request")
@@ -192,7 +195,10 @@ class ImagingNode(Node):
             response.detections = []
             return response
     
-        detections = self.image_processor.process_image(img)
+        self.log("Going for image processor call")
+        ros2_img = img.get_array().reshape(-1)
+        self.log("Right before calling")
+        detections = [FullBBoxPrediction.from_ros(d) for d in self.process_image_client.call(ProcessImage.Request(image=ros2_img)).detections]
         self.log(f"Finished image processing. Got {len(detections)} detections")
 
         # Get avg camera pose for the image
@@ -221,7 +227,9 @@ class ImagingNode(Node):
         preds_3d = [localizer.prediction_to_coords(d, cam_pose) for d in detections]
 
         # Log data
-        logs_folder = self.image_processor.get_last_logs_path()
+        logs_folder = self.logs_path / 'image_processor' / f'img_{self.num_processed}'
+        logs_folder.mkdir(exist_ok=True, parents=True)
+        self.num_processed+=1
         self.log(f"This frame going to {logs_folder}")
         self.log(f"Zoom level: {self.zoom_level}")
         # os.makedirs(logs_folder, exist_ok=True)

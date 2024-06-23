@@ -19,7 +19,7 @@ class PerceptionMinimalNode(Node):
         super().__init__('perception_test_node')
         logs_dir = Path(f"/home/forge/ws/logs/{strftime('%m-%d %Hh%Mm')}")
         sub_cb_group = ReentrantCallbackGroup()
-        self.perception = Perception(PoseProvider(self, logs_dir / 'pose', callback_group=sub_cb_group), logs_path = logs_dir, logger = self.get_logger())
+        self.perception = Perception(logs_path = logs_dir, logger = self.get_logger())
         timer_cb_group = MutuallyExclusiveCallbackGroup()
         second_timer_cb_group = MutuallyExclusiveCallbackGroup()
 

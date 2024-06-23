@@ -15,7 +15,9 @@ from typing import Literal, Sequence
 import numpy as np
 import cv2
 
+from scipy.spatial.transform import Rotation as R
 from . import ImageProcessor, Camera, Localizer, PoseProvider, PoseDatum, Target3D, Image
+from geometry_msgs.msg import Point
 
 
 LOGS_PATH = Path(f'logs/{time.strftime("%m-%d %Hh%Mm")}')
@@ -37,7 +39,7 @@ class Perception:
         """
         return Perception._INSTANCE
     
-    def __init__(self, pose_provider: PoseProvider, zoom_level: int = 3, logs_path: Path = LOGS_PATH, logger = None):
+    def __init__(self, zoom_level: int = 3, logs_path: Path = LOGS_PATH, logger = None):
         """
         A PoseProvder must be injected because it depends on a MAVROS subscription.
         This might not be neccessary in the future if we can get that data from MAVSDK.
@@ -68,10 +70,8 @@ class Perception:
         self.logging_pool = ThreadPoolExecutor(4)
         
         # This has to be injected because it needs to subscribe to the mavros topic
-        self.pose_provider = pose_provider
         self.jobs = deque(maxlen=64)
         self.completed = {}
-        self.pose_provider.subscribe(self.cam_auto_point)
     
     def log(self, *args, **kwargs):
         self.logger.info(*args, **kwargs)
@@ -79,12 +79,8 @@ class Perception:
     def cam_auto_point(self, current_pose: PoseDatum):
         current_z = current_pose.position.z
 
-        first_pose = self.pose_provider.get_first_datum()
-        if first_pose is None:
-            self.log("First datum not found trying to auto-point camera.")
-            return
         
-        alt_from_gnd = current_z - first_pose.position.z
+        alt_from_gnd = current_z
         
         # If pointed down and close to the ground, point forward
         if(self.camera_state and alt_from_gnd < 3): #3 meters ~ 30 feet
@@ -134,22 +130,16 @@ class Perception:
         
         self.image_processor.reset_log_directory(new_logs_dir / 'image_processor')
         self.camera.set_log_dir(new_logs_dir / 'camera')
-        self.pose_provider.set_log_dir(new_logs_dir / 'pose')
 
-    def make_localizer(self):
+    def make_localizer(self, ground_position: float = 0.15):
         focal_len = self.camera.getFocalLength()
-        
-        first_pose = self.pose_provider.get_first_datum()
-        if first_pose is None:
-            self.log("First datum does not exist trying to make Localizer.")
-            return
         
         localizer = Localizer.from_focal_length(
             focal_len, 
             (1920, 1080),
             (np.array([1,0,0]), np.array([0,-1, 0])),
             2,
-            first_pose.position.z - 0.15 # cube is about 15cm off ground
+            ground_position - 0.15 # cube is about 15cm off ground
         )
         return localizer
 
@@ -170,7 +160,6 @@ class Perception:
         Non-blocking implementation of the infrence pipeline,
         calling get_image_down in a separate process.
         """
-        return []
         job_timestamp = self.get_image_down()
 
         while job_timestamp not in self.completed:
@@ -225,7 +214,6 @@ class Perception:
         """
         self.log("Received Down Image Request")
         self.camera.request_autofocus()
-        self.pose_provider.wait_for_data()
         self.log("Autofocused and found first pose")
 
         if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
@@ -252,7 +240,7 @@ class Perception:
         localizer = self.make_localizer()
         if localizer is None:
             self.log("Could not get Localizer")
-            return []
+            return
     
         detections = self.image_processor.process_image(img)
         self.log(f"Finished image processing. Got {len(detections)} detections")
@@ -263,9 +251,8 @@ class Perception:
         
         # Get the pose measured 0.75 seconds before we received the image
         # This is to account for the delay in the camera system, and was determined empirically
-        pose, is_timestamp_interpolated = self.pose_provider.get_interpolated(timestamp - 0.75) 
-        if not is_timestamp_interpolated:
-            self.log("Couldn't interpolate pose.")
+        # pose, is_timestamp_interpolated = self.pose_provider.get_interpolated(timestamp - 0.75) 
+        pose = PoseDatum(Point(x=0,y=0,z=20), R.identity(), time.time())
         self.log(f"Got pose: {angles}")
 
         cur_position_np = np.array([pose.position.x, pose.position.y, pose.position.z])

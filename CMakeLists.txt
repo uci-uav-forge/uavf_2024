@@ -25,7 +25,6 @@ find_package(rclpy REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 # find_package(<dependency> REQUIRED)
 
-
 include_directories(include)
 # Create Cpp executable
 # add_executable(cpp_executable src/cpp_node.cpp)
@@ -38,6 +37,7 @@ include_directories(include)
 
 set(msg_files
   "msg/TargetDetection.msg"
+  "msg/Detection2D.msg"
   "msg/UAVFPose.msg"
 )
 set(srv_files
@@ -48,6 +48,7 @@ set(srv_files
   "srv/ZoomCam.srv"
   "srv/GetPose.srv"
   "srv/GetFirstPose.srv"
+  "srv/ProcessImage.srv"
 )
 
 rosidl_generate_interfaces(libuavf_2024
