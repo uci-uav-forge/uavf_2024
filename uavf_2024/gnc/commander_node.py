@@ -187,7 +187,7 @@ class CommanderNode(rclpy.node.Node):
     def get_cur_xy(self):
         return pose_to_xy(self.cur_pose)
     
-    def execute_waypoints(self, waypoints, yaws = None, do_set_mode=True):
+    def execute_waypoints(self, waypoints, yaws = None, do_set_mode=False):
         if yaws is None:
             yaws = [float('NaN')] * len(waypoints)
 

@@ -20,7 +20,6 @@ def get_images(images_dir: Path):
 
     return timestamps, images
 
-minute = 43
 
 plt.title(f"timestamp vs index")
 logs_root_path = Path("/home/forge/ws/src/libuavf_2024/flight_logs")

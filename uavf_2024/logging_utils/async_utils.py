@@ -6,9 +6,55 @@ from pathlib import Path
 import random
 import threading
 import time
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, NamedTuple
+from geometry_msgs.msg import Point, PoseStamped
+import numpy as np
+from scipy.spatial.transform import Rotation, Slerp
 
+from libuavf_2024.msg import UAVFPose
 from rclpy.node import Node
+
+class PoseDatum(NamedTuple):
+    """
+    Our representation of the pose data from the Cube.
+    """
+    position: Point
+    rotation: Rotation
+    time_seconds: float
+    
+    def to_json(self):
+        return {
+            "position": [self.position.x, self.position.y, self.position.z],
+            "rotation": list(self.rotation.as_quat()),
+            "time_seconds": self.time_seconds
+        }
+    
+    def to_ros(self):
+        message = UAVFPose()
+        message.orientation = self.rotation.as_quat()
+        message.position = np.array([self.position.x, self.position.y, self.position.z])
+        message.timestamp_seconds = self.time_seconds
+        return message
+    
+    def write_to_obj(self, message: UAVFPose):
+        message.orientation = self.rotation.as_quat()
+        message.position = np.array([self.position.x, self.position.y, self.position.z])
+        message.timestamp_seconds = self.time_seconds
+    
+    @staticmethod
+    def from_ros(message: UAVFPose):
+        quaternion = message.orientation
+        position = Point()
+        position.x = message.position[0]
+        position.y = message.position[1]
+        position.z = message.position[2]
+        
+        return PoseDatum(
+            position = position,
+            rotation = Rotation.from_quat(quaternion),
+            time_seconds = message.timestamp_seconds
+        )
+
 
 class OnceCallable():
     """
@@ -43,7 +89,8 @@ class AsyncBuffer(Generic[BufItemT]):
     
     @property
     def count(self):
-        return len(self._queue)
+        with self.lock:
+            return len(self._queue)
         
     def __bool__(self):
         return bool(self.count)
@@ -93,6 +140,8 @@ class Subscriptions(Generic[InputT]):
     def __init__(self):
         self._callbacks: dict[float, Callable[[InputT], Any]] = {}
         self.lock = threading.Lock()
+        
+        self.logger = logging.getLogger()
     
     def add(self, callback: Callable[[InputT], Any]) -> Callable[[], None]:
         """
@@ -118,8 +167,13 @@ class Subscriptions(Generic[InputT]):
         Locks so that subscriptions will have to wait after a round of notifications.
         """
         with self.lock:
-            for callback in self._callbacks.values():
-                callback(new_value)
+            for index, callback in enumerate(self._callbacks.values()):
+                try:
+                    self.logger.log(logging.INFO, f"Calling callback {index}")
+                    callback(new_value)
+                    self.logger.log(logging.INFO, "Called callback")
+                except Exception as e:
+                    self.logger.log(logging.INFO, f"Callback failed: {e}")
 
 
 MessageT = TypeVar("MessageT")
@@ -140,7 +194,7 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         logs_dir: str | os.PathLike | Path | None = None, 
         buffer_size = 64,
         logger_name: str | None = None,
-        callback_group = None
+        callback_group = None,
     ):
         """
         Parameters:
@@ -154,9 +208,9 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         
         # Initialize logger
         if logger_name:
-            self.logger = logging.getLogger()
+            self.logger = self.node.get_logger()
         else:
-            self.logger = logging.getLogger("RosLoggingProvider" + str(__class__.LOGGER_INDEX))
+            self.logger = self.node.get_logger()#logging.getLogger("RosLoggingProvider" + str(__class__.LOGGER_INDEX))
             __class__.LOGGER_INDEX += 1
         
         self._first_value: LoggingBufferT | None = None
@@ -172,7 +226,7 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         
         self._buffer: AsyncBuffer[LoggingBufferT] = AsyncBuffer(buffer_size)
         
-        self._subscribe_to_topic(self._handle_update)
+        self._subscribe_to_topic(self._handle_update, callback_group)
         
         self.log(f"Finished intializing RosLoggingProvider. Logging to {self._logs_dir}")
         
@@ -187,7 +241,7 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
             raise FileExistsError(f"{self._logs_dir} exists but is not a directory")
 
     @abstractmethod
-    def _subscribe_to_topic(self, action: Callable[[MessageT], Any]) -> None:
+    def _subscribe_to_topic(self, action: Callable[[MessageT], Any], callback_group) -> None:
         """
         Abstract method for inherited class to implement to allow subscription to the topic.
         
@@ -231,13 +285,19 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         return self._logs_dir
         
     def _handle_update(self, item: MessageT):
+        self.log("Got pose in provider")
         formatted: LoggingBufferT = self.format_data(item)
         
         if not self._first_value:
+            self.log("Provider got first pose!")
             self._first_value = formatted
             
         self._buffer.put(formatted)
+        # self.log("Put pose in buffer")
+        
         self._subscribers.notify(formatted)
+        # self.log("Notified subscribers")
+        
         
         if self._logs_dir is not None:
             self.log_to_file(formatted)
@@ -265,7 +325,9 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         start = time.time()
         
         while self._buffer.count == 0:
-            if time.time() - start >= timeout_seconds:
+            diff = time.time() - start
+            self.log(f"Waiting. diff: {diff}")
+            if diff >= timeout_seconds:
                 raise TimeoutError("Timed out waiting for datum")
             
             time.sleep(0.1)
