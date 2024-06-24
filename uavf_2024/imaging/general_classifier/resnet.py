@@ -189,7 +189,10 @@ class ResNet(nn.Module):
         })
         
         self.heads = nn.ModuleList([
-            nn.Linear(512 * block.expansion, num)
+            nn.Sequential(
+                nn.Linear(512 * block.expansion, num),
+                nn.Softmax(dim=1)
+            )
             for num in num_classes
         ])
         
