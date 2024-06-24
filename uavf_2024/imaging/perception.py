@@ -56,6 +56,7 @@ class Perception:
         # Set up camera
         self.camera = Camera(LOGS_PATH / 'camera')
         self.camera.setAbsoluteZoom(zoom_level)
+        self.camera_state = False
         
         self.image_processor = ImageProcessor(LOGS_PATH / 'image_processor')
         
