@@ -5,6 +5,7 @@ from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from uavf_2024.imaging import Perception, PoseProvider
 from concurrent.futures import as_completed, TimeoutError
+from pathlib import Path
 import traceback
 import time
 
@@ -15,7 +16,9 @@ class PerceptionMinimalNode(Node):
 
     def __init__(self) -> None:
         super().__init__('perception_test_node')
-        self.perception = Perception(PoseProvider(self, logger=self.get_logger()), logger=self.get_logger())
+        logs_path = Path(f'logs/{time.strftime("%m-%d %Hh%Mm")}')
+        pose_provider = PoseProvider(self, logs_dir = logs_path / 'pose', logger=self.get_logger())
+        self.perception = Perception(pose_provider, logs_path=logs_path, logger=self.get_logger())
         self.timer_period = 1.0  # seconds
         self.create_timer(self.timer_period, self.timer_cb)
         self.perception_futures = []
