@@ -139,7 +139,8 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         node_context: Node,
         logs_dir: str | os.PathLike | Path | None = None, 
         buffer_size = 64,
-        logger_name: str | None = None
+        logger_name: str | None = None,
+        logger = None
     ):
         """
         Parameters:
@@ -156,6 +157,9 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         else:
             self.logger = logging.getLogger("RosLoggingProvider" + str(__class__.LOGGER_INDEX))
             __class__.LOGGER_INDEX += 1
+        
+        if logger is not None:
+            self.logger = logger
         
         self._first_value: LoggingBufferT | None = None
         
@@ -175,7 +179,7 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         self.log(f"Finished intializing RosLoggingProvider. Logging to {self._logs_dir}")
         
     def log(self, message, level = logging.INFO):
-        self.logger.log(level, message)
+        self.logger.log(message, level)
         
     def set_log_dir(self, new_dir: str | os.PathLike | Path):
         self._logs_dir = Path(new_dir)

@@ -36,7 +36,7 @@ class Perception:
         """
         return Perception._INSTANCE
     
-    def __init__(self, pose_provider: PoseProvider, zoom_level: int = 3, logs_path: Path = LOGS_PATH):
+    def __init__(self, pose_provider: PoseProvider, zoom_level: int = 3, logs_path: Path = LOGS_PATH, logger = None):
         """
         A PoseProvder must be injected because it depends on a MAVROS subscription.
         This might not be neccessary in the future if we can get that data from MAVSDK.
@@ -48,7 +48,7 @@ class Perception:
         
         print("Initializing Perception. Logging to", LOGS_PATH)
         
-        self.logger = logging.getLogger('perception')
+        self.logger = logging.getLogger('perception') if logger is None else logger
         
         self.zoom_level = zoom_level
         self.logs_path = logs_path
@@ -56,12 +56,13 @@ class Perception:
         # Set up camera
         self.camera = Camera(LOGS_PATH / 'camera')
         self.camera.setAbsoluteZoom(zoom_level)
+        self.camera.start_recording()
         self.camera_state = False
         
         self.image_processor = ImageProcessor(LOGS_PATH / 'image_processor')
         
         # There can only be one process because it uses the GPU
-        self.processor_pool = ProcessPoolExecutor(1)
+        self.processor_pool = ThreadPoolExecutor(1)
         
         self.logging_pool = ThreadPoolExecutor(2)
         

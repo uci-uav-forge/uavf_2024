@@ -201,6 +201,7 @@ class Camera:
 
     def stop_recording(self):
         if self.recording_thread:
+            self.stop_logging()
             self.recording = False
             self.recording_thread.join()
             self.recording_thread = None

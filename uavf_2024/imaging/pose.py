@@ -62,7 +62,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
             time_seconds = message.header.stamp.sec + message.header.stamp.nanosec / 1e9
         )
         
-    def _interpolate_from_buffer(self, time_seconds: float, wait: bool = False) -> PoseDatum | None:
+    def _interpolate_from_buffer(self, time_seconds: float, timeout: float = 0.5) -> PoseDatum | None:
         """
         Returns the pose datum interpolated between the two data points before and after the time given.
         
@@ -70,6 +70,8 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         If this interpolation is not possible because the poses are not old enough, wait until enough data is available if wait is enabled.
             Otherwise, return the newest pose
         If there is no pose available, wait if enabled. Otherwise, return None.
+
+        If timeout is None, doesn't wait for new data to interpolate, just returns latest one. Otherwise, waits for new data, returning None after the timeout
         """
         if self._buffer.count == 0:
             return None
@@ -81,12 +83,19 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         if closest_idx == 0:
             return data[0]
         
-        # Poll every 100ms
+        # Poll every 100ms, timeout after 1 sec (configurable)
+        time_waited = 0
         while closest_idx == len(data):
-            if not wait:
+            if timeout is None:
                 return data[closest_idx - 1]
 
-            time.sleep(0.1)
+            poll_period = 0.1   
+            time.sleep(poll_period)
+            time_waited += poll_period
+            self.log("Waiting for new pose datum")
+            if time_waited > timeout:
+                self.log("Pose interpolation timed out. Returning latest.")
+                return None
             data = self._buffer.get_all_reversed()
             closest_idx = bisect_left([d.time_seconds for d in data], time_seconds)
             
@@ -120,10 +129,7 @@ class PoseProvider(RosLoggingProvider[PoseStamped, PoseDatum]):
         regardless of its timestamp
 
         '''
-        for _ in range(50):
-            interp_pose = self._interpolate_from_buffer(time_seconds, True)
-            if interp_pose is not None:
-                return (interp_pose, True)
-            else:
-                time.sleep(0.1)
+        interp_pose = self._interpolate_from_buffer(time_seconds, True)
+        if interp_pose is not None:
+            return (interp_pose, True)
         return (self._buffer.get_fresh(), False)

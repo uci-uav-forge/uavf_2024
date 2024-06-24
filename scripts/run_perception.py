@@ -2,9 +2,11 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
 from uavf_2024.imaging import Perception, PoseProvider
-from concurrent.futures import as_completed
+from concurrent.futures import as_completed, TimeoutError
 import traceback
+import time
 
 class PerceptionMinimalNode(Node):
     ''' Receives input from every ongoing process.
@@ -13,19 +15,21 @@ class PerceptionMinimalNode(Node):
 
     def __init__(self) -> None:
         super().__init__('perception_test_node')
-        self.perception = Perception(PoseProvider(self))
+        self.perception = Perception(PoseProvider(self, logger=self.get_logger()), logger=self.get_logger())
         self.timer_period = 1.0  # seconds
         self.create_timer(self.timer_period, self.timer_cb)
         self.perception_futures = []
         self.time_alive = 0
+        self.done = False
     
     def log(self, msg):
         self.get_logger().info(msg)
 
     def timer_cb(self):
+        self.log("Running timer callback")
         self.perception_futures.append(self.perception.get_image_down_async())
         self.time_alive += 1
-        if self.time_alive > 10:
+        if self.time_alive >= 10:
             self.log('Shutting down...')
             self.log(f"results: {self.collect_results()}")
             self.destroy_node()
@@ -33,12 +37,12 @@ class PerceptionMinimalNode(Node):
     
     def collect_results(self):
         detections = []
-        timeout = 2.0
+        timeout = 1.0
         try:
             for future in as_completed(self.perception_futures, timeout=timeout):
                 detections.extend(future.result())
 
-            self.log(f"Successfully retrieved imaging detections: {detections}")
+            self.log(f"Successfully retrieved imaging detections")
         except TimeoutError:
             self.log("Timed out waiting for imaging detections.")
 

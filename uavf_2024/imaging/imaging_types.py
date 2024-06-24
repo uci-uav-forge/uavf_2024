@@ -284,6 +284,12 @@ class Target3D:
             ),
             msg.id
         )
+    def __repr__(self):
+        certain = self.descriptor.collapse_to_certain()
+        descriptor_str = f'{certain.shape_col} ({max(self.descriptor.shape_col_probs)}) {certain.shape} ({max(self.descriptor.shape_probs)}) {certain.letter_col} ({max(self.descriptor.letter_col_probs)}) {certain.letter} ({max(self.descriptor.letter_probs)})'
+        position_str = f'({self.position[0]:.02f}, {self.position[1]:.02f}, {self.position[2]:.02f})'
+
+        return f'{descriptor_str} at {position_str} with id {self.id}'
 
 @dataclass
 class ROSDetectionMessage:
