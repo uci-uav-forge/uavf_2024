@@ -12,7 +12,8 @@ class LetterClassifier:
         self.model = YOLO(f'{CURRENT_FILE_PATH}/weights/letter.pt')
 
         rand_input = np.random.rand(1, img_size, img_size, 3).astype(np.float32)
-        self.model.predict(list(rand_input), verbose=False)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.model.predict(list(rand_input), verbose=False, device=device)
     
     def predict(self, imgs : list[np.ndarray]) -> list[np.ndarray]:
         '''

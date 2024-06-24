@@ -1,6 +1,8 @@
 from __future__ import annotations
 from .imaging_types import Target3D, CertainTargetDescriptor
 from .utils import calc_match_score
+from scipy.optimize import linear_sum_assignment
+from itertools import product
 import numpy as np
 
 class Track:
@@ -66,9 +68,22 @@ class TargetTracker:
         '''
         Returns closest track in descriptor space for each search candidate
         '''
+
+        
+        cost_matrix = np.empty((len(search_candidates), len(self.tracks)))
+        for i,j in product(range(len(search_candidates)), range(len(self.tracks))):
+            cost_matrix[i,j] = calc_match_score(self.tracks[j].descriptor, search_candidates[i].as_probabilistic())
+        #row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
+        
+        col_ind = [
+            np.argmax(cost_matrix[i]) for i in range(len(search_candidates))
+        ]
+
         closest_tracks = [
-            max(self.tracks, key=lambda track: calc_match_score(track.descriptor, candidate.as_probabilistic()))
-            for candidate in search_candidates
+            self.tracks[i] for i in col_ind
         ]
 
         return closest_tracks
+
+    def confidence_score(self, candidate: CertainTargetDescriptor) -> float:
+        return max(calc_match_score(track.descriptor, candidate.as_probabilistic()) for track in self.tracks)

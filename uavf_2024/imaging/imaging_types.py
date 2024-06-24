@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import os
 from itertools import chain
 from typing import Generator, Generic, Literal, NamedTuple, TypeVar, Union
 import cv2
@@ -188,6 +189,21 @@ class ProbabilisticTargetDescriptor:
         )
         '''
 
+    @staticmethod
+    def from_string(string: str) -> ProbabilisticTargetDescriptor:
+        '''
+        Converts a string representation of a ProbabilisticTargetDescriptor back into a ProbabilisticTargetDescriptor object.
+        '''
+        shape_lines = string.split("Shapes:\n")[1].split("Letters:")[0].split("\n")[:-1]
+        shape_probs = np.array([float(line.split(": ")[1].strip()) for line in shape_lines])
+        letter_lines = string.split("Letters:\n")[1].split("Shape Colors:")[0].split("\n")[:-1]
+        letter_probs = np.array([float(line.split(": ")[1].strip()) for line in letter_lines])
+        shape_col_lines = string.split("Shape Colors:\n")[1].split("Letter Colors:")[0].split("\n")[:-1]
+        shape_col_probs = np.array([float(line.split(": ")[1].strip()) for line in shape_col_lines])
+        letter_col_lines = string.split("Letter Colors:\n")[1].split("\n")[:-2]
+        letter_col_probs = np.array([float(line.split(": ")[1].strip()) for line in letter_col_lines])
+        return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
+
     def __add__(self, other):
         return ProbabilisticTargetDescriptor(
             self.shape_probs + other.shape_probs,
@@ -233,11 +249,11 @@ class CertainTargetDescriptor:
     def __init__(self, shape_col: str, shape: str, letter_col: str, letter: str):
         assert shape is None or shape in SHAPES
         self.shape = shape
-        if shape == "person":
-            self.shape_col = None
-            self.letter_col = None
-            self.letter = None
-            return
+        # if shape == "person":
+        #     self.shape_col = None
+        #     self.letter_col = None
+        #     self.letter = None
+        #     return
 
         assert shape_col is None or shape_col in COLORS
         assert letter_col is None or letter_col in COLORS
@@ -271,10 +287,17 @@ class CertainTargetDescriptor:
             LEGACY_LETTERS.index(self.letter) if self.letter is not None else None
         )
     
-    def as_probabilistic(self) -> ProbabilisticTargetDescriptor:
+    def as_probabilistic(self, force_through_none = True) -> ProbabilisticTargetDescriptor:
+        '''
+        If force_through_none is True, then the None values will be converted to a uniform distribution over the possible values.
+        otherwise, an error will be raised if any of the values are None.
+        '''
         err_message = '''Cannot convert to probabilistic if any of the values are None (probably trying 
                         to convert a ground truth label with missing data, which shouldn't be done'''
-        assert None not in [self.shape, self.letter, self.shape_col, self.letter_col], err_message
+
+        if not force_through_none and None in [self.shape, self.letter, self.shape_col, self.letter_col]:
+            raise ValueError(err_message+ f" {self}")
+
         shape_probs = np.zeros(len(SHAPES))
         shape_probs[SHAPES.index(self.shape)] = 1.0
 
@@ -299,7 +322,7 @@ class CertainTargetDescriptor:
         return ProbabilisticTargetDescriptor(shape_probs, letter_probs, shape_col_probs, letter_col_probs)
 
     def __repr__(self):
-        return f"{self.shape_col} {self.shape}, {self.letter_col} {self.letter}"
+        return f"{self.shape_col} {self.shape} {self.letter_col} {self.letter}"
 
 CertainTargetDescriptor.from_indices(0, 0, 0, 0)
 @dataclass
@@ -307,6 +330,24 @@ class Tile:
     img: 'Image'
     x: img_coord_t
     y: img_coord_t
+
+@dataclass
+class BoundingBox:
+    x: img_coord_t
+    y: img_coord_t
+    width: img_coord_t
+    height: img_coord_t
+
+    def to_ndarray(self):
+        return np.array([self.x, self.y, self.width, self.height])
+
+    def to_xyxy(self):
+        return np.array([self.x-self.width//2, self.y-self.height//2, self.x+self.width//2, self.y+self.height//2])
+
+    @staticmethod
+    def from_ndarray(arr: np.ndarray):
+        '''Takes ndarray of shape (4,) [x,y,width,height] and returns a BoundingBox object'''
+        return BoundingBox(*arr)
 
 @dataclass
 class FullBBoxPrediction:
@@ -370,6 +411,12 @@ class Target3D:
             ),
             msg.id
         )
+    def __repr__(self):
+        certain = self.descriptor.collapse_to_certain()
+        descriptor_str = f'{certain.shape_col} ({max(self.descriptor.shape_col_probs)}) {certain.shape} ({max(self.descriptor.shape_probs)}) {certain.letter_col} ({max(self.descriptor.letter_col_probs)}) {certain.letter} ({max(self.descriptor.letter_probs)})'
+        position_str = f'({self.position[0]:.02f}, {self.position[1]:.02f}, {self.position[2]:.02f})'
+
+        return f'{descriptor_str} at {position_str} with id {self.id}'
 
 @dataclass
 class ROSDetectionMessage:
@@ -431,7 +478,7 @@ class Image(Generic[_UnderlyingImageT]):
         dim_order: ImageDimensionsOrder = HWC
     ):
         if not isinstance(array, np.ndarray) and not isinstance(array, torch.Tensor):
-            raise TypeError("array must be a numpy array or torch tensor")
+            raise TypeError(f"array must be a numpy array or torch tensor. Got {type(array)}")
         
         if len(array.shape) != 3:
             raise ValueError("array must have 3 axes, got shape " + str(array.shape))
@@ -491,6 +538,9 @@ class Image(Generic[_UnderlyingImageT]):
         """
         return Tile(self.make_sub_image(x_coord, y_coord, tile_size, tile_size), x_coord, y_coord)
     
+    def as_tile(self) -> Tile:
+        return Tile(self, 0, 0)
+    
     @property
     def shape(self):
         return self._array.shape
@@ -549,6 +599,22 @@ class Image(Generic[_UnderlyingImageT]):
         
         else:
             raise TypeError("array_type must be np.ndarray or torch.Tensor")
+    
+    def save(self, fp: os.PathLike | str) -> None:
+        """
+        Saves the image to a file. Uses cv2.imwrite internally.
+        
+        
+        Args:
+            fp (str): The file path
+        """
+        np_array = np.array(self._array)
+        
+        # Tranpose if necessary.
+        if self._dim_order == CHW:
+            np_array = np_array.transpose(1, 2, 0)
+        
+        cv2.imwrite(str(fp), np_array)
     
     def make_square(self, target_size: int) -> 'Image[np.ndarray]':
         height, width = self.height, self.width

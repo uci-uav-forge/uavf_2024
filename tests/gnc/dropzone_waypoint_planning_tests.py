@@ -82,7 +82,8 @@ class TestDropzonePlanner(unittest.TestCase):
 
     def test_conversions(self):
         self.sanity_check_conversions("arc_club_field", "uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY", 33.6423003, -117.8268298)
-        self.sanity_check_conversions("maryland", "uavf_2024/gnc/data/AIRDROP_BOUNDARY", 38.31633, -76.55578)
+        self.sanity_check_conversions("maryland_airdrop", "uavf_2024/gnc/data/AIRDROP_BOUNDARY", 38.31633, -76.55578)
+        self.sanity_check_conversions("maryland_flight", "uavf_2024/gnc/data/FLIGHT_BOUNDARY", 38.31633, -76.55578)
 
     def test_arc_club_field(self):
         self.sanity_check_dropzone_plan("arc_club_field", "uavf_2024/gnc/data/ARC/CLUB_FIELD/AIRDROP_BOUNDARY", 33.6423003, -117.8268298)

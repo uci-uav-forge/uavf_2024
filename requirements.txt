@@ -1,2 +1,3 @@
 ultralytics==8.0.190
 line_profiler
+pyserial

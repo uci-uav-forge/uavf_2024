@@ -13,14 +13,14 @@ cam.setAbsoluteZoom(zoom_level)
 cv.waitKey(0)
 
 for i in range(10):
-    img = cam.take_picture()
+    img = cam.get_latest_image()
     img_cv = img.get_array()
     img_cv = cv.resize(img_cv, (1920//2, 1080//2))
 
     cv.imshow("Preview", img_cv)
     key = cv.waitKey(0)
     while key == 114: # pressing r to retake
-        img = cam.take_picture()
+        img = cam.get_latest_image()
         img_cv = img.get_array()
         img_cv = cv.resize(img_cv, (1920//2, 1080//2))
 

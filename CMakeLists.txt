@@ -42,6 +42,9 @@ set(msg_files
 set(srv_files
   "srv/TakePicture.srv"
   "srv/GetAttitude.srv"
+  "srv/ResetLogDir.srv"
+  "srv/PointCam.srv"
+  "srv/ZoomCam.srv"
 )
 
 rosidl_generate_interfaces(libuavf_2024
@@ -51,6 +54,7 @@ rosidl_generate_interfaces(libuavf_2024
 
 # Install Python executables
 install(PROGRAMS
+  scripts/esc_read.py
   scripts/commander_node.py
   scripts/demo_commander_node.py
   scripts/demo_dropzone_planner.py

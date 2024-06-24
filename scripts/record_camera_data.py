@@ -104,7 +104,7 @@ def main():
                 return False
 
 
-    img = cam.take_picture().get_array()
+    img = cam.get_latest_image().get_array()
     yaw, pitch, _roll = cam.getAttitude()
     
     if is_recording:

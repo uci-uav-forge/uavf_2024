@@ -1,5 +1,7 @@
 import numpy as np
 import math
+from uavf_2024.imaging.tracker import TargetTracker
+from uavf_2024.gnc.util import is_inside_bounds_local
 altitude = 20.0
 
 class DropzonePlanner:
@@ -11,9 +13,13 @@ class DropzonePlanner:
         self.commander = commander
         self.image_width_m = image_width_m
         self.image_height_m = image_height_m
+        self.target_tracker = TargetTracker()
         self.detections = []
         self.current_payload_index = 0
         self.has_scanned_dropzone = False
+        self.dist_btwn_img_wps = 2
+
+        self.dropped_payloads = []
 
         np.set_printoptions(precision=20)
     
@@ -31,7 +37,7 @@ class DropzonePlanner:
 
         cur_xy = self.commander.get_cur_xy()
         self.commander.log(f"bounds: {dropzone_coords}")
-        self.commander.log(f"homepos: {self.commander.home_global_pos}")
+        self.commander.log(f"homepos: {self.commander.home_pos}")
         self.commander.log(f"current xy: {cur_xy}")
 
         closest_idx = min(range(4), key = lambda i: np.linalg.norm(dropzone_coords[i] - cur_xy))
@@ -63,6 +69,10 @@ class DropzonePlanner:
         fwd_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), h_unit)))
         fwd_yaw += 90
         fwd_yaw %= 360
+
+        side_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), w_unit)))
+        side_yaw += 90
+        side_yaw %= 360
         
         # Step 2: Generate a "zigzag" pattern to sweep the entire dropzone.
         result_wps = []
@@ -76,9 +86,15 @@ class DropzonePlanner:
                 wps_col.append(dropzone_coords[closest_idx] + w_unit * offset_w + h_unit * offset_h)
             
             if col % 2:
-                result_wps += [(x, (fwd_yaw + 180)%360) for x in wps_col[::-1]]
+                wps_col = [(x, (fwd_yaw + 180)%360) for x in wps_col[::-1]]
             else:
-                result_wps += [(x, fwd_yaw) for x in wps_col]
+                wps_col = [(x, fwd_yaw) for x in wps_col]
+            
+            # add intermediate WP to guide PX4 to make the right turn
+            if col > 0:
+                fx,_ = wps_col[0]
+                result_wps.append((fx,(side_yaw if col % 2 else -side_yaw)))
+            result_wps += wps_col
 
         return result_wps
 
@@ -86,17 +102,53 @@ class DropzonePlanner:
         '''
         Will be executed after the drone completes the first waypoint lap. 
         Drone will move to drop zone from its current position and scan the
-        entire drop zone.
+        entire drop zone. Will update target_tracker with the new detections.
         '''
         dropzone_plan = self.gen_dropzone_plan()
-        self.commander.log(f"Local coords: {dropzone_plan}")
-        self.commander.log(f"Planned waypoints {[self.commander.local_to_gps(wp) for wp, _ in dropzone_plan]}")
-        self.commander.call_imaging_at_wps = True
-        self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp),np.array([altitude]))) for wp, yaw in dropzone_plan], [yaw for wp, yaw in dropzone_plan])
-        self.commander.call_imaging_at_wps = False
-        self.detections = self.commander.gather_imaging_detections()
 
-        self.commander.log(f"Imaging detections {self.detections}")
+        self.commander.log(f"Local coords: {dropzone_plan}")
+        self.commander.log(f"Planned waypoints: {[self.commander.local_to_gps(wp) for wp, _ in dropzone_plan]}")
+
+        self.commander.call_imaging_at_wps = True
+        dropzone_wps = [np.concatenate((self.commander.local_to_gps(wp), np.array([altitude]))) for wp, yaw in dropzone_plan]
+        dropzone_yaws = [yaw for wp, yaw in dropzone_plan]
+        dropzone_wps = [dropzone_wps[0]] + dropzone_wps
+        dropzone_yaws = [float('NaN')] + dropzone_yaws
+        self.commander.execute_waypoints(dropzone_wps, dropzone_yaws)
+        self.commander.call_imaging_at_wps = False
+        detections = self.commander.gather_imaging_detections()
+        self.target_tracker.update(detections)
+
+        self.commander.log(f"Imaging detections: {detections}")
+
+    def generate_wps_to_target(self, target_x, target_y, cur_x, cur_y):
+        '''
+        Will generate a path of waypoints from the drone's current position
+        to the target. These waypoints represent the locations at which
+        the drone should take images of the drop zone below.
+        '''
+        current_x, current_y = cur_x, cur_y
+        x_distance, y_distance = current_x - target_x, current_y - target_y
+
+        divisor = abs(x_distance) / self.dist_btwn_img_wps
+        if abs(y_distance) > abs(x_distance):
+            divisor = abs(y_distance) / self.dist_btwn_img_wps
+
+        x_step = x_distance / divisor
+        y_step = y_distance / divisor
+        self.commander.log(f"x_step: {x_step}, y_step: {y_step}")
+        
+        waypoints = [(target_x, target_y)]
+        new_wp = (target_x + x_step, target_y + y_step)
+        running_x_dist, running_y_dist = abs(x_step), abs(y_step)
+        while (is_inside_bounds_local(self.commander.dropzone_bounds_mlocal, new_wp) and running_x_dist < abs(x_distance) and running_y_dist < abs(y_distance)):
+            waypoints.append(new_wp)
+            new_wp = (new_wp[0] + x_step, new_wp[1] + y_step)
+            running_x_dist += abs(x_step)
+            running_y_dist += abs(y_step)
+
+        waypoints.reverse()
+        return waypoints
 
     def conduct_air_drop(self):
         '''
@@ -105,20 +157,36 @@ class DropzonePlanner:
         payload and will release the payload.
         '''
 
-        if self.has_scanned_dropzone == False:
+        # Scan the drop zone if the drone has completed its first waypoint lap
+        if not self.has_scanned_dropzone:
+            self.commander.log_statustext("First visit, scanning dropzone.")
             self.scan_dropzone()
             self.has_scanned_dropzone = True
         
-        best_match = max(self.detections, key = self.match_score)
-        self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps((best_match.x,best_match.y)),np.array([altitude])))])
-        self.commander.release_payload()
-        self.commander.payloads[self.current_payload_index].display()
-        self.current_payload_index += 1
-    
-    def match_score(self, detection):
-        p = self.commander.payloads[self.current_payload_index]
+        # Find the target that best matches the payload
+        best_match = self.target_tracker.estimate_positions(self.commander.payloads)[self.current_payload_index]
+        best_match_x, best_match_y = best_match.position[0], best_match.position[1]
+        self.commander.log(f"best_match_x: {best_match_x}, best_match_y: {best_match_y}")
+        self.commander.log(f"Contributing measurements: {best_match.contributing_measurement_ids()}")
 
-        return detection.letter_conf[p.letter_id] \
-            + detection.shape_conf[p.shape_id] \
-            + detection.letter_color_conf[p.letter_color_id] \
-            + detection.shape_color_conf[p.shape_color_id]
+        # Generate path of waypoints to the target to take images at
+        next_wps = self.generate_wps_to_target(best_match_x, best_match_y, self.commander.cur_pose.pose.position.x, self.commander.cur_pose.pose.position.y)
+        self.commander.log(f"Opportunistic imaging waypoints: {next_wps}")
+        
+        # Fly along the path of waypoints to the target
+        self.commander.call_imaging_at_wps = True
+        self.commander.log_statustext(f"Going to target. gps = {self.commander.local_to_gps((best_match_x, best_match_y))}")
+        self.commander.execute_waypoints([np.concatenate((self.commander.local_to_gps(wp), np.array([altitude]))) for wp in next_wps])
+        self.commander.call_imaging_at_wps = False
+        detections = self.commander.gather_imaging_detections()
+        self.target_tracker.update(detections)
+
+        # Release the payload
+        self.commander.release_payload()
+        self.commander.log(f"Released payload {self.current_payload_index}")
+    
+    def advance_current_payload_index(self):
+        self.dropped_payloads.append(self.current_payload_index)
+        self.current_payload_index = max(
+            (i for i in range(len(self.commander.payloads)) if i not in self.dropped_payloads),
+            key = lambda i: self.target_tracker.confidence_score(self.commander.payloads[i]))

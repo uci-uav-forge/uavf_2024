@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<gpx creator="WTracks"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.topografix.com/GPX/1/1" version="1.1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+<metadata>
+  <name>club_field</name>
+  <desc></desc>
+  <author><name>WTracks</name></author>
+  <link href='https://opoto.github.io/wtracks/'>
+    <text>WTracks</text>
+    <type>text/html</type>
+  </link>
+  <time>2024-06-11T20:46:32.785Z</time>
+  <bounds minlat="33.641273" minlon="-117.82812" maxlat="33.64228" maxlon="-117.825547"/>
+</metadata>
+<trk>
+  <name>Club Field Flight Boundary</name>
+  <trkseg>
+    <trkpt lat="33.641614" lon="-117.827689"></trkpt>
+    <trkpt lat="33.641289" lon="-117.827064"></trkpt>
+    <trkpt lat="33.642103" lon="-117.826463"></trkpt>
+    <trkpt lat="33.642425" lon="-117.82709"></trkpt>
+    <trkpt lat="33.641614" lon="-117.827689"></trkpt>
+  </trkseg>
+</trk><trk>
+  <name>Club Field Mission</name>
+  <trkseg>
+    <trkpt lat="33.64211" lon="-117.82721"><ele>20.0</ele></trkpt>
+    <trkpt lat="33.64203" lon="-117.82703"><ele>20.0</ele></trkpt>
+    <trkpt lat="33.64216" lon="-117.82695"><ele>20.0</ele></trkpt>
+    <trkpt lat="33.64221" lon="-117.82709"><ele>20.0</ele></trkpt>
+  </trkseg>
+</trk><trk>
+  <name>Club Field Airdrop Boundary</name>
+  <trkseg>
+    <trkpt lat="33.641661" lon="-117.82699"></trkpt>
+    <trkpt lat="33.64181" lon="-117.827307"></trkpt>
+    <trkpt lat="33.641954" lon="-117.827189"></trkpt>
+    <trkpt lat="33.641787" lon="-117.826882"></trkpt>
+    <trkpt lat="33.641661" lon="-117.82699"></trkpt>
+  </trkseg>
+</trk></gpx>

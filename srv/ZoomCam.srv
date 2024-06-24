@@ -1,0 +1,4 @@
+int64 zoom_level
+# zoom_level is an integer between 1 and 10, inclusive. 1 is the most zoomed out, 10 is the most zoomed in.
+---
+bool success

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" creator="gpx.py -- https://github.com/tkrajina/gpxpy">
+  <trk>
+    <name>Crawford Mission</name>
+    <trkseg>
+      <trkpt lat="33.64831" lon="-117.84934">
+        <ele>20</ele>
+      </trkpt>
+      <trkpt lat="33.64815" lon="-117.84971">
+        <ele>20</ele>
+      </trkpt>
+      <trkpt lat="33.64795" lon="-117.84921">
+        <ele>20</ele>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
