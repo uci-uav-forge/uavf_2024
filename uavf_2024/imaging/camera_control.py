@@ -114,7 +114,7 @@ class CameraLogger:
         self.pool.submit(self._log_to_file, image, metadata, timestamp)
         
     def _log_to_file(self, image: Image, metadata: dict, timestamp: float):
-        image.save(self.log_dir / f"{timestamp}.jpg")
+        # image.save(self.log_dir / f"{timestamp}.jpg")
         json.dump(
             metadata, 
             open(self.log_dir / f"{timestamp}.json", 'w')

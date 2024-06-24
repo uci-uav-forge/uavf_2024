@@ -31,7 +31,7 @@ class ImageProcessNode(Node):
     def __init__(self) -> None:
         super().__init__('image_process_node')
         logs_dir = Path(f"/home/forge/ws/logs/{strftime('%m-%d %Hh%Mm')}")
-        self.image_processsor = ImageProcessor(logs_dir / 'image_processor')
+        self.image_processsor = ImageProcessor()
         self.process_service = self.create_service(ProcessImage, 'process_image_service', self.process_image)
         self.log("Finished processing node constructor")
     

@@ -228,7 +228,7 @@ class ImagingNode(Node):
 
         # Log data
         logs_folder = self.logs_path / 'image_processor' / f'img_{self.num_processed}'
-        logs_folder.mkdir(exist_ok=True, parents=True)
+        # logs_folder.mkdir(exist_ok=True, parents=True)
         self.num_processed+=1
         self.log(f"This frame going to {logs_folder}")
         self.log(f"Zoom level: {self.zoom_level}")
@@ -250,7 +250,7 @@ class ImagingNode(Node):
                 } for p in preds_3d
             ]
         }
-        json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
+        # json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
 
         response.detections = []
         for i, p in enumerate(preds_3d):
