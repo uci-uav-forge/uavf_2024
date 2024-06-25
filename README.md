@@ -89,5 +89,5 @@ pytorch: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
 as of jan 23, the jetson is on Jetpack 6
 
 ### Rosbag playing example
-cd /forge/ws/logs/bagfiles/rosbag2_2024_06_12-17_23_07
-while true; do rso2 bag play rosbag2_2024_06_12-17_23_07.db3; done
+cd /home/forge/ws/logs/bagfiles/rosbag2_2024_06_12-17_23_07
+while true; do ros2 bag play rosbag2_2024_06_12-17_23_07.db3; done
