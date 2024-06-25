@@ -2,6 +2,7 @@ from concurrent.futures import Future, as_completed
 from datetime import datetime
 import time
 import logging
+from pathlib import Path
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -114,7 +115,9 @@ class CommanderNode(rclpy.node.Node):
         self.dropzone_planner = DropzonePlanner(self, args.image_width_m, args.image_height_m)
         self.args = args
 
-        self.perception = Perception(PoseProvider(self))
+        logs_path = Path(f'/mnt/nvme/logs/{time.strftime("%m-%d %Hh%Mm")}')
+        pose_provider = PoseProvider(self, logs_dir = logs_path / 'pose', logger=self.get_logger())
+        self.perception = Perception(pose_provider, logs_path=logs_path, logger=self.get_logger())
         self.perception_futures: list[Future[list[Target3D]]] = []
         self.call_imaging_at_wps = False
 
@@ -150,7 +153,7 @@ class CommanderNode(rclpy.node.Node):
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,]).as_rotvec()
         self.got_pose = True
         timestamp = time.time()
-        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time < 0.3):
+        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time > 0.3):
             self.do_imaging_call()
             self.last_imaging_time = timestamp
         if not self.got_home_local_pos:
