@@ -62,7 +62,6 @@ install(PROGRAMS
   scripts/waypoint_tracker_node.py
   scripts/perception_clients/take_one_image.py
   scripts/perception_clients/continuous_image_taking.py
-  scripts/imaging_node.py
   scripts/mock_imaging_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
