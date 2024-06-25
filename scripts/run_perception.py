@@ -16,7 +16,8 @@ class PerceptionMinimalNode(Node):
 
     def __init__(self) -> None:
         super().__init__('perception_test_node')
-        logs_path = Path(f'logs/{time.strftime("%m-%d %Hh%Mm")}')
+        logs_path = Path(f'/mnt/nvme/logs/{time.strftime("%m-%d %Hh%Mm")}')
+        logs_path.mkdir(exist_ok=True, parents=True)
         pose_provider = PoseProvider(self, logs_dir = logs_path / 'pose', logger=self.get_logger())
         self.perception = Perception(pose_provider, logs_path=logs_path, logger=self.get_logger())
         self.timer_period = 1.0  # seconds
