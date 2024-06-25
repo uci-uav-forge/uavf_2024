@@ -179,7 +179,7 @@ class RosLoggingProvider(Generic[MessageT, LoggingBufferT]):
         self.log(f"Finished intializing RosLoggingProvider. Logging to {self._logs_dir}")
         
     def log(self, message, level = logging.INFO):
-        self.logger.log(message, level)
+        self.logger.info(message)
         
     def set_log_dir(self, new_dir: str | os.PathLike | Path):
         self._logs_dir = Path(new_dir)
