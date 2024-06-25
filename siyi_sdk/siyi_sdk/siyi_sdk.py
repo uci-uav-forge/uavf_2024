@@ -217,10 +217,10 @@ class SIYISDK:
         return data
 
     def recvLoop(self):
-        self._logger.debug("Started data receiving thread")
+        # self._logger.debug("Started data receiving thread")
         while(not self._stop):
             self.bufferCallback()
-        self._logger.debug("Exiting data receiving thread")
+        # self._logger.debug("Exiting data receiving thread")
 
     
     def bufferCallback(self):
@@ -232,7 +232,7 @@ class SIYISDK:
             return
 
         buff_str = buff.hex()
-        self._logger.debug("Buffer: %s", buff_str)
+        # self._logger.debug("Buffer: %s", buff_str)
 
         # 10 bytes: STX+CTRL+Data_len+SEQ+CMD_ID+CRC16
         #            2 + 1  +    2   + 2 +   1  + 2
@@ -606,7 +606,7 @@ class SIYISDK:
             self._fw_msg.seq=seq
             
 
-            self._logger.debug("Firmware version: %s", self._fw_msg.gimbal_firmware_ver)
+            # self._logger.debug("Firmware version: %s", self._fw_msg.gimbal_firmware_ver)
 
             return True
         except Exception as e:
@@ -617,7 +617,7 @@ class SIYISDK:
         try:
             self._hw_msg.seq=seq
             self._hw_msg.id = msg
-            self._logger.debug("Hardware ID: %s", self._hw_msg.id)
+            # self._logger.debug("Hardware ID: %s", self._hw_msg.id)
 
             return True
         except Exception as e:
@@ -635,10 +635,10 @@ class SIYISDK:
             self._att_msg.pitch_speed = toInt(msg[18:20]+msg[16:18]) /10.
             self._att_msg.roll_speed = toInt(msg[22:24]+msg[20:22]) /10.
 
-            self._logger.debug("(yaw, pitch, roll= (%s, %s, %s)", 
-                                    self._att_msg.yaw, self._att_msg.pitch, self._att_msg.roll)
-            self._logger.debug("(yaw_speed, pitch_speed, roll_speed= (%s, %s, %s)", 
-                                    self._att_msg.yaw_speed, self._att_msg.pitch_speed, self._att_msg.roll_speed)
+            # self._logger.debug("(yaw, pitch, roll= (%s, %s, %s)", 
+            #                         self._att_msg.yaw, self._att_msg.pitch, self._att_msg.roll)
+            # self._logger.debug("(yaw_speed, pitch_speed, roll_speed= (%s, %s, %s)", 
+            #                         self._att_msg.yaw_speed, self._att_msg.pitch_speed, self._att_msg.roll_speed)
             return True
         except Exception as e:
             self._logger.error("Error %s", e)
@@ -654,9 +654,9 @@ class SIYISDK:
             self._motionMode_msg.mode = int('0x'+msg[8:10], base=16)
             self._mountDir_msg.dir = int('0x'+msg[10:12], base=16)
 
-            self._logger.debug("Recording state %s", self._record_msg.state)
-            self._logger.debug("Mounting direction %s", self._mountDir_msg.dir)
-            self._logger.debug("Gimbal motion mode %s", self._motionMode_msg.mode)
+            # self._logger.debug("Recording state %s", self._record_msg.state)
+            # self._logger.debug("Mounting direction %s", self._mountDir_msg.dir)
+            # self._logger.debug("Gimbal motion mode %s", self._motionMode_msg.mode)
             return True
         except Exception as e:
             self._logger.error("Error %s", e)
@@ -669,7 +669,7 @@ class SIYISDK:
             self._autoFocus_msg.success = bool(int('0x'+msg, base=16))
 
             
-            self._logger.debug("Auto focus success: %s", self._autoFocus_msg.success)
+            # self._logger.debug("Auto focus success: %s", self._autoFocus_msg.success)
 
             return True
         except Exception as e:
@@ -683,7 +683,7 @@ class SIYISDK:
             self._absoluteZoom_msg.success = bool(int('0x'+msg, base=16))
 
             
-            self._logger.debug("Absolute Zoom success: %s", self._absoluteZoom_msg.success)
+            # self._logger.debug("Absolute Zoom success: %s", self._absoluteZoom_msg.success)
 
             return True
         except Exception as e:
@@ -695,7 +695,7 @@ class SIYISDK:
             try:
                 self._absolutePosition_msg.seq=seq
                 # TODO
-                self._logger.debug("Absolute Position success: %s", msg)
+                # self._logger.debug("Absolute Position success: %s", msg)
     
                 return True
             except Exception as e:
@@ -709,7 +709,7 @@ class SIYISDK:
             self._manualZoom_msg.level = int('0x'+msg[2:4]+msg[0:2], base=16) /10.
 
             
-            self._logger.debug("Zoom level %s", self._manualZoom_msg.level)
+            # self._logger.debug("Zoom level %s", self._manualZoom_msg.level)
 
             return True
         except Exception as e:
@@ -723,7 +723,7 @@ class SIYISDK:
             self._manualFocus_msg.success = bool(int('0x'+msg, base=16))
 
             
-            self._logger.debug("Manual  focus success: %s", self._manualFocus_msg.success)
+            # self._logger.debug("Manual  focus success: %s", self._manualFocus_msg.success)
 
             return True
         except Exception as e:
@@ -737,7 +737,7 @@ class SIYISDK:
             self._gimbalSpeed_msg.success = bool(int('0x'+msg, base=16))
 
             
-            self._logger.debug("Gimbal speed success: %s", self._gimbalSpeed_msg.success)
+            # self._logger.debug("Gimbal speed success: %s", self._gimbalSpeed_msg.success)
 
             return True
         except Exception as e:
@@ -751,7 +751,7 @@ class SIYISDK:
             self._center_msg.success = bool(int('0x'+msg, base=16))
 
             
-            self._logger.debug("Gimbal center success: %s", self._center_msg.success)
+            # self._logger.debug("Gimbal center success: %s", self._center_msg.success)
 
             return True
         except Exception as e:
@@ -765,7 +765,7 @@ class SIYISDK:
             self._funcFeedback_msg.info_type = int('0x'+msg, base=16)
 
             
-            self._logger.debug("Function Feedback Code: %s", self._funcFeedback_msg.info_type)
+            # self._logger.debug("Function Feedback Code: %s", self._funcFeedback_msg.info_type)
 
             return True
         except Exception as e:
@@ -810,7 +810,7 @@ class SIYISDK:
         target = max(min(target, 30), 1)
         # to get current zoom value
         self.requestZoomHold()
-        self._logger.debug("Zoom level: %.1f", self.getZoomLevel())
+        # self._logger.debug("Zoom level: %.1f", self.getZoomLevel())
         temp = time()
         while self.getZoomLevel() != target:
             total_sleep = 0.005
@@ -833,7 +833,7 @@ class SIYISDK:
                 total_sleep = 0.05
             sleep(total_sleep)
             self.requestZoomHold()
-            self._logger.debug("Zoom level: %.1f", self.getZoomLevel())
+            # self._logger.debug("Zoom level: %.1f", self.getZoomLevel())
         self.requestZoomHold()
         self._logger.info("Finished absolute zoom: %.1f", self.getZoomLevel())
         return True
@@ -893,8 +893,8 @@ class SIYISDK:
             yaw_err = -yaw + self._att_msg.yaw # NOTE for some reason it's reversed!!
             pitch_err = pitch - self._att_msg.pitch
 
-            self._logger.debug("yaw_err= %s", yaw_err)
-            self._logger.debug("pitch_err= %s", pitch_err)
+            # self._logger.debug("yaw_err= %s", yaw_err)
+            # self._logger.debug("pitch_err= %s", pitch_err)
 
             if (abs(yaw_err) <= th and abs(pitch_err)<=th):
                 self.requestGimbalSpeed(0, 0)
@@ -903,8 +903,8 @@ class SIYISDK:
 
             y_speed_sp = max(min(100, int(gain*yaw_err)), -100)
             p_speed_sp = max(min(100, int(gain*pitch_err)), -100)
-            self._logger.debug("yaw speed setpoint= %s", y_speed_sp)
-            self._logger.debug("pitch speed setpoint= %s", p_speed_sp)
+            # self._logger.debug("yaw speed setpoint= %s", y_speed_sp)
+            # self._logger.debug("pitch speed setpoint= %s", p_speed_sp)
             self.requestGimbalSpeed(y_speed_sp, p_speed_sp)
 
             sleep(0.1) # command frequency

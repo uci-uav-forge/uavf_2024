@@ -36,6 +36,8 @@ class SIYISTREAM:
         logging.basicConfig(format=LOG_FORMAT, level=d_level)
         self._logger = logging.getLogger(self.__class__.__name__)
         self._logger.info("Initializing SIYISTREAM")
+        if self._debug:
+            self._logger.info("Debug mode")
         self._server_ip = server_ip
         self._port = port
         self._name = name
@@ -47,13 +49,15 @@ class SIYISTREAM:
         self.lock = threading.Lock()
         self.capture_thread = threading.Thread(target=self._read_stream)
         self.capture_thread.daemon = True
+        self.bad_count=0
 
     # grab frames as soon as they are available
     def _read_stream(self):
         while True:
             with self.lock:
                 ret = self._stream.grab()
-                self._logger.debug("Grabbed frame")
+                # self._logger.debug("Grabbed frame")
+                pass
             if not ret:
                 break
             # Delay so the thread lock isn't hogged
@@ -100,13 +104,16 @@ class SIYISTREAM:
             return
         ret = False
         while not ret:
-            self._logger.debug("Waiting for lock")
+            # self._logger.debug("Waiting for lock")
             with self.lock:
-                self._logger.debug("Lock acquired")
+                # self._logger.debug("Lock acquired")
                 ret, frame = self._stream.retrieve()
                 if ret:
-                    self._logger.debug("Frame read")
+                    # self._logger.debug("Frame read")
+                    pass
                 else:
                     self._logger.warning("Unable to read frame")
+                    return None
+                    self.bad_count += 1
         return frame
     

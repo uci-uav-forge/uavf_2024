@@ -294,7 +294,7 @@ class SIYIMESSAGE:
         crc = crc16_str_swap(msg_front)
         if crc is not None:
             msg = msg_front+crc
-            self._logger.debug("Encoded msg: %s", msg)
+            # self._logger.debug("Encoded msg: %s", msg)
             return msg
         else:
             self._logger.error("Could not encode message. crc16 is None")
@@ -496,7 +496,7 @@ class SIYIMESSAGE:
         data=data1+data2
 
         cmd_id = COMMAND.ABSOLUTE_ZOOM
-        self._logger.debug("Next encoded msg is absolute zoom")
+        # self._logger.debug("Next encoded msg is absolute zoom")
         return self.encodeMsg(data, cmd_id)
     
 
@@ -523,7 +523,7 @@ class SIYIMESSAGE:
         data = data1[2:4]+data1[0:2]+data2[2:4]+data2[0:2]
 
         cmd_id = COMMAND.ABSOLUTE_POSITION
-        self._logger.debug("Next encoded msg is absolute position")
+        # self._logger.debug("Next encoded msg is absolute position")
         print("             -------------")
         print(f"yaw: {yaw_data}, pitch: {pitch_data}")
         print(f"data: {data}")
