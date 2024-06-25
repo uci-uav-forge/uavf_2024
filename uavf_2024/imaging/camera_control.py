@@ -2,7 +2,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import threading
 import time
-from siyi_sdk import MockSIYISTREAM as SIYISTREAM, MockSIYISDK as SIYISDK
+# from siyi_sdk import MockSIYISTREAM as SIYISTREAM, MockSIYISDK as SIYISDK
+from siyi_sdk import SIYISTREAM, SIYISDK
 from uavf_2024.imaging.imaging_types import Image, HWC
 from scipy.spatial.transform import Rotation
 import numpy as np
