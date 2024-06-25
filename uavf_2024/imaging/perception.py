@@ -54,12 +54,13 @@ class Perception:
         self.logs_path = logs_path
         
         # Set up camera
-        self.camera = Camera(LOGS_PATH / 'camera')
+        self.camera = Camera(self.logs_path / 'camera')
         self.camera.setAbsoluteZoom(zoom_level)
         self.camera.start_recording()
         self.camera_state = False
+        self.recording = False
         
-        self.image_processor = ImageProcessor(LOGS_PATH / 'image_processor')
+        self.image_processor = ImageProcessor(self.logs_path / 'image_processor')
         
         # There can only be one process because it uses the GPU
         self.processor_pool = ThreadPoolExecutor(1)
@@ -87,13 +88,13 @@ class Perception:
         if(self.camera_state and alt_from_gnd < 3): #3 meters ~ 30 feet
             self.camera.request_center()
             self.camera_state = False
-            self.camera.stop_recording()
+            # self.camera.stop_recording()
             self.log(f"Crossing 3m down, pointing forward. Current altitude: {alt_from_gnd}")
         # If pointed forward and altitude is higher, point down
         elif(not self.camera_state and alt_from_gnd > 3):
             self.camera.request_down()
             self.camera_state = True
-            self.camera.start_recording()
+            # self.camera.start_recording()
             self.log(f"Crossing 3m up, pointing down. Current altitude: {alt_from_gnd}")
         else:
             return
@@ -150,23 +151,14 @@ class Perception:
         )
         return localizer
 
-    def point_camera_down(self, wait: bool = True):
-        self.camera.request_down()
-        
-        if not wait:
-            self.log("Camera pointing down, but not waiting.")
-            return
-        
-        while abs(self.camera.getAttitude()[1] - -90) > 2:
-            self.log(f"Waiting to point down. Current angle: {self.camera.getAttitude()[1] } . " )
-            time.sleep(0.1)
-        self.log("Camera pointed down")
-
     def get_image_down_async(self) -> Future[list[Target3D]]:
         """
         Non-blocking implementation of the infrence pipeline,
         calling get_image_down in a separate process.
         """
+        if not self.recording:
+            self.recording = True
+            self.camera.start_recording()
         return self.processor_pool.submit(self.get_image_down)
     
     def _log_image_down(
