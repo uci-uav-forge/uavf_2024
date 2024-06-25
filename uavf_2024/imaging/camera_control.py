@@ -144,7 +144,7 @@ class Camera:
         # Controls whether images and data are submitted to the `threaded_logger`
         if log_dir:
             self.threaded_logger = CameraLogger(Path(log_dir))
-        self.logging = True
+            self.logging = True
         
         self.metadata_buffer = MetadataBuffer()
         
@@ -158,6 +158,11 @@ class Camera:
         while self.recording:
             try:
                 img_arr = self.stream.get_frame()
+                if self.stream.bad_count > 30:
+                    print("Missed 30 frames in a row. Restarting camera stream driver")
+                    self.stream.disconnect()
+                    del self.stream
+                    self.stream = SIYISTREAM(server_ip = "192.168.144.25", port = 8554,debug=False)
                 img_stamp = time.time()
                 attitude_position = self.getAttitude()
                 zoom = self.getZoomLevel()
