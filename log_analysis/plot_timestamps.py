@@ -22,14 +22,14 @@ def get_images(images_dir: Path):
 
 
 plt.title(f"timestamp vs index")
-logs_root_path = Path("/home/forge/ws/src/libuavf_2024/flight_logs")
+logs_root_path = Path("/mnt/nvme/logs")
 logs_path = logs_root_path / sorted([x for x in os.listdir(logs_root_path) if x.startswith("0")])[-1]
 cam_path = logs_path / "camera"
 timestamps, imgs = get_images(cam_path)
 plt.scatter(range(len(timestamps)), timestamps, s=1, label="camera")
-pose_path = logs_path / "pose"
-timestamps, imgs = get_images(pose_path)
-plt.scatter(range(len(timestamps)), timestamps, s=1, label="pose")
+# pose_path = logs_path / "pose"
+# timestamps, imgs = get_images(pose_path)
+# plt.scatter(range(len(timestamps)), timestamps, s=1, label="pose")
 
 
 img_process_path = logs_path / "image_processor"
