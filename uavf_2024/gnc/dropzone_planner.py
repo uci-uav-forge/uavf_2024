@@ -2,7 +2,7 @@ import numpy as np
 import math
 from uavf_2024.imaging.tracker import TargetTracker
 from uavf_2024.gnc.util import is_inside_bounds_local
-altitude = 20.0
+altitude = 25.0
 
 class DropzonePlanner:
     '''
