@@ -5,6 +5,7 @@ import mavros_msgs.msg
 import mavros_msgs.srv
 import rclpy
 import rclpy.node
+from rclpy.executors import MultiThreadedExecutor
 import argparse
 from threading import Thread
 import sys
@@ -29,7 +30,10 @@ if __name__ == '__main__':
 
     node = CommanderNode(args)
 
-    spinner = Thread(target = rclpy.spin, args = (node,))
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+
+    spinner = Thread(target = executor.spin)
     spinner.start()
 
     node.execute_mission_loop()
