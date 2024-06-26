@@ -71,7 +71,7 @@ class DropzonePlanner:
         fwd_yaw %= 360
 
         side_yaw = np.degrees(np.arccos(np.dot(np.array([1,0]), w_unit)))
-        side_yaw += 90
+        side_yaw -= 90
         side_yaw %= 360
         
         # Step 2: Generate a "zigzag" pattern to sweep the entire dropzone.
