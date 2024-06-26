@@ -167,10 +167,15 @@ class Perception:
         Non-blocking implementation of the infrence pipeline,
         calling get_image_down in a separate process.
         """
+
+        self.log("Received Down Image Request")
         if not self.recording:
             self.recording = True
             self.camera.start_recording()
-        return self.processor_pool.submit(self.get_image_down)
+        img = self.camera.get_latest_image()
+        timestamp = time.time()
+        self.log(f"Got image from Camera at time {timestamp}")
+        return self.processor_pool.submit(self.get_image_down, img, timestamp)
     
     def _log_image_down(
         self, 
@@ -208,7 +213,7 @@ class Perception:
         json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
 
     @log_exceptions
-    def get_image_down(self) -> list[Target3D]:
+    def get_image_down(self, img, timestamp) -> list[Target3D]:
         """
         Blocking implementation of the infrence pipeline.
         
@@ -216,22 +221,20 @@ class Perception:
     
         We want to take photo when the attitude is down only. 
         """
-        self.log("Received Down Image Request")
-        self.camera.request_autofocus()
-        self.pose_provider.wait_for_data()
 
-        if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
-            self.point_camera_down()
-
-        #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
-        
-        # Take picture and grab relevant data
-        img = self.camera.get_latest_image()
         if img is None:
             self.log("Could not get image from Camera.")
             return []
-        timestamp = time.time()
-        self.log(f"Got image from Camera at time {timestamp}")
+        self.camera.request_autofocus()
+        self.log(f"Got past autofocus")
+        self.pose_provider.wait_for_data()
+        self.log(f"Got past pose provider wait")
+
+        if abs(self.camera.getAttitude()[1] - -90) > 5: # Allow 5 degrees of error (Arbitrary)
+            self.point_camera_down()
+        self.log(f"Got past point down")
+
+        #TODO: Figure out a way to detect when the gimbal is having an aneurism and figure out how to fix it or send msg to groundstation.
         
         localizer = self.make_localizer()
         if localizer is None:
