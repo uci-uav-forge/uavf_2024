@@ -9,6 +9,7 @@ from scipy.spatial.transform import Rotation as R
 
 import rclpy
 import rclpy.node
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.qos import *
 
 import mavros_msgs.msg
@@ -24,6 +25,18 @@ from uavf_2024.gnc.mission_messages import *
 from uavf_2024.imaging import Perception, PoseProvider, Target3D
 
 TAKEOFF_ALTITUDE = 25.0
+
+from concurrent.futures import Future
+
+def immediate_future(value):
+  """
+  Creates a Future object that resolves immediately to the provided value.
+  """
+  # Create a Future object
+  future = Future()
+  # Set the result of the Future object
+  future.set_result(value)
+  return future
 
 class CommanderNode(rclpy.node.Node):
     '''
@@ -43,6 +56,8 @@ class CommanderNode(rclpy.node.Node):
             history=HistoryPolicy.KEEP_ALL,
             depth = 1)
 
+
+        sub_cb_group = MutuallyExclusiveCallbackGroup()
 
         self.arm_client = self.create_client(mavros_msgs.srv.CommandBool, 'mavros/cmd/arming')   
         self.mode_client = self.create_client(mavros_msgs.srv.SetMode, 'mavros/set_mode')
@@ -116,7 +131,7 @@ class CommanderNode(rclpy.node.Node):
         self.args = args
 
         logs_path = Path(f'/mnt/nvme/logs/{time.strftime("%m-%d %Hh%Mm")}')
-        pose_provider = PoseProvider(self, logs_dir = logs_path / 'pose', logger=self.get_logger())
+        pose_provider = PoseProvider(self, logs_dir = logs_path / 'pose', logger=self.get_logger(), cb_group=sub_cb_group)
         self.perception = Perception(pose_provider, logs_path=logs_path, logger=self.get_logger())
         self.perception_futures: list[Future[list[Target3D]]] = []
         self.call_imaging_at_wps = False
@@ -129,6 +144,19 @@ class CommanderNode(rclpy.node.Node):
         self.got_home_local_pos = False
         self.home_local_pos = None
         self.last_imaging_time = None
+
+        # put on own cb group to not block
+        timer_cb_group = MutuallyExclusiveCallbackGroup()
+
+        self.timer_period = 0.1  # seconds
+        self.create_timer(self.timer_period, self.timer_cb, timer_cb_group)
+
+    def timer_cb(self):
+        timestamp = time.time()
+        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time > 0.3):
+            self.do_imaging_call()
+            self.last_imaging_time = timestamp
+
     def log(self, *args, **kwargs):
         logging.info(*args, **kwargs)
 
@@ -146,16 +174,13 @@ class CommanderNode(rclpy.node.Node):
                 self.do_imaging_call()
 
     def do_imaging_call(self):
-        self.perception_futures.append(self.perception.get_image_down_async())
+        # self.perception_futures.append(self.perception.get_image_down_async())
+        self.perception_futures.append(immediate_future(self.perception.get_image_down()))
     
     def got_pose_cb(self, pose):
         self.cur_pose = pose
         self.cur_rot = R.from_quat([pose.pose.orientation.x,pose.pose.orientation.y,pose.pose.orientation.z,pose.pose.orientation.w,]).as_rotvec()
         self.got_pose = True
-        timestamp = time.time()
-        if self.call_imaging_at_wps and (self.last_imaging_time is None or timestamp - self.last_imaging_time > 0.3):
-            self.do_imaging_call()
-            self.last_imaging_time = timestamp
         if not self.got_home_local_pos:
             self.got_home_local_pos = True
             self.home_local_pose = self.cur_pose
