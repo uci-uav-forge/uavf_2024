@@ -18,7 +18,18 @@ from . import ImageProcessor, Camera, Localizer, PoseProvider, PoseDatum, Target
 
 
 LOGS_PATH = Path(f'logs/{time.strftime("%m-%d %Hh%Mm")}')
-
+def log_exceptions(func):
+    '''
+    Decorator that can be applied to methods on any class that extends
+    a ros `Node` to make them correctly log exceptions when run through
+    a roslaunch file
+    '''
+    def wrapped_fn(self,*args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except Exception:
+            self.get_logger().error(traceback.format_exc())
+    return wrapped_fn
 
 class Perception:
     """
@@ -54,7 +65,7 @@ class Perception:
         self.logs_path = logs_path
         
         # Set up camera
-        self.camera = Camera(self.logs_path / 'camera')
+        self.camera = Camera(self.logger, self.logs_path / 'camera')
         self.camera.setAbsoluteZoom(zoom_level)
         self.camera.start_recording()
         self.camera_state = False
@@ -196,6 +207,7 @@ class Perception:
         
         json.dump(log_data, open(f"{logs_folder}/data.json", 'w+'), indent=4)
 
+    @log_exceptions
     def get_image_down(self) -> list[Target3D]:
         """
         Blocking implementation of the infrence pipeline.
