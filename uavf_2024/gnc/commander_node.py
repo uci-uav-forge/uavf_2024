@@ -23,7 +23,7 @@ from uavf_2024.gnc.mission_messages import *
 
 from uavf_2024.imaging import Perception, PoseProvider, Target3D
 
-TAKEOFF_ALTITUDE = 20.0
+TAKEOFF_ALTITUDE = 25.0
 
 class CommanderNode(rclpy.node.Node):
     '''
