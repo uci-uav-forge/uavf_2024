@@ -110,9 +110,12 @@ class SIYISTREAM:
                 ret, frame = self._stream.retrieve()
                 if ret:
                     # self._logger.debug("Frame read")
+                    if self.bad_count > 0:
+                        self._logger.info(f"Reset bad count from {self.bad_count}")
+                        self.bad_count=0
                     pass
                 else:
-                    self._logger.warning("Unable to read frame")
+                    self._logger.warning(f"Unable to read frame ({self.bad_count} in a row)")
                     return None
                     self.bad_count += 1
         return frame

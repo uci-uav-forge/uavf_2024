@@ -2,8 +2,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import threading
 import time
-# from siyi_sdk import MockSIYISTREAM as SIYISTREAM, MockSIYISDK as SIYISDK
-from siyi_sdk import SIYISTREAM, SIYISDK
+from siyi_sdk import MockSIYISTREAM as SIYISTREAM, MockSIYISDK as SIYISDK
+# from siyi_sdk import SIYISTREAM, SIYISDK
 from uavf_2024.imaging.imaging_types import Image, HWC
 from scipy.spatial.transform import Rotation
 import numpy as np
@@ -123,7 +123,7 @@ class CameraLogger:
     
 
 class Camera:
-    def __init__(self, log_dir: str | Path | None = None):
+    def __init__(self, logger, log_dir: str | Path | None = None):
         """
         Currently starts recording and logging as soon as constructed.
         This should be changed to after takeoff.
@@ -133,6 +133,7 @@ class Camera:
         self.stream = SIYISTREAM(server_ip = "192.168.144.25", port = 8554,debug=False)
         self.stream.connect()
         self.cam.connect()
+        self.logger = logger
         #self.cam.requestLockMode()
         
         # Buffer for taking the latest image, logging it, and returning it in get_latest_image
@@ -159,10 +160,11 @@ class Camera:
             try:
                 img_arr = self.stream.get_frame()
                 if self.stream.bad_count > 30:
-                    print("Missed 30 frames in a row. Restarting camera stream driver")
+                    self.logger.info("Missed 30 frames in a row. Restarting camera stream driver")
                     self.stream.disconnect()
                     del self.stream
                     self.stream = SIYISTREAM(server_ip = "192.168.144.25", port = 8554,debug=False)
+                    continue
                 img_stamp = time.time()
                 attitude_position = self.getAttitude()
                 zoom = self.getZoomLevel()

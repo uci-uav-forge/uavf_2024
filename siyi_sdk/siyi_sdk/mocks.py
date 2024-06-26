@@ -10,7 +10,7 @@ class MockSIYISTREAM:
         - port: [int] UDP port of the camera
         - name: [str] name of the stream
         """
-        pass
+        self.bad_count=0
 
     def connect(self):
         return True
