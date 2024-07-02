@@ -3,7 +3,7 @@ from uavf_2024.imaging.localizer import Localizer
 from uavf_2024.imaging.area_coverage import AreaCoverageTracker
 from uavf_2024.imaging.image_processor import ImageProcessor
 from uavf_2024.imaging.tracker import TargetTracker
-from uavf_2024.imaging.imaging_types import FullBBoxPrediction, Image, ProbabilisticTargetDescriptor, Target3D, COLORS, SHAPES, LETTERS, CertainTargetDescriptor
+from uavf_2024.imaging.imaging_types import FullBBoxPrediction, Image, ProbabilisticTargetDescriptor, Target3D, COLORS, SHAPES, LEGACY_LETTERS, CertainTargetDescriptor
 from uavf_2024.imaging.utils import calc_match_score
 import os
 import numpy as np

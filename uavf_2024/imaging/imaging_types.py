@@ -1,43 +1,161 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import os
-from typing import Generator, Generic, NamedTuple, TypeVar, Union
+from itertools import chain
+from typing import Generator, Generic, Literal, NamedTuple, TypeVar, Union
 import cv2
 import numpy as np
 from enum import Enum
 
 import torch
 
+
+class Color(Enum):
+    RED = 0
+    ORANGE = 1
+    GREEN = 2
+    BLUE = 3
+    PURPLE = 4
+    WHITE = 5
+    BLACK = 6
+    BROWN = 7
+    
+    @staticmethod
+    def from_str(name: str) -> "Color | None":
+        if Color.is_shape_color(name):
+            name = name[6:]
+        elif Color.is_char_color(name):
+            name = name[5:]
+        
+        index = COLOR_INDICES.get(name.lower())
+        if index is None:
+            return None
+        return __class__(index)
+    
+    @staticmethod
+    def is_shape_color(name: str) -> bool:
+        return name.upper().startswith("SHAPE:")
+
+    @staticmethod
+    def is_char_color(name: str) -> bool:
+        return name.upper().startswith("CHAR:")
+    
+    @staticmethod
+    def from_index(index: int) -> "Color":
+        if index < 0 or index >= len(COLORS):
+            raise ValueError(f"Index {index} out of bounds")
+        
+        return __class__(index)
+    
+    def __str__(self):
+        return self.name.lower()
+
+
 COLOR_INDICES = {
-    "red": 0,
-    "orange": 1,
-    "green": 2,
-    "blue": 3,
-    "purple": 4,
-    "white": 5,
-    "black": 6,
-    "brown": 7,
+    color.name.lower(): color.value for color in Color
 }
 
 
+class Shape(Enum):
+    CIRCLE = 0
+    SEMICIRCLE = 1
+    QUARTERCIRCLE = 2
+    TRIANGLE = 3
+    RECTANGLE = 4
+    PENTAGON = 5
+    STAR = 6
+    CROSS = 7
+    PERSON = 8
+    
+    @staticmethod
+    def from_str(name: str) -> "Shape | None":
+        index = SHAPE_INDICES.get(name.lower())
+        if index is None:
+            return None
+        return __class__(index)
+    
+    @staticmethod
+    def from_index(index: int) -> "Shape":
+        if index < 0 or index >= len(SHAPES):
+            raise ValueError(f"Index {index} out of bounds")
+        
+        return __class__(index)
+    
+    def __str__(self):
+        return self.name.lower()
+
+
 SHAPES = [
- "circle",
- "semicircle",
- "quartercircle",
- "triangle",
- "rectangle",
- "pentagon",
- "star",
- "cross",
- "person"
+    shape.name.lower() for shape in Shape
 ]
 
-# LETTERS_OLD = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
-# LETTERS_NEW = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+SHAPE_INDICES = {
+    shape: index for index, shape in enumerate(SHAPES)
+}
 
-# LETTERS is based on the letter order in letter model's raw_output[0].names
+# based on the letter order in letter model's raw_output[0].names
 # it is basically LETTER_NEW in alphabetical order (0-35)
-LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
+LEGACY_LETTERS = "01ABCDEFGHIJ2KLMNOPQRST3UVWXYZ456789"
+
+# New, canonical sequence of characters that actually make sense.
+CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+character_literal = Literal["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9"]
+
+class Character:
+    __members__: dict[character_literal, character_literal] = {char: char for char in CHARACTERS} # type: ignore
+    
+    @staticmethod
+    def values():
+        yield from CHARACTERS
+    
+    def __init__(self, value: character_literal):
+        self.value = value.upper()
+        
+    def __eq__(self, other: Character):
+        return self.value == other.value
+    
+    @staticmethod
+    def count():
+        return len(CHARACTERS)
+    
+    @property
+    def index(self):
+        if self.value.isnumeric():
+            return int(self.value)
+        
+        return ord(self.value) - ord("A") + 10
+    
+    @staticmethod
+    def from_str(name: str) -> "Character | None":
+        if len(name) != 1:
+            return None
+        
+        name = name.upper()
+        
+        if name.isnumeric():
+            index = int(name)
+        else:
+            index = ord(name) - ord("A") + 10
+
+        if index < 0 or index >= len(CHARACTERS):
+            return None
+        
+        return __class__(CHARACTERS[index]) # type: ignore
+    
+    @staticmethod
+    def from_index(index: int) -> "Character":
+        if index < 0 or index >= len(CHARACTERS):
+            raise ValueError(f"Index {index} out of bounds")
+        
+        return __class__(CHARACTERS[index]) # type: ignore
+    
+    def __repr__(self):
+        return f"Character({self.value})"
+    
+    def __str__(self):
+        return self.value
+
 
 COLORS = list(COLOR_INDICES.keys())
 
@@ -63,7 +181,7 @@ class ProbabilisticTargetDescriptor:
             Shapes:
                 {NEWLINE.join([f"{SHAPES[i]}: {self.shape_probs[i]:.{3}f}" for i in range(len(self.shape_probs))])}
             Letters:
-                {NEWLINE.join([f"{LETTERS[i]}: {self.letter_probs[i]:.{3}f}" for i in range(len(self.letter_probs))])}
+                {NEWLINE.join([f"{LEGACY_LETTERS[i]}: {self.letter_probs[i]:.{3}f}" for i in range(len(self.letter_probs))])}
             Shape Colors:
                 {NEWLINE.join([f"{COLORS[i]}: {self.shape_col_probs[i]:.{3}f}" for i in range(len(self.shape_col_probs))])}
             Letter Colors:
@@ -104,10 +222,19 @@ class ProbabilisticTargetDescriptor:
     
     def collapse_to_certain(self) -> CertainTargetDescriptor:
         return CertainTargetDescriptor(
-            COLORS[np.argmax(self.shape_col_probs)],
-            SHAPES[np.argmax(self.shape_probs)],
-            COLORS[np.argmax(self.letter_col_probs)],
-            LETTERS[np.argmax(self.letter_probs)]
+            Color.from_index(int(np.argmax(self.shape_col_probs))).__str__(),
+            Shape.from_index(int(np.argmax(self.shape_probs))).__str__(),
+            Color.from_index(int(np.argmax(self.letter_col_probs))).__str__(),
+            Character.from_index(int(np.argmax(self.letter_probs))).__str__()
+        )
+        
+    @staticmethod
+    def make_dummy():
+        return ProbabilisticTargetDescriptor(
+            np.ones(len(SHAPES)) / len(SHAPES),
+            np.ones(len(LEGACY_LETTERS)) / len(LEGACY_LETTERS),
+            np.ones(len(COLORS)) / len(COLORS),
+            np.ones(len(COLORS)) / len(COLORS)
         )
 
 
@@ -130,7 +257,7 @@ class CertainTargetDescriptor:
 
         assert shape_col is None or shape_col in COLORS
         assert letter_col is None or letter_col in COLORS
-        assert letter is None or letter in LETTERS
+        assert letter is None or letter in LEGACY_LETTERS
         self.shape_col = shape_col
         self.letter_col = letter_col
         self.letter = letter
@@ -144,7 +271,7 @@ class CertainTargetDescriptor:
             COLORS[shape_col_index],
             SHAPES[shape_index],
             COLORS[letter_col_index],
-            LETTERS[letter_index]
+            LEGACY_LETTERS[letter_index]
         )
 
     def to_indices(self):
@@ -157,7 +284,7 @@ class CertainTargetDescriptor:
             COLORS.index(self.shape_col) if self.shape_col is not None else None,
             SHAPES.index(self.shape) if self.shape is not None else None,
             COLORS.index(self.letter_col) if self.letter_col is not None else None,
-            LETTERS.index(self.letter) if self.letter is not None else None
+            LEGACY_LETTERS.index(self.letter) if self.letter is not None else None
         )
     
     def as_probabilistic(self, force_through_none = True) -> ProbabilisticTargetDescriptor:
@@ -175,10 +302,10 @@ class CertainTargetDescriptor:
         shape_probs[SHAPES.index(self.shape)] = 1.0
 
         if self.letter is None:
-            letter_probs = np.ones(len(LETTERS)) / len(LETTERS)
+            letter_probs = np.ones(len(LEGACY_LETTERS)) / len(LEGACY_LETTERS)
         else:
-            letter_probs = np.zeros(len(LETTERS))
-            letter_probs[LETTERS.index(self.letter)] = 1.0
+            letter_probs = np.zeros(len(LEGACY_LETTERS))
+            letter_probs[LEGACY_LETTERS.index(self.letter)] = 1.0
 
         if self.shape_col is None:
             shape_col_probs = np.ones(len(COLORS)) / len(COLORS)
@@ -395,7 +522,7 @@ class Image(Generic[_UnderlyingImageT]):
     def get_array(self) -> _UnderlyingImageT:
         return self._array
     
-    def make_sub_image(self, x_coord, y_coord, width, height) -> 'Image':
+    def make_sub_image(self, x_coord, y_coord, width, height) -> 'Image[_UnderlyingImageT]':
         """
         Does not copy the underlying array.
         """
@@ -488,6 +615,33 @@ class Image(Generic[_UnderlyingImageT]):
             np_array = np_array.transpose(1, 2, 0)
         
         cv2.imwrite(str(fp), np_array)
+    
+    def make_square(self, target_size: int) -> 'Image[np.ndarray]':
+        height, width = self.height, self.width
+        
+        if self._dim_order == HWC:
+            arr = np.array(self._array)
+        elif self._dim_order == CHW:
+            # Lightweight operations because we're not copying the array
+            new_image = Image(self._array, CHW)
+            new_image.change_dim_order(HWC)
+            arr = np.array(new_image.get_array())
+        
+        if height > width:
+            left_pad = (height - width) // 2
+            right_pad = height - width - left_pad
+            arr = cv2.copyMakeBorder(arr, 0, 0, left_pad, right_pad, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        elif width > height:
+            top_pad = (width - height) // 2
+            bottom_pad = width - height - top_pad
+            arr = cv2.copyMakeBorder(arr, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        
+        arr = cv2.resize(arr, (target_size, target_size))
+        
+        res = Image(arr, self.dim_order)
+        res.change_dim_order(self.dim_order)
+        
+        return res
     
     def change_dim_order(self, target_dim_order: ImageDimensionsOrder) -> None:
         """

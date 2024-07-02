@@ -1,20 +1,22 @@
 from __future__ import annotations
-import shutil
-import torch
-from torchvision.ops import box_iou
-import unittest
-from uavf_2024.imaging.image_processor import ImageProcessor
-from uavf_2024.imaging.imaging_types import HWC, FullBBoxPrediction, FullBBoxGroundTruth, Image, CertainTargetDescriptor, LETTERS, SHAPES, COLORS
-from uavf_2024.imaging import profiler
-import numpy as np
+
 import os
+import shutil
+import unittest
 from time import time
-from tqdm import tqdm
-import line_profiler
-from memory_profiler import profile as mem_profile
+
+import cv2  # for debugging purposes
+import numpy as np
 import pandas as pd
-import sys
-import cv2 #for debugging purposes
+import torch
+from memory_profiler import profile as mem_profile
+from torchvision.ops import box_iou
+from tqdm import tqdm
+
+from uavf_2024.imaging import profiler
+from uavf_2024.imaging.image_processor import ImageProcessor
+from uavf_2024.imaging.imaging_types import FullBBoxPrediction, FullBBoxGroundTruth, Image, CertainTargetDescriptor, \
+    LEGACY_LETTERS, SHAPES, COLORS
 
 CURRENT_FILE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -181,7 +183,7 @@ def parse_str_dataset(imgs_path, labels_path) -> tuple[list[Image], list[list[Fu
 
 def generate_confusion_matrices(true_values: list[list[FullBBoxGroundTruth]], pred_values: list[list[FullBBoxPrediction]], out_folder: str) -> None:
     shape_confusion = np.zeros((len(SHAPES), len(SHAPES)))
-    letter_confusion = np.zeros((len(LETTERS), len(LETTERS)))
+    letter_confusion = np.zeros((len(LEGACY_LETTERS), len(LEGACY_LETTERS)))
     shape_col_confusion = np.zeros((len(COLORS), len(COLORS)))
     letter_col_confusion = np.zeros((len(COLORS), len(COLORS)))
 
@@ -216,7 +218,7 @@ def generate_confusion_matrices(true_values: list[list[FullBBoxGroundTruth]], pr
     for name, confusion_matrix, index in zip(
         ["shape", "letter", "shape_col", "letter_col"],
         [shape_confusion, letter_confusion, shape_col_confusion, letter_col_confusion],
-        [SHAPES, LETTERS, COLORS, COLORS]
+        [SHAPES, LEGACY_LETTERS, COLORS, COLORS]
     ):
         for i in range(len(index)):
             if confusion_matrix[i,i] < max(confusion_matrix[i]):
@@ -237,8 +239,8 @@ class TestImagingFrontend(unittest.TestCase):
     @profiler
     def test_benchmark_fullsize_images(self):
         image_processor = ImageProcessor(
-            shape_batch_size=20,
-            letter_batch_size=30
+            detector_batch_size=20,
+            classifier_batch_size=30
         )
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
         times = []
@@ -277,7 +279,7 @@ class TestImagingFrontend(unittest.TestCase):
             prediction_list = []
 
         for img, ground_truth in zip(imgs, labels):
-            predictions = image_processor.process_image(img)
+            predictions = list(image_processor.process_image(img))
             
 
             if gen_confusion_matrices:
@@ -335,7 +337,7 @@ class TestImagingFrontend(unittest.TestCase):
             prediction_list = []
 
         for img, ground_truth in zip(imgs, labels):
-            predictions = image_processor.process_image(img)
+            predictions = list(image_processor.process_image(img))
             
 
             if gen_confusion_matrices:
@@ -386,9 +388,8 @@ class TestImagingFrontend(unittest.TestCase):
         # assert the result is a list[fullbboxpred] and has numbers in prob_descriptors
         image_processor = ImageProcessor()
         sample_input = Image.from_file(f"{CURRENT_FILE_PATH}/2024_test_data/fullsize_dataset/images/1080p.png")
-        res = image_processor.process_image_lightweight(sample_input)
+        res = list(image_processor.process_image_lightweight(sample_input))
         
-        assert type(res) is list
         assert type(res[0]) is FullBBoxPrediction
         if len(res) > 1:
             assert np.any(res[0].descriptor.letter_probs) and np.any(res[0].descriptor.shape_col_probs)

@@ -16,7 +16,12 @@ recorded_images
 .vscode
 test/*.png
 trained_model.pth
-venv/
+/*venv*/
+
+# PyTorch Lightning Logs
+lightning_logs
+
+# Flight data
 logs_esc
 gpx/
 flight_logs
